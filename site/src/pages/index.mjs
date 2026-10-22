@@ -32,11 +32,32 @@ export function landing({ shell, rel, claims, costs, prices, report, screens, RE
   const r = (h) => rel('', h);
   const e20 = e20Result(report);
 
-  const screensHtml = screens.length
-    ? `<section id="screens"><h2>See it</h2><div class="screens">${screens
-        .map((f) => `<figure><img src="${r('/screens/' + f)}" alt="${e(f.replace(/[-_]/g, ' ').replace(/\.\w+$/, ''))}" loading="lazy" width="1280" height="800"></figure>`)
+  // Real screenshots of the console, one light and one dark file per screen.
+  const has = (name) => screens.includes(`${name}-dark.jpg`) && screens.includes(`${name}-light.jpg`);
+  const shot = (name, alt, eager) => `<picture>
+<source srcset="${r(`/screens/${name}-dark.jpg`)}" media="(prefers-color-scheme: dark)">
+<img src="${r(`/screens/${name}-light.jpg`)}" alt="${e(alt)}" width="1600" height="1000"${eager ? '' : ' loading="lazy"'}>
+</picture>`;
+  const TOUR = [
+    ['palette', 'Deploy from the UI', 'Pick a GitHub repo, a Docker image or a database template. No YAML to start.'],
+    ['deployments', 'Every deploy explains itself', 'A failed deploy says why in one sentence, and the last good version keeps serving.'],
+    ['logs', 'Live build and deploy logs', 'Logs stream as they happen, in the browser or with 5050 logs.'],
+    ['variables', 'Variables with references', 'DATABASE_URL=${{Postgres.DATABASE_URL}} resolves on deploy, like Railway.'],
+    ['scale', 'Replicas and every core', 'Run several replicas and turn on all cores for Node apps from Settings.'],
+    ['networking', 'Domains with automatic HTTPS', 'A generated domain in one click, or bring your own with the DNS record shown.'],
+    ['metrics', 'Metrics per service', 'CPU, memory and network for each service and replica.'],
+  ].filter(([n]) => has(n));
+  const heroShot = has('canvas')
+    ? `<figure class="hero-shot">${shot('canvas', 'The 5050cloud project canvas with web, api, worker, Postgres and Redis services', true)}</figure>`
+    : '';
+  const screensHtml = TOUR.length
+    ? `<section id="screens"><h2>The console</h2><p>These are screenshots of v0.1.0 running on a single test VM.</p><div class="tour">${TOUR
+        .map(([n, title, text]) => `<figure>${shot(n, title)}<figcaption><strong>${e(title)}</strong> ${e(text)}</figcaption></figure>`)
         .join('')}</div></section>`
     : '';
+  const termVideo = `<figure class="term"><video autoplay muted loop playsinline preload="metadata" poster="${r('/media/terminal-install-poster.png')}">
+<source src="${r('/media/terminal-install.webm')}" type="video/webm"><source src="${r('/media/terminal-install.mp4')}" type="video/mp4"></video>
+<figcaption>The install, recorded on a fresh Ubuntu 24.04 VM.</figcaption></figure>`;
 
   const costRows = costs.rows
     .map((row) => `<tr><td>${e(row.option)}</td><td>${e(row.monthly)}</td><td>${e(row.vsRailway)}</td><td><a href="${e(row.source)}" rel="noopener">source</a></td></tr>`)
@@ -55,6 +76,12 @@ export function landing({ shell, rel, claims, costs, prices, report, screens, RE
   <p class="actions"><a class="btn primary" href="${r('/docs/quick-start')}">Get started</a><a class="btn" href="${REPO}" rel="noopener">GitHub</a></p>
   <p class="small">${c('first-deploy')}.</p>
   <p class="small">v0.1.0 is an early release: see <a href="#limits">the limits below</a> for what has been tested so far.</p>
+  ${heroShot}
+</section>
+
+<section id="install-video">
+  <h2>One command on any Linux VM</h2>
+  ${termVideo}
 </section>
 
 ${screensHtml}
