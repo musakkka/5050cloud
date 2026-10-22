@@ -1,0 +1,128 @@
+# SPDX-License-Identifier: MIT
+id: metabase
+name: Metabase
+tagline: Business intelligence and dashboards, with its settings in Postgres.
+description: >-
+  Metabase with its application database in Postgres. Add your own data
+  sources from the admin settings after the first sign-in.
+docs: https://5050cloud.com/docs/templates/metabase
+icon: metabase.svg
+category: app
+inputs:
+  - name: MB_ENCRYPTION_SECRET_KEY
+    label: Encryption key
+    description: Encrypts database connection details Metabase stores.
+    generate: secret(32)
+    required: true
+    secret: true
+services:
+  - name: Postgres
+    data: postgres
+    images:
+      "17": postgres:17.10-bookworm
+      "18": postgres:18.4-bookworm
+    config:
+      name: Postgres
+      icon: postgres
+      kind: database
+      template: postgres
+      templateVersion: "17"
+      source:
+        type: image
+        image: postgres:17.10-bookworm
+      deploy:
+        startCommand: postgres -c config_file=/etc/postgresql/5050.conf
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        shmSizeMb: 256
+        placement:
+          roles: [data]
+      networking:
+        port: 5432
+        privateName: postgres
+    variables:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${{secret(32)}}
+      POSTGRES_DB: railway
+      PGUSER: ${{POSTGRES_USER}}
+      PGPASSWORD: ${{POSTGRES_PASSWORD}}
+      PGDATABASE: ${{POSTGRES_DB}}
+      PGHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      PGPORT: "5432"
+      PGDATA: /var/lib/postgresql/data/pgdata
+      DATABASE_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}
+      DATABASE_PUBLIC_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}/${{PGDATABASE}}
+    volume:
+      mountPath: /var/lib/postgresql/data
+    files:
+      - path: /etc/postgresql/5050.conf
+        template: postgres/postgresql.conf.tmpl
+        mode: 420
+      - path: /docker-entrypoint-initdb.d/5050-init.sql
+        template: postgres/init.sql
+        mode: 420
+      - path: /opt/5050/bin/archive-wal
+        template: postgres/archive-wal.sh
+        mode: 493
+      - path: /opt/5050/bin/backup-postgres
+        template: postgres/backup-postgres.sh
+        mode: 493
+      - path: /opt/5050/bin/restore-postgres
+        template: postgres/restore-postgres.sh
+        mode: 493
+      - path: /opt/5050/bin/pg-metrics
+        template: postgres/pg-metrics.sh
+        mode: 493
+      - path: /opt/5050/bin/check-archiving
+        template: postgres/check-archiving.sh
+        mode: 493
+    tools: [wal-g]
+    backup:
+      kind: postgres_wal
+      runIn: service
+      backup: [/opt/5050/bin/backup-postgres]
+      restore: [/opt/5050/bin/restore-postgres]
+      retention: [/opt/5050/bin/wal-g, delete, retain, FULL, "{{.RetainDays}}", --confirm]
+      verify: [/opt/5050/bin/check-archiving]
+      continuous: true
+      # Dump and Load run in one job, piped together, for Upgrade to a new
+      # major version (SOURCE_HOST and TARGET_HOST are the private names).
+      dump: [sh, -c, 'exec pg_dumpall -h "$SOURCE_HOST" -U "$POSTGRES_USER"']
+      load: [sh, -c, 'exec psql -X -q -h "$TARGET_HOST" -U "$POSTGRES_USER" -d postgres']
+    probe:
+      health: [pg_isready, -q, -h, 127.0.0.1, -p, "5432"]
+      metrics: [/opt/5050/bin/pg-metrics]
+      check: [psql, -X, -At, -c, SELECT count(*) FROM pg_class]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5
+  - name: Metabase
+    dependsOn: [Postgres]
+    domain: true
+    config:
+      name: Metabase
+      icon: metabase
+      kind: web
+      template: metabase
+      source:
+        type: image
+        image: metabase/metabase:v0.63.19
+      deploy:
+        healthcheckPath: /api/health
+        healthcheckTimeoutSec: 600
+        memoryReservationMb: 1024
+      networking:
+        port: 3000
+    variables:
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: ${{Postgres.PGHOST}}
+      MB_DB_PORT: ${{Postgres.PGPORT}}
+      MB_DB_DBNAME: ${{Postgres.PGDATABASE}}
+      MB_DB_USER: ${{Postgres.PGUSER}}
+      MB_DB_PASS: ${{Postgres.PGPASSWORD}}
+      MB_ENCRYPTION_SECRET_KEY: ${{input.MB_ENCRYPTION_SECRET_KEY}}
+      MB_SITE_URL: https://${{FIFTY_PUBLIC_DOMAIN}}
+      MB_JETTY_PORT: "3000"

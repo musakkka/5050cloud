@@ -1,0 +1,4 @@
+#9 [build 2/3] RUN make
+#9 0.211 make: *** No targets specified and no makefile found.  Stop.
+#9 ERROR: process "/bin/sh -c make" did not complete successfully: exit code: 2
+ERROR: failed to build: failed to solve: process "/bin/sh -c make" did not complete successfully: exit code: 2

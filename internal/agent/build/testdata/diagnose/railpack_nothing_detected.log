@@ -1,0 +1,12 @@
+╭─────────────────╮
+│ Railpack 0.40.1 │
+╰─────────────────╯
+  ⚠ Script start.sh not found
+  ✖ Railpack could not determine how to build the app.
+  The following languages are supported:
+  - Php
+  - Golang
+  - Node
+  The app contents that Railpack analyzed contains:
+  ./
+  Check out the docs for more information: https://railpack.com

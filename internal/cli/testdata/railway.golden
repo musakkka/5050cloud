@@ -1,0 +1,172 @@
+railway login
+  -> 5050 login
+railway login --browserless
+  -> 5050 login --browserless
+railway logout
+  -> 5050 logout
+railway whoami
+  -> 5050 whoami
+railway init
+  -> 5050 init
+railway init --name my-app
+  -> 5050 init --name my-app
+railway init -n my-app --workspace acme
+  -> 5050 init -n my-app
+railway link
+  -> 5050 link
+railway link --project my-app --environment staging --service web
+  -> 5050 link --project my-app --environment staging --service web
+railway link -p my-app -t team1
+  -> 5050 link -p my-app
+railway unlink
+  -> 5050 unlink
+railway status
+  -> 5050 status
+railway list
+  -> 5050 list
+railway open
+  -> 5050 open
+railway up
+  -> 5050 up
+railway up --detach
+  -> 5050 up --detach
+railway up -c
+  -> 5050 up -c
+railway up --service web
+  -> 5050 up --service web
+railway up ./api --path-as-root
+  -> 5050 up ./api --path-as-root
+railway up --no-gitignore --verbose
+  -> 5050 up --no-gitignore
+railway redeploy -y
+  -> 5050 redeploy -y
+railway restart --service web -y
+  -> 5050 restart --service web -y
+railway down -y
+  -> 5050 down -y
+railway deploy -t postgres
+  -> 5050 deploy -t postgres
+railway deploy --template umami -v ADMIN=me
+  -> 5050 deploy --template umami -v ADMIN=me
+railway add -d postgres
+  -> 5050 add -d postgres
+railway add --database redis
+  -> 5050 add --database redis
+railway add --repo owner/repo
+  -> 5050 add --repo owner/repo
+railway add -i nginx:1.27
+  -> 5050 add --image nginx:1.27
+railway add --service worker
+  -> 5050 add --empty worker
+railway add --service web --variables PORT=8080
+  -> 5050 add --empty web --variable PORT=8080
+railway logs
+  -> 5050 logs
+railway logs --build
+  -> 5050 logs --build
+railway logs -d
+  -> 5050 logs
+railway logs --deployment
+  -> 5050 logs
+railway logs --json -n 100
+  -> 5050 logs --json -n 100
+railway logs --filter @level:error --since 1h
+  -> 5050 logs --filter @level:error --since 1h
+railway logs --http --status 500
+  -> 5050 logs --http --status 500
+railway variables
+  -> 5050 variables list
+railway variables --kv
+  -> 5050 variables list --kv
+railway variables -k
+  -> 5050 variables list --kv
+railway variables --set KEY=value
+  -> 5050 variables set KEY=value
+railway variables --set A=1 --set B=2 --skip-deploys
+  -> 5050 variables set A=1 B=2 --skip-deploys
+railway variables --set=A=1
+  -> 5050 variables set A=1
+railway variables --set-from-stdin KEY
+  -> 5050 variables set KEY --stdin
+railway variables --service api --json
+  -> 5050 variables list --service api --json
+railway variable set KEY=value
+  -> 5050 variables set KEY=value
+railway variable list -k
+  -> 5050 variables list --kv
+railway variable delete KEY
+  -> 5050 variables delete KEY
+railway run npm start
+  -> 5050 run npm start
+railway run -- npm run migrate
+  -> 5050 run -- npm run migrate
+railway shell
+  -> 5050 shell
+railway shell --silent
+  -> 5050 shell --silent
+railway ssh
+  -> 5050 ssh
+railway ssh -s web ls -la
+  -> 5050 ssh -s web -- ls -la
+railway ssh -- ls
+  -> 5050 ssh -- ls
+railway connect
+  -> 5050 connect
+railway connect Postgres
+  -> 5050 connect Postgres
+railway domain
+  -> 5050 domain
+railway domain -p 3000
+  -> 5050 domain --port 3000
+railway domain example.com --port 8080
+  -> 5050 domain example.com --port 8080
+railway environment
+  -> 5050 environment
+railway environment staging
+  -> 5050 environment staging
+railway environment new staging
+  -> 5050 environment new staging
+railway environment new pr-1 -d production
+  -> 5050 environment new pr-1 --duplicate production
+railway environment delete staging
+  -> 5050 environment delete staging
+railway service
+  -> 5050 service
+railway service web
+  -> 5050 service web
+railway service status --all
+  -> 5050 service status --all
+railway volume list
+  -> 5050 volume list
+railway volume add --mount-path /data
+  -> 5050 volume add --mount /data
+railway volume add -m /data
+  -> 5050 volume add --mount /data
+railway volume delete
+  -> 5050 volume delete
+railway volume update --name x
+  -> railway volume update is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway
+railway scale 3
+  -> 5050 scale 3
+railway scale --us-west2=3
+  -> railway scale with regions is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway
+railway completion zsh
+  -> 5050 completion zsh
+railway --version
+  -> 5050 version
+railway -V
+  -> 5050 version
+railway docs
+  -> railway docs is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway
+railway dev
+  -> railway dev is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway
+railway functions list
+  -> railway functions is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway
+railway starship
+  -> railway starship is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway
+railway upgrade
+  -> railway upgrade is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway
+railway deployment list
+  -> railway deployment is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway
+railway bucket create
+  -> railway bucket is not available in 5050cloud. See 5050cloud.com/docs/coming-from-railway

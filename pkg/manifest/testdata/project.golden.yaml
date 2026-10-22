@@ -1,0 +1,43 @@
+environments:
+  staging:
+    services:
+      api:
+        build: {}
+        deploy:
+          placement: {}
+          replicas: 1
+        icon: ""
+        name: api
+        networking: {}
+        source:
+          type: github
+    shared:
+      LOG_LEVEL: debug
+project: sturdy-otter
+services:
+  api:
+    build:
+      builder: railpack
+    deploy:
+      placement: {}
+      processes: auto
+      replicas: 2
+      startCommand: node server.js
+    domains:
+    - api.example.com
+    icon: nodejs
+    name: api
+    networking:
+      port: 3000
+    source:
+      branch: main
+      repo: acme/api
+      rootDir: /
+      type: github
+    variables:
+      API_KEY: '@preserve'
+      DATABASE_URL: ${{Postgres.DATABASE_URL}}
+    volume:
+      mountPath: /data
+shared:
+  LOG_LEVEL: info

@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "exchangeRate": "1.15 USD per EUR (an assumption; check the rate on the day you compare)",
+  "workload": "3 web services, Postgres and Redis, 4 vCPU and 16 GB RAM in total, 100 GB egress and 50 GB of volume storage per month, one production environment, 730 hours, no support plan, no tax.",
+  "railwaySteady": 252.5,
+  "railwayTypical": 112.5,
+  "rows": [
+    { "option": "Hetzner CCX23 (4 dedicated vCPU, 16 GB) + 5050cloud", "monthly": "about $102", "vsRailway": "60% less", "source": "https://www.hetzner.com/cloud/general-purpose" },
+    { "option": "Hetzner CPX42 (8 shared vCPU, 16 GB) + 5050cloud", "monthly": "about $83", "vsRailway": "67% less", "source": "https://www.hetzner.com/cloud/regular-performance" },
+    { "option": "DigitalOcean General Purpose 4 vCPU, 16 GB + 5050cloud", "monthly": "$138", "vsRailway": "45% less", "source": "https://www.digitalocean.com/pricing/droplets" },
+    { "option": "AWS m7i.xlarge, 1-year reserved + 5050cloud", "monthly": "$111", "vsRailway": "56% less", "source": "https://aws.amazon.com/ec2/pricing/on-demand/" },
+    { "option": "AWS m7i.xlarge, on demand + 5050cloud", "monthly": "$161", "vsRailway": "36% less", "source": "https://aws.amazon.com/ec2/pricing/on-demand/" },
+    { "option": "Azure D4s v5, pay as you go + 5050cloud", "monthly": "about $160", "vsRailway": "37% less", "source": "https://azure.microsoft.com/en-us/pricing/details/bandwidth/" },
+    { "option": "Two Hetzner CCX23 (app replicas on both, a Postgres primary and a standby)", "monthly": "about $204", "vsRailway": "19% less, with no single host to lose", "source": "https://www.hetzner.com/cloud/general-purpose" },
+    { "option": "Render (Pro)", "monthly": "$246.25", "vsRailway": "about the same", "source": "https://render.com/pricing" },
+    { "option": "Fly.io (managed Postgres with HA)", "monthly": "$403.85", "vsRailway": "60% more", "source": "https://fly.io/pricing" },
+    { "option": "Heroku (memory matched)", "monthly": "$1,150", "vsRailway": "4.6x", "source": "https://www.heroku.com/pricing" },
+    { "option": "Railway, steady load (all 4 vCPU and 16 GB in use around the clock)", "monthly": "$252.50", "vsRailway": "", "source": "https://railway.com/pricing" },
+    { "option": "Railway, typical load (averages 1 vCPU and 8 GB)", "monthly": "$112.50", "vsRailway": "", "source": "https://railway.com/pricing" }
+  ]
+}

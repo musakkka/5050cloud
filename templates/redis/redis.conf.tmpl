@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+#
+# Redis configuration rendered by 5050cloud at each deploy. The password comes
+# from the service's REDIS_PASSWORD variable; Regenerate credentials changes
+# both and redeploys.
+bind 0.0.0.0
+protected-mode no
+port 6379
+dir /data
+dbfilename dump.rdb
+save 3600 1 300 100 60 10000
+appendonly yes
+appenddirname appendonlydir
+appendfsync everysec
+maxmemory {{ .Redis.MaxMemoryMB }}mb
+maxmemory-policy noeviction
+requirepass {{ quote (env "REDIS_PASSWORD") }}

@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: MIT
+id: uptime-kuma
+name: Uptime Kuma
+tagline: Self-hosted uptime monitoring with status pages.
+description: >-
+  Uptime Kuma with its data on a volume. Create the admin account on first
+  visit.
+docs: https://5050cloud.com/docs/templates/uptime-kuma
+icon: uptime-kuma.svg
+category: app
+inputs: []
+services:
+  - name: Uptime Kuma
+    domain: true
+    config:
+      name: Uptime Kuma
+      icon: uptime-kuma
+      kind: web
+      template: uptime-kuma
+      source:
+        type: image
+        image: louislam/uptime-kuma:2.5.5
+      deploy:
+        singleton: true
+      networking:
+        port: 3001
+    variables:
+      UPTIME_KUMA_PORT: "3001"
+    volume:
+      mountPath: /app/data
+    backup:
+      kind: volume
+      runIn: job
+      backup: [/opt/5050/bin/backup-volume]
+      restore: [/opt/5050/bin/restore-volume]
+      retention: [/opt/5050/bin/retention-restic]

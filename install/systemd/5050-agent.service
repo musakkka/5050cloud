@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MIT
+[Unit]
+Description=5050cloud host agent
+Documentation=https://5050cloud.com/docs
+After=network-online.target docker.service 5050-net-restore.service
+Wants=network-online.target
+Requires=docker.service
+ConditionPathExists=/etc/5050/agent.json
+
+[Service]
+Type=simple
+ExecStart=/opt/5050/agent/5050-agent run
+Restart=always
+RestartSec=2
+# App containers belong to Docker; stopping the agent never stops them.
+KillMode=process
+TimeoutStopSec=30
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

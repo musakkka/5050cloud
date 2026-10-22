@@ -1,0 +1,52 @@
+{
+  "tools": [
+    {
+      "name": "wal-g",
+      "version": "v3.0.9",
+      "urls": {
+        "amd64": "https://github.com/wal-g/wal-g/releases/download/v3.0.9/wal-g-pg-22.04-amd64.tar.gz",
+        "arm64": "https://github.com/wal-g/wal-g/releases/download/v3.0.9/wal-g-pg-22.04-aarch64.tar.gz"
+      },
+      "sha256": {
+        "amd64": "4f03ee4679db7f660bfd1b2b8291ac5df247cd2ec48074b60c112f4897299f24",
+        "arm64": "20191a37ad091a880c25f4cc907e6f0deb7f12bdd8a53fd62dbc7fcbf2eac712"
+      },
+      "path": {
+        "amd64": "wal-g-pg-22.04-amd64",
+        "arm64": "wal-g-pg-22.04-aarch64"
+      }
+    },
+    {
+      "name": "restic",
+      "version": "v0.19.1",
+      "urls": {
+        "amd64": "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_amd64.bz2",
+        "arm64": "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_arm64.bz2"
+      },
+      "sha256": {
+        "amd64": "f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c",
+        "arm64": "a5f64aaab53d51e311fa3829124c5b703f2d14cf187d8640b6be3b2b49376465"
+      },
+      "path": {
+        "amd64": "",
+        "arm64": ""
+      }
+    },
+    {
+      "name": "litestream",
+      "version": "v0.5.17",
+      "urls": {
+        "amd64": "https://github.com/benbjohnson/litestream/releases/download/v0.5.17/litestream-0.5.17-linux-x86_64.tar.gz",
+        "arm64": "https://github.com/benbjohnson/litestream/releases/download/v0.5.17/litestream-0.5.17-linux-arm64.tar.gz"
+      },
+      "sha256": {
+        "amd64": "cfb371176d164437ae869f8351cfde49bd1804ae71c61923f75c9cba9c9c006d",
+        "arm64": "f8ca4a050095c1efbda2c4365172e61bf9d955ea0d9ac42f448b52e51819baa5"
+      },
+      "path": {
+        "amd64": "litestream",
+        "arm64": "litestream"
+      }
+    }
+  ]
+}

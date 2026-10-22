@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: MIT
+id: mongodb
+name: MongoDB
+tagline: Document database with daily compressed dumps.
+description: >-
+  Official MongoDB image with a volume, a generated root user and Railway's
+  variable names. With a backup bucket set, mongodump streams a compressed
+  archive into restic every day.
+docs: https://5050cloud.com/docs/databases/mongodb
+icon: mongodb.svg
+category: database
+majorVersions: ["8.0"]
+inputs: []
+services:
+  - name: MongoDB
+    data: mongodb
+    images:
+      "8.0": mongo:8.0.28
+    config:
+      name: MongoDB
+      icon: mongodb
+      kind: database
+      template: mongodb
+      templateVersion: "8.0"
+      source:
+        type: image
+        image: mongo:8.0.28
+      deploy:
+        startCommand: mongod --config /etc/mongo/5050.conf
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        placement:
+          roles: [data]
+      networking:
+        port: 27017
+        privateName: mongodb
+    variables:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: ${{secret(32)}}
+      MONGOHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      MONGOPORT: "27017"
+      MONGOUSER: ${{MONGO_INITDB_ROOT_USERNAME}}
+      MONGOPASSWORD: ${{MONGO_INITDB_ROOT_PASSWORD}}
+      MONGO_URL: mongodb://${{MONGOUSER}}:${{MONGOPASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:27017
+      MONGO_PUBLIC_URL: mongodb://${{MONGOUSER}}:${{MONGOPASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}
+    volume:
+      mountPath: /data/db
+    files:
+      - path: /etc/mongo/5050.conf
+        template: mongod.conf.tmpl
+        mode: 420
+      - path: /opt/5050/bin/restic-env
+        template: _shared/restic-env.sh
+        mode: 420
+      - path: /opt/5050/bin/backup-mongo
+        template: backup-mongo.sh
+        mode: 493
+      - path: /opt/5050/bin/restore-mongo
+        template: restore-mongo.sh
+        mode: 493
+      - path: /opt/5050/bin/retention-restic
+        template: _shared/retention-restic.sh
+        mode: 493
+    tools: [restic]
+    backup:
+      kind: mongo_dump
+      runIn: service
+      backup: [/opt/5050/bin/backup-mongo]
+      restore: [/opt/5050/bin/restore-mongo]
+      retention: [/opt/5050/bin/retention-restic]
+      continuous: false
+      # Dump and Load run in one job, piped together, for Upgrade to a new
+      # major version (SOURCE_HOST and TARGET_HOST are the private names).
+      dump: [sh, -c, 'umask 077; printf "password: \"%s\"\n" "$MONGO_INITDB_ROOT_PASSWORD" >/tmp/5050-src.conf; exec mongodump --host "$SOURCE_HOST" --port 27017 --username "$MONGO_INITDB_ROOT_USERNAME" --authenticationDatabase admin --config /tmp/5050-src.conf --archive --gzip']
+      load: [sh, -c, 'umask 077; printf "password: \"%s\"\n" "$MONGO_INITDB_ROOT_PASSWORD" >/tmp/5050-dst.conf; exec mongorestore --host "$TARGET_HOST" --port 27017 --username "$MONGO_INITDB_ROOT_USERNAME" --authenticationDatabase admin --config /tmp/5050-dst.conf --archive --gzip']
+    probe:
+      health: [mongosh, --quiet, --host, 127.0.0.1, --eval, 'quit(db.adminCommand({ ping: 1 }).ok ? 0 : 1)']
+      check: [mongosh, --quiet, --eval, db.stats()]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5

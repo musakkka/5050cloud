@@ -1,0 +1,116 @@
+# A template that sets every field of manifest.Template, so the golden test
+# proves each one survives a round trip with its camelCase name.
+id: postgres
+name: Postgres
+tagline: The world's most advanced open source database.
+description: Postgres with continuous WAL archiving and point-in-time restore to a copy.
+docs: https://5050cloud.com/docs/databases/postgres
+icon: postgres.svg
+category: database
+majorVersions: ["17", "18"]
+inputs:
+  - name: POSTGRES_DB
+    label: Database name
+    description: The database created on first start.
+    default: railway
+    generate: ""
+    required: true
+    secret: false
+  - name: POSTGRES_PASSWORD
+    label: Password
+    generate: secret(32)
+    required: true
+    secret: true
+services:
+  - name: Postgres
+    dependsOn: []
+    domain: false
+    data: postgres
+    images:
+      "17": postgres:17.6-bookworm
+      "18": postgres:18.0-bookworm
+    config:
+      name: Postgres
+      icon: postgres
+      kind: database
+      template: postgres
+      templateVersion: "17"
+      source:
+        type: image
+        repo: ""
+        branch: ""
+        rootDir: ""
+        autoDeploy: false
+        waitForCi: false
+        image: postgres:17.6-bookworm
+        registryCredential: ""
+      build:
+        builder: auto
+        dockerfilePath: Dockerfile
+        buildCommand: ""
+        railpackVersion: ""
+        nixpacksCompat: true
+        watchPaths: ["/db/**"]
+        noCache: false
+        timeoutMin: 30
+        configPath: ""
+      deploy:
+        startCommand: ""
+        preDeployCommand: ""
+        preDeployTimeoutSec: 300
+        cronSchedule: ""
+        cronTimezone: UTC
+        cronOverlap: skip
+        cronTimeoutSec: 0
+        healthcheckPath: ""
+        healthcheckTimeoutSec: 300
+        restartPolicy: on_failure
+        restartMaxRetries: 10
+        overlapSec: 0
+        drainingSec: 30
+        replicas: 1
+        maxSurge: "1"
+        singleton: true
+        processes: "1"
+        cpuLimit: 0
+        memoryLimitMb: 0
+        memoryReservationMb: 512
+        runAsUser: ""
+        shmSizeMb: 256
+        placement:
+          roles: [data]
+          hosts: []
+      networking:
+        port: 5432
+        privateName: postgres
+        allowMetadata: false
+        publicAccess: false
+    variables:
+      PGUSER: postgres
+      PGPASSWORD: ${{input.POSTGRES_PASSWORD}}
+      DATABASE_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:5432/${{input.POSTGRES_DB}}
+    volume:
+      mountPath: /var/lib/postgresql/data
+    files:
+      - path: /etc/postgresql/5050.conf
+        template: postgresql.conf.tmpl
+        mode: 420
+    tools: [wal-g]
+    backup:
+      kind: postgres_wal
+      runIn: service
+      backup: ["/opt/5050/bin/wal-g", "backup-push", "/var/lib/postgresql/data"]
+      restore: ["/opt/5050/bin/restore-postgres"]
+      retention: ["/opt/5050/bin/wal-g", "delete", "retain", "FULL", "7", "--confirm"]
+      verify: ["/opt/5050/bin/check-archiving"]
+      continuous: true
+      dump: ["pg_dumpall"]
+      load: ["psql"]
+    probe:
+      health: ["pg_isready", "-U", "postgres"]
+      metrics: ["/opt/5050/bin/pg-metrics"]
+      check: ["psql", "-c", "SELECT count(*) FROM pg_class"]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5

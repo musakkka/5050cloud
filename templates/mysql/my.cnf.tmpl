@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+#
+# MySQL configuration rendered by 5050cloud at each deploy. The buffer pool is
+# half of the service's memory limit, or a quarter of the host's memory when
+# the service has no limit, and at least 128 MB.
+[mysqld]
+innodb_buffer_pool_size = {{ .MySQL.BufferPoolMB }}M
+max_connections = 151
+skip-name-resolve
+bind-address = 0.0.0.0
+long_query_time = 1
+slow_query_log = ON

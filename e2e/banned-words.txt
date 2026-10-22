@@ -1,0 +1,5 @@
+# Words that must not appear in the public tree (docs, UI copy, comments),
+# one per line, matched as whole words in any case by make check-public.
+# This file itself is excluded. Our UI says "trade" or "predict" instead.
+bets
+betting

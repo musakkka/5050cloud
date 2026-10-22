@@ -1,0 +1,4471 @@
+{
+ "source": "https://backboard.railway.com/graphql/v2 introspection, unauthenticated",
+ "fetchedAt": "2026-10-22",
+ "note": "Slice of Railway public GraphQL schema that the Railway import (docs/SPEC.md 9.22) reads. Project-level response fixtures still need a project token; see e2e/requests/M0-railway-import-fixtures.md.",
+ "queryFields": [
+  {
+   "name": "deployments",
+   "description": "Get all deployments",
+   "args": [
+    {
+     "name": "after",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    },
+    {
+     "name": "before",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    },
+    {
+     "name": "first",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     }
+    },
+    {
+     "name": "input",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "INPUT_OBJECT",
+       "name": "DeploymentListInput",
+       "ofType": null
+      }
+     }
+    },
+    {
+     "name": "last",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "QueryDeploymentsConnection",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "domains",
+   "description": "All domains for a service instance",
+   "args": [
+    {
+     "name": "environmentId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    },
+    {
+     "name": "projectId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    },
+    {
+     "name": "serviceId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "AllDomains",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "environment",
+   "description": "Find a single environment",
+   "args": [
+    {
+     "name": "id",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    },
+    {
+     "name": "projectId",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "Environment",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "environments",
+   "description": "Gets all environments for a project.",
+   "args": [
+    {
+     "name": "after",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    },
+    {
+     "name": "before",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    },
+    {
+     "name": "first",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     }
+    },
+    {
+     "name": "isEphemeral",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Boolean",
+      "ofType": null
+     }
+    },
+    {
+     "name": "last",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     }
+    },
+    {
+     "name": "projectId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "QueryEnvironmentsConnection",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "me",
+   "description": "Gets the authenticated user.",
+   "args": [],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "User",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "project",
+   "description": "Get a project by ID",
+   "args": [
+    {
+     "name": "id",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "Project",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "projectToken",
+   "description": "Get a single project token by the value in the header",
+   "args": [],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "ProjectToken",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "projects",
+   "description": "Gets all projects for a user or workspace.",
+   "args": [
+    {
+     "name": "after",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    },
+    {
+     "name": "before",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    },
+    {
+     "name": "first",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     }
+    },
+    {
+     "name": "includeDeleted",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Boolean",
+      "ofType": null
+     }
+    },
+    {
+     "name": "last",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     }
+    },
+    {
+     "name": "orderBy",
+     "type": {
+      "kind": "ENUM",
+      "name": "ProjectsOrderBy",
+      "ofType": null
+     }
+    },
+    {
+     "name": "userId",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    },
+    {
+     "name": "workspaceId",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "QueryProjectsConnection",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "service",
+   "description": "Get a service by ID",
+   "args": [
+    {
+     "name": "id",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "Service",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "serviceInstance",
+   "description": "Get a service instance belonging to a service and environment",
+   "args": [
+    {
+     "name": "environmentId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    },
+    {
+     "name": "serviceId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "ServiceInstance",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "tcpProxies",
+   "description": "All TCP proxies for a service instance",
+   "args": [
+    {
+     "name": "environmentId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    },
+    {
+     "name": "serviceId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "LIST",
+     "name": null,
+     "ofType": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "TCPProxy"
+      }
+     }
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "variables",
+   "description": "All variables by pluginId or serviceId. If neither are provided, all shared variables are returned.",
+   "args": [
+    {
+     "name": "environmentId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    },
+    {
+     "name": "projectId",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    },
+    {
+     "name": "serviceId",
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     }
+    },
+    {
+     "name": "unrendered",
+     "type": {
+      "kind": "SCALAR",
+      "name": "Boolean",
+      "ofType": null
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "SCALAR",
+     "name": "EnvironmentVariables",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  },
+  {
+   "name": "volumeInstance",
+   "description": "Get a single volume instance by id",
+   "args": [
+    {
+     "name": "id",
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     }
+    }
+   ],
+   "type": {
+    "kind": "NON_NULL",
+    "name": null,
+    "ofType": {
+     "kind": "OBJECT",
+     "name": "VolumeInstance",
+     "ofType": null
+    }
+   },
+   "isDeprecated": false
+  }
+ ],
+ "types": [
+  {
+   "kind": "OBJECT",
+   "name": "Project",
+   "description": null,
+   "fields": [
+    {
+     "name": "baseEnvironment",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "Environment",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "baseEnvironmentId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "botPrEnvironments",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "buckets",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectBucketsConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearanceDefaultForNewEnvironments",
+     "description": "Whether environments created from now on start with Railway Authentication protecting services that have no setting of their own. Existing environments keep their own default.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearanceTokens",
+     "description": "The project's Railway Authentication tokens that still work (not revoked, not expired), newest first.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "OBJECT",
+         "name": "ClearanceToken"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deletedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deploymentTriggers",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectDeploymentTriggersConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "deployments",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectDeploymentsConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "description",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environments",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "isEphemeral",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Boolean",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "sort",
+       "type": {
+        "kind": "ENUM",
+        "name": "SortOrder",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectEnvironmentsConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "expiredAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "featureFlags",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "ENUM",
+         "name": "ActiveProjectFeatureFlag"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "focusedPrEnvironments",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "groups",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectGroupsConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "isPublic",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "isTempProject",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "members",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "OBJECT",
+         "name": "ProjectMember"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "name",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "plugins",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectPluginsConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "prDeploys",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "primaryEnvironmentId",
+     "description": "The id of the oldest non-ephemeral environment for this project (typically production). Used by the dashboard to render project cards without fetching the full environments connection.",
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "projectPermissions",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectProjectPermissionsConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "services",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectServicesConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "subscriptionPlanLimit",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "SubscriptionPlanLimit",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "subscriptionType",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "ENUM",
+       "name": "SubscriptionPlanType",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "team",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "Team",
+      "ofType": null
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "teamId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "tracingEnabled",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "tracingSampleRate",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Float",
+      "ofType": null
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "updatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "viewerRole",
+     "description": "Highest project-scoped role the current user holds on this project, through a direct project permission or an access group. Does not include the workspace role.",
+     "args": [],
+     "type": {
+      "kind": "ENUM",
+      "name": "ProjectRole",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "volumes",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ProjectVolumesConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "workspace",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "Workspace",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "workspaceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "Environment",
+   "description": null,
+   "fields": [
+    {
+     "name": "canAccess",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "canvasGroupRefs",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "JSON",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearanceCachingTurnedOff",
+     "description": "Services whose edge caching was turned off when the Railway Authentication default last turned on.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "SCALAR",
+         "name": "String"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearanceDefault",
+     "description": "Whether Railway Authentication protects this environment's services that have no setting of their own.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearanceDefaultUpdatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearancePropagatedAt",
+     "description": "When the current Railway Authentication default last finished reaching every service that inherits it.",
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearancePropagationError",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearanceServiceCounts",
+     "description": "How many of the environment's services follow its Railway Authentication default, and how many have their own on or off.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "EnvironmentClearanceServiceCounts",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "config",
+     "description": null,
+     "args": [
+      {
+       "name": "decryptVariables",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Boolean",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "EnvironmentConfig",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "configEtag",
+     "description": "Opaque snapshot token of the environment's IaC-relevant config. Echo it back as baseConfigEtag on environmentApplyChangeSet for optimistic concurrency.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deletedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deploymentTriggers",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "EnvironmentDeploymentTriggersConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deployments",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "EnvironmentDeploymentsConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "iacPartials",
+     "description": "IaC resource address \u2192 partial name for this environment. '*' is the whole-project owner. Used so omit=delete only applies to resources this file already owns.",
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "JSON",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "isEphemeral",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "meta",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "EnvironmentMeta",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "name",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "projectId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceInstances",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "EnvironmentServiceInstancesConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "sourceEnvironment",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "Environment",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "unmergedChangesCount",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "updatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "variables",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "EnvironmentVariablesConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "volumeInstances",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "EnvironmentVolumeInstancesConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "Service",
+   "description": null,
+   "fields": [
+    {
+     "name": "autoInstrumentationEnabled",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deletedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deployments",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ServiceDeploymentsConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "featureFlags",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "ENUM",
+         "name": "ActiveServiceFeatureFlag"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "groupId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "hasHiddenRegistryCredentialsFromTemplate",
+     "description": "Whether this service has hidden registry credentials from a template. When true, the credentials are stored in the template and used during deployment.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "icon",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "isRestricted",
+     "description": "Whether this service has an active restriction that limits its capabilities.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "name",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "project",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "Project",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "projectId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "repoTriggers",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ServiceRepoTriggersConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceInstances",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "ServiceServiceInstancesConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "templateId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "templateServiceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "templateThreadSlug",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "tracingEnabled",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Boolean",
+      "ofType": null
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "updatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "ServiceInstance",
+   "description": null,
+   "fields": [
+    {
+     "name": "activeDeployments",
+     "description": "All currently active (deployed and running) deployments for this service instance",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "OBJECT",
+         "name": "Deployment"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "autoInstrumentationEnabled",
+     "description": "Instrument the service's processes with eBPF (OBI) for supported runtimes, no code changes. Only active while tracingEnabled is true.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "buildCommand",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "builder",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "ENUM",
+       "name": "Builder",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearance",
+     "description": "This service's own Railway Authentication setting. Null means no setting of its own: it follows the environment's default (see clearanceEffective).",
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Boolean",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "clearanceEffective",
+     "description": "Whether Railway Authentication protects this service's HTTP domains: its own setting, else its environment's default.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "cronSchedule",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deletedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "dockerfilePath",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "domains",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "AllDomains",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "drainingSeconds",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "edgeConfig",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "EdgeConfig",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environmentId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "hasEverDeployed",
+     "description": "Whether any deployment was ever created for this service instance, including deployments that have since been removed. Distinguishes a service that was torn down (all deployments removed) from one that has never deployed \u2014 latestDeployment and activeDeployments are null/empty for both.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "healthcheckPath",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "healthcheckTimeout",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "ipv6EgressEnabled",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Boolean",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "isUpdatable",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "latestDeployment",
+     "description": "The most recent deployment for this service instance",
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "Deployment",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "nextCronRunAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "nixpacksPlan",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "JSON",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "numReplicas",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "overlapSeconds",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "preDeployCommand",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "JSON",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "preDeployTimeoutSeconds",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "railpackInfo",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "RailpackInfo",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "railwayConfigFile",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "region",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "resolvedFileConfig",
+     "description": "Config read from the repo's config file, taken from the most recent deployment that actually read it. Null when no deployment has resolved a config file yet. An empty `fileManifest` is a real answer and means the repo has no config file \u2014 do not read this off the latest deployment instead, since a deployment whose snapshot never completed carries no file config at all and is not the same as a repo without one.",
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "ResolvedFileConfig",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "restartPolicyMaxRetries",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Int",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "restartPolicyType",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "ENUM",
+       "name": "RestartPolicyType",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "rootDirectory",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "service",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "Service",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceName",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "sleepApplication",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Boolean",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "source",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "ServiceSource",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "startCommand",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "tracingEnabled",
+     "description": "Trace requests to the service in this environment: the edge records a span per client-facing request to its domains and the next deploy provides the OpenTelemetry exporter variables.",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "updatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "upstreamUrl",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "watchPatterns",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "SCALAR",
+         "name": "String"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "ServiceSource",
+   "description": null,
+   "fields": [
+    {
+     "name": "image",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "repo",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "ServiceDomain",
+   "description": null,
+   "fields": [
+    {
+     "name": "cdnMode",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deletedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "domain",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "edgeId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environmentId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "newDomainName",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "newHostLabel",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "projectId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "suffix",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "syncStatus",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "ENUM",
+       "name": "ServiceDomainSyncStatus",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "targetPort",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "updatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "CustomDomain",
+   "description": null,
+   "fields": [
+    {
+     "name": "cdnMode",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "cnameCheck",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "CnameCheck",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    },
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deletedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "domain",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "edgeId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environmentId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "isRailwayDomain",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "projectId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "status",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "CustomDomainStatus",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "syncStatus",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "ENUM",
+       "name": "CustomDomainSyncStatus",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "targetPort",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "Int",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "updatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "Volume",
+   "description": null,
+   "fields": [
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "name",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "project",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "Project",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "projectId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "volumeInstances",
+     "description": null,
+     "args": [
+      {
+       "name": "after",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "before",
+       "type": {
+        "kind": "SCALAR",
+        "name": "String",
+        "ofType": null
+       }
+      },
+      {
+       "name": "first",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      },
+      {
+       "name": "last",
+       "type": {
+        "kind": "SCALAR",
+        "name": "Int",
+        "ofType": null
+       }
+      }
+     ],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "VolumeVolumeInstancesConnection",
+       "ofType": null
+      }
+     },
+     "isDeprecated": true
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "VolumeInstance",
+   "description": null,
+   "fields": [
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "currentSizeMB",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Float",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deletedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environment",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "Environment",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environmentId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "externalId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "isPendingDeletion",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "mountPath",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "region",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "service",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "Service",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "sizeMB",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Int",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "state",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "ENUM",
+      "name": "VolumeState",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "volume",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "Volume",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "volumeId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "TCPProxy",
+   "description": null,
+   "fields": [
+    {
+     "name": "applicationPort",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Int",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deletedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "domain",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environmentId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "proxyPort",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Int",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "syncStatus",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "ENUM",
+       "name": "TCPProxySyncStatus",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "updatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "Deployment",
+   "description": null,
+   "fields": [
+    {
+     "name": "canRedeploy",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "canRollback",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "createdAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "creator",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "OBJECT",
+      "name": "DeploymentCreator",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "deploymentStopped",
+     "description": "Check if a deployment's instances have all stopped",
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "diagnosis",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DeploymentDiagnosis",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environment",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "Environment",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environmentId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "instances",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "OBJECT",
+         "name": "DeploymentDeploymentInstance"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "meta",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DeploymentMeta",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "projectId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "service",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "OBJECT",
+       "name": "Service",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "snapshotId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "sockets",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "LIST",
+       "name": null,
+       "ofType": {
+        "kind": "NON_NULL",
+        "name": null,
+        "ofType": {
+         "kind": "OBJECT",
+         "name": "DeploymentSocket"
+        }
+       }
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "staticUrl",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "status",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "ENUM",
+       "name": "DeploymentStatus",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "statusUpdatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "DateTime",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "suggestAddServiceDomain",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "updatedAt",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "DateTime",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "url",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "OBJECT",
+   "name": "DeploymentTrigger",
+   "description": null,
+   "fields": [
+    {
+     "name": "baseEnvironmentOverrideId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "branch",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "checkSuites",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Boolean",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "environmentId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "id",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "ID",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "projectId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "provider",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "repository",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "String",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "serviceId",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "SCALAR",
+      "name": "String",
+      "ofType": null
+     },
+     "isDeprecated": false
+    },
+    {
+     "name": "validCheckSuites",
+     "description": null,
+     "args": [],
+     "type": {
+      "kind": "NON_NULL",
+      "name": null,
+      "ofType": {
+       "kind": "SCALAR",
+       "name": "Int",
+       "ofType": null
+      }
+     },
+     "isDeprecated": false
+    }
+   ],
+   "inputFields": null,
+   "enumValues": null
+  },
+  {
+   "kind": "ENUM",
+   "name": "Builder",
+   "description": null,
+   "fields": null,
+   "inputFields": null,
+   "enumValues": [
+    {
+     "name": "HEROKU"
+    },
+    {
+     "name": "NIXPACKS"
+    },
+    {
+     "name": "PAKETO"
+    },
+    {
+     "name": "RAILPACK"
+    }
+   ]
+  },
+  {
+   "kind": "ENUM",
+   "name": "RestartPolicyType",
+   "description": null,
+   "fields": null,
+   "inputFields": null,
+   "enumValues": [
+    {
+     "name": "ALWAYS"
+    },
+    {
+     "name": "NEVER"
+    },
+    {
+     "name": "ON_FAILURE"
+    }
+   ]
+  },
+  {
+   "kind": "ENUM",
+   "name": "DeploymentStatus",
+   "description": null,
+   "fields": null,
+   "inputFields": null,
+   "enumValues": [
+    {
+     "name": "BUILDING"
+    },
+    {
+     "name": "CRASHED"
+    },
+    {
+     "name": "DEPLOYING"
+    },
+    {
+     "name": "FAILED"
+    },
+    {
+     "name": "INITIALIZING"
+    },
+    {
+     "name": "NEEDS_APPROVAL"
+    },
+    {
+     "name": "QUEUED"
+    },
+    {
+     "name": "REMOVED"
+    },
+    {
+     "name": "REMOVING"
+    },
+    {
+     "name": "SKIPPED"
+    },
+    {
+     "name": "SLEEPING"
+    },
+    {
+     "name": "SUCCESS"
+    },
+    {
+     "name": "WAITING"
+    }
+   ]
+  },
+  {
+   "kind": "ENUM",
+   "name": "DeploymentInstanceStatus",
+   "description": null,
+   "fields": null,
+   "inputFields": null,
+   "enumValues": [
+    {
+     "name": "CRASHED"
+    },
+    {
+     "name": "CREATED"
+    },
+    {
+     "name": "EXITED"
+    },
+    {
+     "name": "INITIALIZING"
+    },
+    {
+     "name": "REMOVED"
+    },
+    {
+     "name": "REMOVING"
+    },
+    {
+     "name": "RESTARTING"
+    },
+    {
+     "name": "RUNNING"
+    },
+    {
+     "name": "SKIPPED"
+    },
+    {
+     "name": "STOPPED"
+    }
+   ]
+  },
+  {
+   "kind": "SCALAR",
+   "name": "EnvironmentConfig",
+   "description": "\nEnvironmentConfig is a custom scalar type that represents the serializedConfig for an environment.\nJSON Schema: https://backboard.railway.com/schema/environment.schema.json\n",
+   "fields": null,
+   "inputFields": null,
+   "enumValues": null
+  }
+ ]
+}

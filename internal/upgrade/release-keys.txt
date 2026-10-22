@@ -1,0 +1,7 @@
+# Minisign public keys that sign 5050cloud releases (docs/SPEC.md 9.16).
+# One base64 key per line. The first is the current key; a second line is
+# the announced next key. install/install.sh embeds the same keys
+# (RELEASE_PUBKEYS); e2e/scripts/check-release-keys.sh keeps them equal.
+#
+# and writes it here and into install/install.sh.
+RWS5v2vaQNNARGmod7/0v3a8ZYZGhT95PWYNvc+dXNxe3/gWarQEiKiR

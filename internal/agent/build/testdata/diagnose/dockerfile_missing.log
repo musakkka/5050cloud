@@ -1,0 +1,8 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Nope.Dockerfile
+#1 transferring dockerfile: 2B done
+#1 DONE 0.0s
+ERROR: failed to build: failed to solve: failed to read dockerfile: open Nope.Dockerfile: no such file or directory
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/v0ivz1j0zoxjh0pq7ut87y2px

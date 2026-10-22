@@ -1,0 +1,20 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 77B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:99.99.99-nonexistent
+#2 ERROR: docker.io/library/node:99.99.99-nonexistent: not found
+------
+ > [internal] load metadata for docker.io/library/node:99.99.99-nonexistent:
+------
+Dockerfile:1
+--------------------
+   1 | >>> FROM node:99.99.99-nonexistent
+   2 |     RUN true
+   3 |     
+--------------------
+ERROR: failed to build: failed to solve: node:99.99.99-nonexistent: failed to resolve source metadata for docker.io/library/node:99.99.99-nonexistent: docker.io/library/node:99.99.99-nonexistent: not found
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/gofkwmupr2xjkfpnql78amxo9

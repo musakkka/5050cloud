@@ -1,0 +1,43 @@
+# 5050.yaml as written by `5050 config pull`. The embedded service config
+# fields sit next to variables, domains and volume.
+project: sturdy-otter
+shared:
+  LOG_LEVEL: info
+services:
+  api:
+    name: api
+    icon: nodejs
+    source:
+      type: github
+      repo: acme/api
+      branch: main
+      rootDir: /
+    build:
+      builder: railpack
+    deploy:
+      startCommand: node server.js
+      replicas: 2
+      processes: auto
+      placement: {}
+    networking:
+      port: 3000
+    variables:
+      DATABASE_URL: ${{Postgres.DATABASE_URL}}
+      API_KEY: "@preserve"
+    domains: [api.example.com]
+    volume:
+      mountPath: /data
+environments:
+  staging:
+    shared:
+      LOG_LEVEL: debug
+    services:
+      api:
+        name: api
+        source:
+          type: github
+        build: {}
+        deploy:
+          replicas: 1
+          placement: {}
+        networking: {}

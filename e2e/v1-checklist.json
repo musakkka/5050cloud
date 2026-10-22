@@ -1,0 +1,574 @@
+{
+  "items": [
+    {
+      "id": "V1-D1",
+      "source": "SPEC 2",
+      "item": "Dashboard, projects with mini canvas and online summary, sort, grid/list, **New** (`Cmd+/`)",
+      "ours": "Same, plus a Hosts card with disk bars",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D2",
+      "source": "SPEC 2",
+      "item": "New project menu",
+      "ours": "Same list and order, plus `Import from Railway` and `Docker Compose`",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D3",
+      "source": "SPEC 2",
+      "item": "GitHub repo flow",
+      "ours": "Same; works with a GitHub App (private repos, push deploys) or a pasted public repo URL; inline `Connect GitHub` when no app exists",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D4",
+      "source": "SPEC 2",
+      "item": "Canvas: cards with status line, reference edges, hover highlight, drag with grid snap, groups, undo/redo, hide connections",
+      "ours": "Same (reused console), plus presence avatars and live position sync",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D5",
+      "source": "SPEC 2",
+      "item": "Create menu",
+      "ours": "Same items; one shared scan dialog for every GitHub entry point",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D6",
+      "source": "SPEC 2",
+      "item": "Card right-click menu",
+      "ours": "Same; Duplicate never copies sealed values",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D7",
+      "source": "SPEC 2",
+      "item": "Staged changes",
+      "ours": "Same; we also stage service deletes, renames and volumes. Domains apply immediately, as on Railway",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D8",
+      "source": "SPEC 2",
+      "item": "Environments",
+      "ours": "Same, plus an egress \"quarantine\" toggle per environment",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D9",
+      "source": "SPEC 2",
+      "item": "Service panel tabs and shortcuts",
+      "ours": "Same, plus **Backups**, **Data**, **Cron Runs** where they apply; `Escape` closes",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D10",
+      "source": "SPEC 2",
+      "item": "Deployment status badges",
+      "ours": "Same strings and colours everywhere (9.1.1)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D11",
+      "source": "SPEC 2",
+      "item": "Deployment menu",
+      "ours": "Same; Rollback restores image and variables and does not expire after 24 to 120 hours (keeps last 10 images)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D12",
+      "source": "SPEC 2",
+      "item": "Deployment view",
+      "ours": "Same tabs; auto-opens Build Logs on a failed build and Deploy Logs on a crash",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D13",
+      "source": "SPEC 2",
+      "item": "Diagnose a failed deploy",
+      "ours": "One sentence above the logs, rule based (9.18), no AI needed",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D14",
+      "source": "SPEC 2",
+      "item": "Variables",
+      "ours": "Same; every reveal is audited; suggested variables from `.env*` files",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D15",
+      "source": "SPEC 2",
+      "item": "Provided variables",
+      "ours": "`FIFTY_*` names plus every `RAILWAY_*` alias (on by default) so apps move with zero edits (9.3)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D16",
+      "source": "SPEC 2",
+      "item": "Settings sections",
+      "ours": "Same sections with Railway's field placement (13.3), plus **Processes** and **Placement** under Scale",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D17",
+      "source": "SPEC 2",
+      "item": "Config as code",
+      "ours": "Same files and priority, plus `5050.yaml`/`5050.json` and `nixpacks.toml` hints (9.20)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D18",
+      "source": "SPEC 2",
+      "item": "Domains",
+      "ours": "Same; generated domains use sslip.io or your wildcard domain; outbound IP shown free",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D19",
+      "source": "SPEC 2",
+      "item": "Private networking",
+      "ours": "`\u003cname\u003e.internal`, with `\u003cname\u003e.railway.internal` as an alias",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D20",
+      "source": "SPEC 2",
+      "item": "Health and restarts",
+      "ours": "Same, plus TCP check when no path is set, 2xx and 3xx accepted, continuous checks after deploy",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D21",
+      "source": "SPEC 2",
+      "item": "Pre-deploy",
+      "ours": "Same, with a timeout",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D22",
+      "source": "SPEC 2",
+      "item": "Cron",
+      "ours": "Same, plus time zones, no 5 minute minimum, run history, **Run now**, timeout",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D23",
+      "source": "SPEC 2",
+      "item": "Replicas",
+      "ours": "Same; spread across hosts, several may share a host, max surge setting",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D24",
+      "source": "SPEC 2",
+      "item": "Resource limits",
+      "ours": "Same place; vCPU and memory per replica",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D25",
+      "source": "SPEC 2",
+      "item": "Volumes",
+      "ours": "Same rules and a volume panel; volumes use host disk (no Live Resize needed)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D26",
+      "source": "SPEC 2",
+      "item": "Databases",
+      "ours": "Same variable names; Postgres continuous WAL archiving with point-in-time restore to a copy",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D27",
+      "source": "SPEC 2",
+      "item": "Templates",
+      "ours": "12 built-in templates (10.2), `/new/template/\u003cid\u003e` deep link, `Deploy on 5050cloud` button",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D28",
+      "source": "SPEC 2",
+      "item": "Logs",
+      "ours": "Same syntax (9.4), side panel with attributes, View in Context",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D29",
+      "source": "SPEC 2",
+      "item": "Metrics",
+      "ours": "Same, plus p90; 30 days kept; Postgres database metrics",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D30",
+      "source": "SPEC 2",
+      "item": "Monitors",
+      "ours": "CPU, memory, disk, 5xx rate monitors by email or webhook (9.21)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D31",
+      "source": "SPEC 2",
+      "item": "Activity and notifications",
+      "ours": "Same: commits with diff, deployments, filters; in-app bell plus email",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D32",
+      "source": "SPEC 2",
+      "item": "Project settings",
+      "ours": "Same pages; Usage shows what the same use would cost on Railway",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D33",
+      "source": "SPEC 2",
+      "item": "Members",
+      "ours": "Install roles plus per-project grants (9.15), invite links, 2FA, no seat fees",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D34",
+      "source": "SPEC 2",
+      "item": "Tokens",
+      "ours": "Account tokens and environment tokens",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D35",
+      "source": "SPEC 2",
+      "item": "Command palette",
+      "ours": "Same commands and adaptive labels (13.4)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D36",
+      "source": "SPEC 2",
+      "item": "CLI",
+      "ours": "`5050` with the same verbs and flags, and a `railway` alias (section 12)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D37",
+      "source": "SPEC 2",
+      "item": "Regions",
+      "ours": "Your hosts, grouped by role (`app`, `data`, `build`, `ingress`)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D38",
+      "source": "SPEC 2",
+      "item": "Migration",
+      "ours": "`Import from Railway`, `Docker Compose` import, `Import variables from Heroku`",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D39",
+      "source": "SPEC 2",
+      "item": "Account",
+      "ours": "Email and password, `Forgot password` by SMTP, TOTP 2FA, email on failed and crashed deploys",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-D40",
+      "source": "SPEC 2",
+      "item": "Railway features not in v0.1",
+      "ours": "Shown disabled with a tooltip where Railway shows them; each has a \"Coming from Railway\" row (14.3)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X01",
+      "source": "SPEC 23.1",
+      "item": "P0 config as code",
+      "decision": "Accepted: 9.20, D17, E31, file icon in 13.3",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X02",
+      "source": "SPEC 23.1",
+      "item": "P0 Nixpacks",
+      "decision": "Accepted as \"map to Railpack with a log line\" plus hints (9.20.2) and `railpackVersion` (8.2). Shipping Nixpacks itself was rejected: it is in maintenance and would double the builder surface",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X03",
+      "source": "SPEC 23.1",
+      "item": "P0 Import from Railway",
+      "decision": "Accepted: 9.22, R15, E30, U35, CLI `import railway`, database move guide",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X04",
+      "source": "SPEC 23.1",
+      "item": "P0 templates",
+      "decision": "Accepted: 12 app templates (10.2), detail screen, inputs form, deep link, Deploy button, U19",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X05",
+      "source": "SPEC 23.1",
+      "item": "P0 MongoDB",
+      "decision": "Accepted into v0.1 (10.1) with restic dump backups",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X06",
+      "source": "SPEC 23.1",
+      "item": "P0 password recovery and email",
+      "decision": "Accepted: 9.15 (SMTP, reset, `reset-password`, verification, notification preferences)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X07",
+      "source": "SPEC 23.1",
+      "item": "P0 deploy-from-UI holes (a) to (f)",
+      "decision": "Accepted: registry credentials page and inline add (13.1, U21), Source accepts URL and switches repo/image (U20), shared scan dialog (13.2, U34), inline Connect GitHub (9.14, U31), volume service picker (U17), cron create and Run now (U18)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X08",
+      "source": "SPEC 23.1",
+      "item": "P0 UI suite does not prove R4",
+      "decision": "Accepted: U15 to U42",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X09",
+      "source": "SPEC 23.1",
+      "item": "P0 speed budgets",
+      "decision": "Accepted: 16.1 P1 to P10 (P10 is the bundle ceiling)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X10",
+      "source": "SPEC 23.1",
+      "item": "P1 activity and bell",
+      "decision": "Accepted: 9.24",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X11",
+      "source": "SPEC 23.1",
+      "item": "P1 canvas parity",
+      "decision": "Accepted: 13.2, U38, U39",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X12",
+      "source": "SPEC 23.1",
+      "item": "P1 environment sync",
+      "decision": "Accepted: 9.5, U28",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X13",
+      "source": "SPEC 23.1",
+      "item": "P1 rename semantics",
+      "decision": "Accepted: 9.5 (rewrites in the same commit, 24 h alias, 32 characters), U37",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X14",
+      "source": "SPEC 23.1",
+      "item": "P1 provided variables and functions",
+      "decision": "Accepted: 9.3. OTEL variables are documented as absent rather than faked",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X15",
+      "source": "SPEC 23.1",
+      "item": "P1 status vocabulary",
+      "decision": "Accepted: 9.1.1; aborted and superseded show `Removed` with the reason, to be confirmed live in M0",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X16",
+      "source": "SPEC 23.1",
+      "item": "P1 deployment view micro-interactions",
+      "decision": "Accepted: 13.5, Network \u003e HTTP naming, CLI flags",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X17",
+      "source": "SPEC 23.1",
+      "item": "P1 metrics gaps",
+      "decision": "Accepted, including 30-day retention (6.3) and Postgres metrics (9.10)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X18",
+      "source": "SPEC 23.1",
+      "item": "P1 monitors",
+      "decision": "Accepted in minimal form: 9.21, Critical events preset (9.15)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X19",
+      "source": "SPEC 23.1",
+      "item": "P1 volumes",
+      "decision": "Accepted the panel and Wipe Volume. Size limits: changed to \"uses host disk\" with alerts (9.12), because Docker named volumes on ext4 cannot be capped; XFS quotas are v0.2",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X20",
+      "source": "SPEC 23.1",
+      "item": "P1 database panel parity",
+      "decision": "Accepted: Connect, Regenerate credentials, major upgrade by restore to a copy, extensions, Redis key browser. \"Allow writes\" query box rejected: the build critique's cut wins (smaller V4 attack surface); `5050 connect` covers writes and 14.3 says so",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X21",
+      "source": "SPEC 23.1",
+      "item": "P1 settings placement",
+      "decision": "Accepted: Railway placement kept (13.3), Processes and Placement under Scale, Railway-only fields as disabled rows",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X22",
+      "source": "SPEC 23.1",
+      "item": "P1 members model",
+      "decision": "Accepted: per-project grants on top of install roles, invite links, Transfer Ownership, TOTP 2FA (9.15)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X23",
+      "source": "SPEC 23.1",
+      "item": "P1 palette",
+      "decision": "Accepted: 13.4, U26",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X24",
+      "source": "SPEC 23.1",
+      "item": "P1 CLI verb parity",
+      "decision": "Accepted except `config plan --detailed-exit-code` and the etag check: `config plan/apply` is cut for v0.1 (see build); the `railway` alias moves into v0.1",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X25",
+      "source": "SPEC 23.1",
+      "item": "P1 usage page",
+      "decision": "Accepted: 9.23, U41",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X26",
+      "source": "SPEC 23.1",
+      "item": "P1 project General and environment rename",
+      "decision": "Accepted: 13.1, U11, U41",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X27",
+      "source": "SPEC 23.1",
+      "item": "P1 domains and networking",
+      "decision": "Accepted: Retry certificate, expiry, outbound IP, IPv6 note, private domain rename semantics. Wildcard custom domains deferred to v0.2 (needs DNS-01 and provider plugins; on-demand TLS for wildcards is an abuse risk)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X28",
+      "source": "SPEC 23.1",
+      "item": "P2 Compose import",
+      "decision": "Accepted into v0.1: 9.22, U36",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X29",
+      "source": "SPEC 23.1",
+      "item": "P2 Coming from Railway rows and disabled controls",
+      "decision": "Accepted: 14.3, 13.6",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X30",
+      "source": "SPEC 23.1",
+      "item": "P2 polish items",
+      "decision": "Accepted: 13.1 (mini canvas, sort), 8.2 (image name validation), 9.9 (preset labels), 13.2 (`Cmd+Enter`), 9.1.1 (one glyph), 13.7 (mobile)",
+      "result": "pending",
+      "evidence": []
+    },
+    {
+      "id": "V1-X31",
+      "source": "SPEC 23.1",
+      "item": "Process: V1 checklist and label column",
+      "decision": "Accepted: section 2 Railway label column, `labels.json`, `v1-checklist.json`, M0 live check of [O] labels",
+      "result": "pending",
+      "evidence": []
+    }
+  ],
+  "source": "docs/SPEC.md section 2 and 23.1, generated by scripts/gen-labels.go",
+  "version": 1
+}

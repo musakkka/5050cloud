@@ -1,0 +1,5 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!-- From Plausible Community Edition v3.2.1 (clickhouse/ipv4-only.xml), MIT licensed. -->
+<clickhouse>
+    <listen_host>0.0.0.0</listen_host>
+</clickhouse>

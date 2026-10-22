@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MIT
+[Unit]
+Description=5050cloud control plane
+Documentation=https://5050cloud.com/docs
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=FIFTY_CONFIG=/etc/5050/config.json
+ExecStart=/opt/5050/current/5050d serve --config /etc/5050/config.json
+Restart=always
+RestartSec=2
+TimeoutStopSec=30
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

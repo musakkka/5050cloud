@@ -1,0 +1,116 @@
+category: database
+description: Postgres with continuous WAL archiving and point-in-time restore to a
+  copy.
+docs: https://5050cloud.com/docs/databases/postgres
+icon: postgres.svg
+id: postgres
+inputs:
+- default: railway
+  description: The database created on first start.
+  label: Database name
+  name: POSTGRES_DB
+  required: true
+  secret: false
+- generate: secret(32)
+  label: Password
+  name: POSTGRES_PASSWORD
+  required: true
+  secret: true
+majorVersions:
+- "17"
+- "18"
+name: Postgres
+services:
+- backup:
+    backup:
+    - /opt/5050/bin/wal-g
+    - backup-push
+    - /var/lib/postgresql/data
+    continuous: true
+    dump:
+    - pg_dumpall
+    kind: postgres_wal
+    load:
+    - psql
+    restore:
+    - /opt/5050/bin/restore-postgres
+    retention:
+    - /opt/5050/bin/wal-g
+    - delete
+    - retain
+    - FULL
+    - "7"
+    - --confirm
+    runIn: service
+    verify:
+    - /opt/5050/bin/check-archiving
+  config:
+    build:
+      builder: auto
+      dockerfilePath: Dockerfile
+      nixpacksCompat: true
+      timeoutMin: 30
+      watchPaths:
+      - /db/**
+    deploy:
+      cronOverlap: skip
+      cronTimezone: UTC
+      drainingSec: 30
+      healthcheckTimeoutSec: 300
+      maxSurge: "1"
+      memoryReservationMb: 512
+      placement:
+        roles:
+        - data
+      preDeployTimeoutSec: 300
+      processes: "1"
+      replicas: 1
+      restartMaxRetries: 10
+      restartPolicy: on_failure
+      shmSizeMb: 256
+      singleton: true
+    icon: postgres
+    kind: database
+    name: Postgres
+    networking:
+      port: 5432
+      privateName: postgres
+    source:
+      autoDeploy: false
+      image: postgres:17.6-bookworm
+      type: image
+    template: postgres
+    templateVersion: "17"
+  data: postgres
+  files:
+  - mode: 420
+    path: /etc/postgresql/5050.conf
+    template: postgresql.conf.tmpl
+  images:
+    "17": postgres:17.6-bookworm
+    "18": postgres:18.0-bookworm
+  monitors:
+  - forMinutes: 5
+    metric: disk
+    threshold: 80
+  name: Postgres
+  probe:
+    check:
+    - psql
+    - -c
+    - SELECT count(*) FROM pg_class
+    health:
+    - pg_isready
+    - -U
+    - postgres
+    metrics:
+    - /opt/5050/bin/pg-metrics
+  tools:
+  - wal-g
+  variables:
+    DATABASE_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:5432/${{input.POSTGRES_DB}}
+    PGPASSWORD: ${{input.POSTGRES_PASSWORD}}
+    PGUSER: postgres
+  volume:
+    mountPath: /var/lib/postgresql/data
+tagline: The world's most advanced open source database.

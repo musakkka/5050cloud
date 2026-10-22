@@ -1,0 +1,210 @@
+# SPDX-License-Identifier: MIT
+id: directus
+name: Directus
+tagline: Headless CMS and data platform on Postgres, with Redis caching.
+description: >-
+  Directus with Postgres for content, Redis for cache and rate limits, and
+  uploads on a volume. Sign in with the admin email and password you set here.
+docs: https://5050cloud.com/docs/templates/directus
+icon: directus.svg
+category: app
+inputs:
+  - name: SECRET
+    label: Secret
+    description: Signs access tokens.
+    generate: secret(32)
+    required: true
+    secret: true
+  - name: ADMIN_EMAIL
+    label: Admin email
+    description: The email of the first administrator.
+    required: true
+    secret: false
+  - name: ADMIN_PASSWORD
+    label: Admin password
+    description: The password of the first administrator.
+    generate: secret(16)
+    required: true
+    secret: true
+services:
+  - name: Postgres
+    data: postgres
+    images:
+      "17": postgres:17.10-bookworm
+      "18": postgres:18.4-bookworm
+    config:
+      name: Postgres
+      icon: postgres
+      kind: database
+      template: postgres
+      templateVersion: "17"
+      source:
+        type: image
+        image: postgres:17.10-bookworm
+      deploy:
+        startCommand: postgres -c config_file=/etc/postgresql/5050.conf
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        shmSizeMb: 256
+        placement:
+          roles: [data]
+      networking:
+        port: 5432
+        privateName: postgres
+    variables:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${{secret(32)}}
+      POSTGRES_DB: railway
+      PGUSER: ${{POSTGRES_USER}}
+      PGPASSWORD: ${{POSTGRES_PASSWORD}}
+      PGDATABASE: ${{POSTGRES_DB}}
+      PGHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      PGPORT: "5432"
+      PGDATA: /var/lib/postgresql/data/pgdata
+      DATABASE_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}
+      DATABASE_PUBLIC_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}/${{PGDATABASE}}
+    volume:
+      mountPath: /var/lib/postgresql/data
+    files:
+      - path: /etc/postgresql/5050.conf
+        template: postgres/postgresql.conf.tmpl
+        mode: 420
+      - path: /docker-entrypoint-initdb.d/5050-init.sql
+        template: postgres/init.sql
+        mode: 420
+      - path: /opt/5050/bin/archive-wal
+        template: postgres/archive-wal.sh
+        mode: 493
+      - path: /opt/5050/bin/backup-postgres
+        template: postgres/backup-postgres.sh
+        mode: 493
+      - path: /opt/5050/bin/restore-postgres
+        template: postgres/restore-postgres.sh
+        mode: 493
+      - path: /opt/5050/bin/pg-metrics
+        template: postgres/pg-metrics.sh
+        mode: 493
+      - path: /opt/5050/bin/check-archiving
+        template: postgres/check-archiving.sh
+        mode: 493
+    tools: [wal-g]
+    backup:
+      kind: postgres_wal
+      runIn: service
+      backup: [/opt/5050/bin/backup-postgres]
+      restore: [/opt/5050/bin/restore-postgres]
+      retention: [/opt/5050/bin/wal-g, delete, retain, FULL, "{{.RetainDays}}", --confirm]
+      verify: [/opt/5050/bin/check-archiving]
+      continuous: true
+      # Dump and Load run in one job, piped together, for Upgrade to a new
+      # major version (SOURCE_HOST and TARGET_HOST are the private names).
+      dump: [sh, -c, 'exec pg_dumpall -h "$SOURCE_HOST" -U "$POSTGRES_USER"']
+      load: [sh, -c, 'exec psql -X -q -h "$TARGET_HOST" -U "$POSTGRES_USER" -d postgres']
+    probe:
+      health: [pg_isready, -q, -h, 127.0.0.1, -p, "5432"]
+      metrics: [/opt/5050/bin/pg-metrics]
+      check: [psql, -X, -At, -c, SELECT count(*) FROM pg_class]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5
+  - name: Redis
+    data: redis
+    config:
+      name: Redis
+      icon: redis
+      kind: database
+      template: redis
+      source:
+        type: image
+        image: redis:8.8.1
+      deploy:
+        startCommand: redis-server /etc/redis/5050.conf
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        placement:
+          roles: [data]
+      networking:
+        port: 6379
+        privateName: redis
+    variables:
+      REDIS_PASSWORD: ${{secret(32)}}
+      REDISHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      REDISPORT: "6379"
+      REDISUSER: default
+      REDISPASSWORD: ${{REDIS_PASSWORD}}
+      REDIS_URL: redis://default:${{REDIS_PASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:6379
+      REDIS_PUBLIC_URL: redis://default:${{REDIS_PASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}
+    volume:
+      mountPath: /data
+    files:
+      - path: /etc/redis/5050.conf
+        template: redis/redis.conf.tmpl
+        mode: 420
+      - path: /opt/5050/bin/restic-env
+        template: _shared/restic-env.sh
+        mode: 420
+      - path: /opt/5050/bin/backup-redis
+        template: redis/backup-redis.sh
+        mode: 493
+      - path: /opt/5050/bin/restore-redis
+        template: redis/restore-redis.sh
+        mode: 493
+      - path: /opt/5050/bin/retention-restic
+        template: _shared/retention-restic.sh
+        mode: 493
+    tools: [restic]
+    backup:
+      kind: redis_rdb
+      runIn: service
+      backup: [/opt/5050/bin/backup-redis]
+      restore: [/opt/5050/bin/restore-redis]
+      retention: [/opt/5050/bin/retention-restic]
+      continuous: false
+    probe:
+      health: [sh, -c, 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h 127.0.0.1 --no-auth-warning ping | grep -q PONG']
+      check: [redis-cli, PING]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5
+  - name: Directus
+    dependsOn: [Postgres, Redis]
+    domain: true
+    config:
+      name: Directus
+      icon: directus
+      kind: web
+      template: directus
+      source:
+        type: image
+        image: directus/directus:12.4.1
+      deploy:
+        healthcheckPath: /server/health
+        runAsUser: "0"
+        memoryReservationMb: 512
+      networking:
+        port: 8055
+    variables:
+      SECRET: ${{input.SECRET}}
+      ADMIN_EMAIL: ${{input.ADMIN_EMAIL}}
+      ADMIN_PASSWORD: ${{input.ADMIN_PASSWORD}}
+      DB_CLIENT: pg
+      DB_CONNECTION_STRING: ${{Postgres.DATABASE_URL}}
+      CACHE_ENABLED: "true"
+      CACHE_STORE: redis
+      REDIS: ${{Redis.REDIS_URL}}
+      PUBLIC_URL: https://${{FIFTY_PUBLIC_DOMAIN}}
+      PORT: "8055"
+    volume:
+      mountPath: /directus/uploads
+    backup:
+      kind: volume
+      runIn: job
+      backup: [/opt/5050/bin/backup-volume]
+      restore: [/opt/5050/bin/restore-volume]
+      retention: [/opt/5050/bin/retention-restic]

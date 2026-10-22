@@ -1,0 +1,13 @@
+/reference/
+/tools/test-vm.sh
+node_modules/
+/dist/
+!web/dist/
+web/dist/*
+bin/
+*.db
+.env
+/site/.astro/
+.dev/
+e2e/out/
+.release/

@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT
+id: mysql
+name: MySQL
+tagline: The popular relational database. Backups are not supported yet.
+description: >-
+  Official MySQL 8.4 image with a volume, a generated root password and
+  Railway's variable names. Backups are not part of v0.1; the docs show a
+  mysqldump cron service you can add.
+docs: https://5050cloud.com/docs/databases/mysql
+icon: mysql.svg
+category: database
+majorVersions: ["8.4"]
+inputs: []
+services:
+  - name: MySQL
+    data: mysql
+    images:
+      "8.4": mysql:8.4.10
+    config:
+      name: MySQL
+      icon: mysql
+      kind: database
+      template: mysql
+      templateVersion: "8.4"
+      source:
+        type: image
+        image: mysql:8.4.10
+      deploy:
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        placement:
+          roles: [data]
+      networking:
+        port: 3306
+        privateName: mysql
+    variables:
+      MYSQL_ROOT_PASSWORD: ${{secret(32)}}
+      MYSQL_DATABASE: railway
+      MYSQLHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      MYSQLPORT: "3306"
+      MYSQLUSER: root
+      MYSQLPASSWORD: ${{MYSQL_ROOT_PASSWORD}}
+      MYSQLDATABASE: ${{MYSQL_DATABASE}}
+      MYSQL_URL: mysql://root:${{MYSQL_ROOT_PASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:3306/${{MYSQL_DATABASE}}
+      MYSQL_PUBLIC_URL: mysql://root:${{MYSQL_ROOT_PASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}/${{MYSQL_DATABASE}}
+    volume:
+      mountPath: /var/lib/mysql
+    files:
+      - path: /etc/mysql/conf.d/5050.cnf
+        template: my.cnf.tmpl
+        mode: 420
+    probe:
+      health: [mysqladmin, ping, -h, 127.0.0.1, --silent]
+      check: [mysqladmin, ping, -h, 127.0.0.1]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5

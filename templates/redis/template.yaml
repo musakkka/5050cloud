@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: MIT
+id: redis
+name: Redis
+tagline: In-memory key-value store with append-only persistence.
+description: >-
+  Official Redis image with a volume, append-only persistence, a generated
+  password and no eviction. With a backup bucket set, a completed RDB file is
+  backed up with restic every day.
+docs: https://5050cloud.com/docs/databases/redis
+icon: redis.svg
+category: database
+inputs: []
+services:
+  - name: Redis
+    data: redis
+    config:
+      name: Redis
+      icon: redis
+      kind: database
+      template: redis
+      source:
+        type: image
+        image: redis:8.8.1
+      deploy:
+        startCommand: redis-server /etc/redis/5050.conf
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        placement:
+          roles: [data]
+      networking:
+        port: 6379
+        privateName: redis
+    variables:
+      REDIS_PASSWORD: ${{secret(32)}}
+      REDISHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      REDISPORT: "6379"
+      REDISUSER: default
+      REDISPASSWORD: ${{REDIS_PASSWORD}}
+      REDIS_URL: redis://default:${{REDIS_PASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:6379
+      REDIS_PUBLIC_URL: redis://default:${{REDIS_PASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}
+    volume:
+      mountPath: /data
+    files:
+      - path: /etc/redis/5050.conf
+        template: redis.conf.tmpl
+        mode: 420
+      - path: /opt/5050/bin/restic-env
+        template: _shared/restic-env.sh
+        mode: 420
+      - path: /opt/5050/bin/backup-redis
+        template: backup-redis.sh
+        mode: 493
+      - path: /opt/5050/bin/restore-redis
+        template: restore-redis.sh
+        mode: 493
+      - path: /opt/5050/bin/retention-restic
+        template: _shared/retention-restic.sh
+        mode: 493
+    tools: [restic]
+    backup:
+      kind: redis_rdb
+      runIn: service
+      backup: [/opt/5050/bin/backup-redis]
+      restore: [/opt/5050/bin/restore-redis]
+      retention: [/opt/5050/bin/retention-restic]
+      continuous: false
+    probe:
+      health: [sh, -c, 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h 127.0.0.1 --no-auth-warning ping | grep -q PONG']
+      check: [redis-cli, PING]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5

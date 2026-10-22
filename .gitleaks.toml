@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# gitleaks configuration for make check-public: the default rules plus a
+# short list of reviewed false positives. Add an entry only with a comment
+# that says why the match is not a secret.
+title = "5050cloud"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Prose in docs/SPEC.md section 15 that names the cipher used for TOTP secrets"
+regexTarget = "line"
+regexes = ['''TOTP secrets: XChaCha20-Poly1305''']
+
+[[allowlists]]
+description = "Made-up values in build tests that check secrets are redacted from build logs and argv"
+paths = ['''internal/agent/build/[a-z_]+_test\.go''']
+regexTarget = "line"
+regexes = ['''sk_live_0123456789abcdef''', '''ghs_tok_123456''', '''it-secret-Zq8vN3pL0xW2''']

@@ -1,0 +1,793 @@
+{
+ "commands": [
+  {
+   "name": "login",
+   "summary": "Log the CLI in to a 5050cloud console and store an API token.",
+   "usage": [
+    "5050 login [URL]"
+   ],
+   "flags": [
+    [
+     "--token TOKEN",
+     "Store this API token instead of opening the browser (for servers and CI)"
+    ],
+    [
+     "--browserless",
+     "Print the login link and code instead of opening a browser"
+    ]
+   ],
+   "details": [
+    "Without `--token`, the CLI starts a device login: it opens `URL` in your browser, you approve the code shown in the terminal, and the CLI stores the token it receives.",
+    "Tokens live in `~/.config/5050/config.json` (mode 0600), one per console URL, so you can log in to several installs.",
+    "In CI, skip login and set `FIFTY_URL` and `FIFTY_TOKEN` instead."
+   ],
+   "examples": [
+    "5050 login https://console.example.com",
+    "5050 login https://console.example.com --token 5050_xxxxxxxx"
+   ]
+  },
+  {
+   "name": "logout",
+   "summary": "Remove the stored token for the current console.",
+   "usage": [
+    "5050 logout"
+   ],
+   "flags": [],
+   "details": [
+    "The token is deleted from `~/.config/5050/config.json`. Revoke it on the server under **Account > Tokens** if it may have leaked."
+   ],
+   "examples": []
+  },
+  {
+   "name": "whoami",
+   "summary": "Print the user and console the CLI is logged in to.",
+   "usage": [
+    "5050 whoami"
+   ],
+   "flags": [],
+   "details": [
+    "Exits non-zero when you are not logged in, so scripts can check it."
+   ],
+   "examples": []
+  },
+  {
+   "name": "init",
+   "summary": "Create a project and link this directory to it.",
+   "usage": [
+    "5050 init [-n NAME]"
+   ],
+   "flags": [
+    [
+     "-n, --name NAME",
+     "Project name (asked for when omitted on a terminal)"
+    ]
+   ],
+   "details": [
+    "Creates the project with a `production` environment and links the current directory, so later commands know where to act.",
+    "Run `5050 up --new` next to create a service from this directory."
+   ],
+   "examples": [
+    "5050 init -n shop"
+   ]
+  },
+  {
+   "name": "link",
+   "summary": "Link this directory to a project, environment and service.",
+   "usage": [
+    "5050 link [-p PROJECT] [-e ENVIRONMENT] [-s SERVICE]"
+   ],
+   "flags": [
+    [
+     "-p, --project",
+     "Project name or id"
+    ],
+    [
+     "-e, --environment",
+     "Environment name or id (default production)"
+    ],
+    [
+     "-s, --service",
+     "Service name or id"
+    ]
+   ],
+   "details": [
+    "With no flags on a terminal, numbered prompts let you pick each one.",
+    "Links are stored per absolute directory in `~/.config/5050/config.json`."
+   ],
+   "examples": [
+    "5050 link -p shop -e production -s api"
+   ]
+  },
+  {
+   "name": "unlink",
+   "summary": "Remove the link between this directory and a project.",
+   "usage": [
+    "5050 unlink"
+   ],
+   "flags": [],
+   "details": [],
+   "examples": []
+  },
+  {
+   "name": "status",
+   "summary": "Show the linked project, environment and service, with its status and URL.",
+   "usage": [
+    "5050 status"
+   ],
+   "flags": [],
+   "details": [
+    "The status uses the same labels as the console: Initializing, Building, Deploying, Active, Crashed, Failed and so on. See [Deployment statuses](/docs/reference/deployment-statuses)."
+   ],
+   "examples": []
+  },
+  {
+   "name": "list",
+   "summary": "List the projects you can see.",
+   "usage": [
+    "5050 list"
+   ],
+   "flags": [],
+   "details": [
+    "Add `--json` for a machine-readable list."
+   ],
+   "examples": []
+  },
+  {
+   "name": "open",
+   "summary": "Open the project canvas in your browser.",
+   "usage": [
+    "5050 open [--service]"
+   ],
+   "flags": [
+    [
+     "-s, --service",
+     "Open the linked service's panel instead of the canvas"
+    ]
+   ],
+   "details": [],
+   "examples": []
+  },
+  {
+   "name": "up",
+   "summary": "Upload this directory and deploy it into the linked service, streaming the logs.",
+   "usage": [
+    "5050 up [PATH] [flags]"
+   ],
+   "flags": [
+    [
+     "-d, --detach",
+     "Return after the upload instead of streaming logs"
+    ],
+    [
+     "-c, --ci",
+     "Stream only the build logs and exit when the build finishes; non-zero on failure"
+    ],
+    [
+     "-m, --message TEXT",
+     "Message recorded with the deployment"
+    ],
+    [
+     "--new",
+     "Create a new service from this directory"
+    ],
+    [
+     "--name NAME",
+     "Name for the service created by `--new`"
+    ],
+    [
+     "--no-gitignore",
+     "Upload files that `.gitignore` would skip"
+    ],
+    [
+     "--path-as-root",
+     "Use PATH as the root of the upload instead of the linked root directory"
+    ]
+   ],
+   "details": [
+    "The CLI packs the directory as a gzipped tar, skipping `.git` and anything matched by `.gitignore` and `.5050ignore`.",
+    "Uploads over 500 MB are refused. Add large files to `.5050ignore`.",
+    "It prints `Uploaded 3.2 MB`, the build log, the first deploy log lines, then `Deployed: https://...` and exits 0. On failure it prints the one-sentence diagnosis and exits 1."
+   ],
+   "examples": [
+    "5050 up",
+    "5050 up --new --name api",
+    "5050 up -c -m \"release 42\""
+   ]
+  },
+  {
+   "name": "redeploy",
+   "summary": "Redeploy the active deployment of the linked service.",
+   "usage": [
+    "5050 redeploy [-y]"
+   ],
+   "flags": [
+    [
+     "-y, --yes",
+     "Do not ask for confirmation"
+    ]
+   ],
+   "details": [
+    "Uses the same image, settings and variables as the active deployment. To pick up new commits, push or run `5050 up`."
+   ],
+   "examples": []
+  },
+  {
+   "name": "restart",
+   "summary": "Restart the active deployment's containers, one replica at a time.",
+   "usage": [
+    "5050 restart [-y]"
+   ],
+   "flags": [
+    [
+     "-y, --yes",
+     "Do not ask for confirmation"
+    ]
+   ],
+   "details": [],
+   "examples": []
+  },
+  {
+   "name": "down",
+   "summary": "Remove the active deployment of the linked service.",
+   "usage": [
+    "5050 down [-y]"
+   ],
+   "flags": [
+    [
+     "-y, --yes",
+     "Do not ask for confirmation"
+    ]
+   ],
+   "details": [
+    "The service stays on the canvas with \"No deployment\". Redeploy or push to bring it back."
+   ],
+   "examples": []
+  },
+  {
+   "name": "deploy",
+   "summary": "Add a template to the linked project and deploy it.",
+   "usage": [
+    "5050 deploy --template ID [-v KEY=VALUE ...]"
+   ],
+   "flags": [
+    [
+     "-t, --template ID",
+     "Template id, for example `n8n` or `umami`"
+    ],
+    [
+     "-v KEY=VALUE",
+     "Set a template input; generated inputs are filled in for you"
+    ]
+   ],
+   "details": [
+    "Required inputs you do not pass are asked for on a terminal and refused in CI."
+   ],
+   "examples": [
+    "5050 deploy --template umami",
+    "5050 deploy --template minio -v MINIO_ROOT_USER=admin"
+   ]
+  },
+  {
+   "name": "templates",
+   "summary": "List or search the templates this install ships.",
+   "usage": [
+    "5050 templates list",
+    "5050 templates search QUERY"
+   ],
+   "flags": [],
+   "details": [
+    "See [Templates](/docs/reference/templates) for the full list."
+   ],
+   "examples": []
+  },
+  {
+   "name": "add",
+   "summary": "Add a service: a database, a GitHub repo, a Docker image or an empty service.",
+   "usage": [
+    "5050 add -d postgres|mysql|redis|mongo",
+    "5050 add --repo owner/name",
+    "5050 add --image nginx:1.27",
+    "5050 add --empty NAME"
+   ],
+   "flags": [
+    [
+     "-d, --database",
+     "Add a database from its template"
+    ],
+    [
+     "--repo owner/name",
+     "Add a service built from a GitHub repo"
+    ],
+    [
+     "--image IMAGE",
+     "Add a service that runs a Docker image"
+    ],
+    [
+     "--empty NAME",
+     "Add an empty service to configure later"
+    ],
+    [
+     "-v KEY=VALUE",
+     "Set variables on the new service"
+    ]
+   ],
+   "details": [],
+   "examples": [
+    "5050 add -d postgres",
+    "5050 add --image traefik/whoami -v PORT=80"
+   ]
+  },
+  {
+   "name": "import",
+   "summary": "Import a Railway project, a Docker Compose file or Heroku variables.",
+   "usage": [
+    "5050 import railway --token TOKEN",
+    "5050 import compose FILE",
+    "5050 import heroku-env FILE"
+   ],
+   "flags": [
+    [
+     "--token TOKEN",
+     "Railway project token (used once, never stored)"
+    ]
+   ],
+   "details": [
+    "Imports land as staged changes in a new project (Railway) or the linked environment (Compose, Heroku). Nothing deploys until you press **Deploy** or commit.",
+    "`heroku-env` reads the output of `heroku config --json` or `heroku config -s`.",
+    "See [Import from Railway](/docs/guides/import-from-railway) and [Import Docker Compose](/docs/guides/import-docker-compose)."
+   ],
+   "examples": []
+  },
+  {
+   "name": "logs",
+   "summary": "Print deploy, build or HTTP logs, following them on a terminal.",
+   "usage": [
+    "5050 logs [DEPLOYMENT] [flags]"
+   ],
+   "flags": [
+    [
+     "-b, --build",
+     "Build logs"
+    ],
+    [
+     "--http",
+     "HTTP logs from the ingress"
+    ],
+    [
+     "--method, --status, --path, --request-id",
+     "Filter HTTP logs"
+    ],
+    [
+     "--latest",
+     "The newest deployment, even if it is not active"
+    ],
+    [
+     "-n, --lines N",
+     "Number of lines"
+    ],
+    [
+     "-f, --filter EXPR",
+     "A [log filter](/docs/reference/log-filters) expression"
+    ],
+    [
+     "-S, --since, -U, --until",
+     "Time window (`10m`, `2h`, or a timestamp)"
+    ],
+    [
+     "--no-follow",
+     "Print and exit"
+    ]
+   ],
+   "details": [
+    "Deploy logs of the active deployment are the default."
+   ],
+   "examples": [
+    "5050 logs -f '@level:error -healthcheck'",
+    "5050 logs --http --status 500",
+    "5050 logs -b --latest"
+   ]
+  },
+  {
+   "name": "variables",
+   "summary": "List, set and delete the linked service's variables.",
+   "usage": [
+    "5050 variables list [--kv]",
+    "5050 variables set K=V [K=V ...] [--stage] [--skip-deploys]",
+    "5050 variables delete K"
+   ],
+   "flags": [
+    [
+     "--kv",
+     "Show values (audited reveal); without it only names are listed"
+    ],
+    [
+     "--stdin",
+     "Read the value from standard input (for multi-line values and secrets you do not want in shell history)"
+    ],
+    [
+     "--stage",
+     "Stage the change instead of committing it"
+    ],
+    [
+     "--skip-deploys",
+     "Commit without redeploying"
+    ]
+   ],
+   "details": [
+    "`variable` is an alias.",
+    "`set` stages and commits in one step unless `--stage` is given. References such as `${{Postgres.DATABASE_URL}}` are stored as written and resolved at deploy time; quote them in your shell."
+   ],
+   "examples": [
+    "5050 variables set 'DATABASE_URL=${{Postgres.DATABASE_URL}}'",
+    "5050 variables list --kv"
+   ]
+  },
+  {
+   "name": "run",
+   "summary": "Run a local command with the service's resolved variables.",
+   "usage": [
+    "5050 run -- CMD [ARGS...]"
+   ],
+   "flags": [],
+   "details": [
+    "Useful for migrations and scripts on your laptop. Private `.internal` hosts are not reachable from your laptop; use `5050 connect` for databases.",
+    "Sealed variables are not included."
+   ],
+   "examples": [
+    "5050 run -- npm run migrate"
+   ]
+  },
+  {
+   "name": "shell",
+   "summary": "Open a local subshell with the service's variables loaded.",
+   "usage": [
+    "5050 shell [--silent]"
+   ],
+   "flags": [
+    [
+     "--silent",
+     "Do not print the banner"
+    ]
+   ],
+   "details": [],
+   "examples": []
+  },
+  {
+   "name": "ssh",
+   "summary": "Open a shell inside a running replica.",
+   "usage": [
+    "5050 ssh [-- CMD]"
+   ],
+   "flags": [
+    [
+     "--replica ID",
+     "Pick a replica (default: the first running one)"
+    ],
+    [
+     "--session NAME",
+     "Name the session so you can reattach to it within 10 minutes"
+    ]
+   ],
+   "details": [
+    "The shell runs over a WebSocket through the console; no SSH port is opened on any host. Every session is audited."
+   ],
+   "examples": [
+    "5050 ssh",
+    "5050 ssh -- ls /app"
+   ]
+  },
+  {
+   "name": "connect",
+   "summary": "Open psql, mysql, redis-cli or mongosh against a database through a local tunnel.",
+   "usage": [
+    "5050 connect [SERVICE] [-- ARGS]"
+   ],
+   "flags": [
+    [
+     "-P, --port PORT",
+     "Local port for the tunnel"
+    ],
+    [
+     "--tunnel-only",
+     "Print the local URL and keep the tunnel open instead of starting a client"
+    ]
+   ],
+   "details": [
+    "The client must be installed locally. Arguments after `--` and standard input are passed through, so `pg_dump ... | 5050 connect Postgres -- psql` works."
+   ],
+   "examples": [
+    "5050 connect Postgres",
+    "5050 connect Postgres -- -c 'select 1'",
+    "5050 connect Redis --tunnel-only"
+   ]
+  },
+  {
+   "name": "domain",
+   "summary": "Generate a domain or add a custom domain for the linked service.",
+   "usage": [
+    "5050 domain",
+    "5050 domain DOMAIN [--port PORT]",
+    "5050 domain list",
+    "5050 domain delete DOMAIN",
+    "5050 domain status DOMAIN",
+    "5050 domain update DOMAIN --port PORT",
+    "5050 domain certificate retry DOMAIN"
+   ],
+   "flags": [
+    [
+     "--port PORT",
+     "Target port inside the container"
+    ]
+   ],
+   "details": [
+    "With no argument it generates a name under the install's base domain. With a domain it prints the DNS records to create. See [Custom domains and HTTPS](/docs/guides/custom-domains)."
+   ],
+   "examples": [
+    "5050 domain",
+    "5050 domain shop.example.com"
+   ]
+  },
+  {
+   "name": "tcp-proxy",
+   "summary": "Expose a TCP port of the linked service on a public port.",
+   "usage": [
+    "5050 tcp-proxy list",
+    "5050 tcp-proxy add --port PORT",
+    "5050 tcp-proxy delete ID"
+   ],
+   "flags": [
+    [
+     "--port PORT",
+     "Container port to expose"
+    ]
+   ],
+   "details": [
+    "The public port is picked from 20000 to 29999 on every ingress host."
+   ],
+   "examples": []
+  },
+  {
+   "name": "environment",
+   "summary": "Switch, create, sync and inspect environments.",
+   "usage": [
+    "5050 environment [NAME]",
+    "5050 environment new NAME [--duplicate ENV]",
+    "5050 environment delete NAME",
+    "5050 environment rename NAME",
+    "5050 environment sync --from ENV",
+    "5050 environment config",
+    "5050 environment edit --service-config SVC DOT.PATH VALUE [--stage]"
+   ],
+   "flags": [
+    [
+     "--duplicate ENV",
+     "Copy services, settings and non-sealed variables from ENV (staged)"
+    ],
+    [
+     "--from ENV",
+     "Source environment for sync"
+    ],
+    [
+     "--stage",
+     "Stage the edit instead of committing it"
+    ]
+   ],
+   "details": [
+    "`config` prints the environment's effective configuration as JSON.",
+    "`edit` changes one setting, for example `deploy.replicas`, using the names in [Service settings](/docs/reference/service-settings)."
+   ],
+   "examples": [
+    "5050 environment new staging --duplicate production",
+    "5050 environment edit --service-config api deploy.replicas 2"
+   ]
+  },
+  {
+   "name": "service",
+   "summary": "Switch the linked service or change a service.",
+   "usage": [
+    "5050 service [NAME]",
+    "5050 service list",
+    "5050 service status [--all]",
+    "5050 service scale N",
+    "5050 service source connect --repo owner/name | --image IMAGE",
+    "5050 service source disconnect",
+    "5050 service rename NAME"
+   ],
+   "flags": [
+    [
+     "--all",
+     "With `status`: every service in the environment"
+    ],
+    [
+     "--repo owner/name",
+     "With `source connect`: a GitHub repository"
+    ],
+    [
+     "--branch",
+     "With `--repo`: the branch"
+    ],
+    [
+     "--image IMAGE",
+     "With `source connect`: a Docker image"
+    ]
+   ],
+   "details": [],
+   "examples": []
+  },
+  {
+   "name": "scale",
+   "summary": "Set the number of replicas for the linked service.",
+   "usage": [
+    "5050 scale N"
+   ],
+   "flags": [],
+   "details": [
+    "The change is committed at once. A service with a volume can only run 1 replica."
+   ],
+   "examples": [
+    "5050 scale 3"
+   ]
+  },
+  {
+   "name": "volume",
+   "summary": "List, add, delete or wipe the linked service's volume.",
+   "usage": [
+    "5050 volume list",
+    "5050 volume add --mount PATH",
+    "5050 volume delete",
+    "5050 volume wipe"
+   ],
+   "flags": [
+    [
+     "--mount PATH",
+     "Mount path inside the container"
+    ]
+   ],
+   "details": [
+    "`wipe` stops the service, empties the volume and starts it again. You are asked to type the volume name unless `-y` is given.",
+    "Deleted volumes are kept for 48 hours before their data is removed."
+   ],
+   "examples": []
+  },
+  {
+   "name": "cron",
+   "summary": "List cron runs of the linked service or start one now.",
+   "usage": [
+    "5050 cron list",
+    "5050 cron run"
+   ],
+   "flags": [],
+   "details": [],
+   "examples": []
+  },
+  {
+   "name": "metrics",
+   "summary": "Print CPU, memory, network and HTTP summaries for the linked service.",
+   "usage": [
+    "5050 metrics [--range RANGE]"
+   ],
+   "flags": [
+    [
+     "--range",
+     "`1h` (default), `6h`, `1d`, `7d` or `30d`"
+    ]
+   ],
+   "details": [],
+   "examples": []
+  },
+  {
+   "name": "usage",
+   "summary": "Show resource usage for a period and what it would cost on Railway.",
+   "usage": [
+    "5050 usage [--from DATE] [--until DATE]"
+   ],
+   "flags": [
+    [
+     "--from, --until",
+     "Period as `YYYY-MM-DD` (default: the current period up to now)"
+    ]
+   ],
+   "details": [
+    "The Railway estimate uses the dated list prices published with the docs site."
+   ],
+   "examples": []
+  },
+  {
+   "name": "config",
+   "summary": "Export an environment's services and settings to a file.",
+   "usage": [
+    "5050 config pull [--file PATH]"
+   ],
+   "flags": [
+    [
+     "--file PATH",
+     "Where to write (default `5050.yaml`; `-` for standard output)"
+    ]
+   ],
+   "details": [
+    "The file uses the [config file schema](/docs/reference/config-file). Variables are listed by name; values are not written."
+   ],
+   "examples": [],
+   "railway": "Railway has no direct equivalent; its `config` style sync is planned for a later 5050cloud release."
+  },
+  {
+   "name": "host",
+   "summary": "Add, list, drain and maintain hosts.",
+   "usage": [
+    "5050 host add [--roles app]",
+    "5050 host list",
+    "5050 host drain HOST",
+    "5050 host maintenance HOST on|off"
+   ],
+   "flags": [
+    [
+     "--roles",
+     "Roles for the new host: `app`, `ingress`, `data`, `build`"
+    ],
+    [
+     "--name NAME",
+     "With `add`: a name for the host"
+    ]
+   ],
+   "details": [
+    "Admin only. `add` prints a single-use join command valid for 1 hour. See [Add a host](/docs/guides/add-a-host)."
+   ],
+   "examples": [],
+   "railway": "Railway has no equivalent: hosts are its servers."
+  },
+  {
+   "name": "upgrade",
+   "summary": "Upgrade the install: the control plane first, then each agent.",
+   "usage": [
+    "5050 upgrade [--version vX.Y.Z]"
+   ],
+   "flags": [
+    [
+     "--version",
+     "Release to install (default: latest stable)"
+    ]
+   ],
+   "details": [
+    "Admin only. The command waits and reports the result. If the new version is not healthy within 90 seconds it reverts itself. See [Upgrading](/docs/guides/upgrading)."
+   ],
+   "examples": [],
+   "railway": "Railway has no equivalent."
+  },
+  {
+   "name": "alias",
+   "summary": "Install or remove the `railway` symlink to this CLI.",
+   "usage": [
+    "5050 alias install",
+    "5050 alias remove"
+   ],
+   "flags": [],
+   "details": [
+    "See [The railway alias](/docs/cli/railway-alias)."
+   ],
+   "examples": [],
+   "railway": "Not applicable."
+  },
+  {
+   "name": "completion",
+   "summary": "Print a shell completion script.",
+   "usage": [
+    "5050 completion bash|zsh|fish"
+   ],
+   "flags": [],
+   "details": [],
+   "examples": [
+    "5050 completion zsh > \"${fpath[1]}/_5050\""
+   ]
+  },
+  {
+   "name": "version",
+   "summary": "Print the CLI version.",
+   "usage": [
+    "5050 version"
+   ],
+   "flags": [],
+   "details": [],
+   "examples": []
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+# railway.json content (written as YAML for the test; railway.json and
+# railway.toml decode to the same RailwayConfig), with every field set.
+$schema: https://railway.com/railway.schema.json
+build:
+  builder: NIXPACKS
+  buildCommand: npm run build
+  dockerfilePath: Dockerfile
+  watchPatterns: ["src/**", "!src/**/*.test.ts"]
+  railpackVersion: 0.40.1
+  nixpacksConfigPath: nixpacks.toml
+  nixpacksPlan:
+    phases:
+      setup:
+        nixPkgs: [ffmpeg]
+deploy:
+  startCommand: node server.js
+  preDeployCommand: [npm run migrate, npm run seed]
+  healthcheckPath: /health
+  healthcheckTimeout: 120
+  restartPolicyType: ON_FAILURE
+  restartPolicyMaxRetries: 5
+  cronSchedule: ""
+  numReplicas: 2
+  overlapSeconds: 10
+  drainingSeconds: 30
+  sleepApplication: false
+  multiRegionConfig:
+    us-east4-eqdc4a:
+      numReplicas: 2
+  runtime: V2
+  region: us-east4-eqdc4a
+  processes: auto
+  placement:
+    roles: [app]
+    hosts: []
+  singleton: false
+environments:
+  production:
+    build:
+      buildCommand: npm run build:prod
+    deploy:
+      numReplicas: 3
+      preDeployCommand: npm run migrate

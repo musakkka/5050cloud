@@ -1,0 +1,175 @@
+{
+  "helpers": {
+    "job": "busybox:1.37.0"
+  },
+  "images": {
+    "busybox:1.37.0": {
+      "digest": "sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "clickhouse/clickhouse-server:24.12.6.70-alpine": {
+      "digest": "sha256:cd450891db46cc6ffe313ca2b0fb7dbfb897a6873ca74a724cbe050a2cf62621",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "directus/directus:12.4.1": {
+      "digest": "sha256:9cc8ab88e6f1fc98d860416d89d53dd15838860c315a66c6d8ee68cb72f6b3a6",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "getmeili/meilisearch:v1.54.3": {
+      "digest": "sha256:e68913ab7d6f5b159529e472cfd362ce3c741fafd3c127961b2142abbe41b3c9",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "ghcr.io/plausible/community-edition:v3.2.1": {
+      "digest": "sha256:33e60bfb40f2df5da00f8753b76fad04f67dba3abe6d73eb516e440e3fb62985",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "ghcr.io/umami-software/umami:3.3.1": {
+      "digest": "sha256:fa32d116cf20cad52cbc3fad9a63b46e7fa02299d8f967168eb453d49c476b4a",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "ghost:6.67.0": {
+      "digest": "sha256:9482099b1c8700764dc3d38c293e09c16d70f8bacc14af589c47d90b4bebd017",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "gitea/gitea:1.27.3": {
+      "digest": "sha256:87a67ee09d3ae0d1df5fda5dcda3e2a1f9236a45b0a59025d6e00e46adc43bef",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "louislam/uptime-kuma:2.5.5": {
+      "digest": "sha256:c74379ac4509ce2d2c2633f509e67003ee2e45b6e995c5e43fc101f45a0e1fbe",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "metabase/metabase:v0.63.19": {
+      "digest": "sha256:7324f83713df9851c6c7b6c8247098de14c0924fc3b868202f886df4877cd4ff",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "mongo:8.0.28": {
+      "digest": "sha256:98605bfa1bb2a15dd82109e1d78ad31527a9a744909fab4606076fa71a0ae515",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "mysql:8.4.10": {
+      "digest": "sha256:8dbcf531a03aade657e181b9cf2f1d1803ce621a1d55610cb44cb531ab7d7db6",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "n8nio/n8n:2.42.4": {
+      "digest": "sha256:9c0862a08090c79122069e23131d27529c250b92e90c9d51a6ec406fe1527c4e",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "pgsty/minio:RELEASE.2026-08-04T00-00-00Z": {
+      "digest": "sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "pgvector/pgvector:0.8.7-pg17-bookworm": {
+      "digest": "sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "pgvector/pgvector:0.8.7-pg18-bookworm": {
+      "digest": "sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "postgis/postgis:17-3.5": {
+      "digest": "sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6",
+      "platforms": [
+        "linux/amd64"
+      ]
+    },
+    "postgis/postgis:18-3.6": {
+      "digest": "sha256:b4466ea2ba7e3af54fcbba996d45325720f4b3ecb4f43f99b2f41367dc196f23",
+      "platforms": [
+        "linux/amd64"
+      ]
+    },
+    "postgres:17.10-bookworm": {
+      "digest": "sha256:9b18b78397054fce88a9552e9d5a3ad5bb7fd258c5b3cc1c5028e46373d6ea8f",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "postgres:18.4-bookworm": {
+      "digest": "sha256:882236b897e39051d2368c5ccc6cda944904723506b2dfc97f2a8f5bc9afa382",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    },
+    "redis:8.8.1": {
+      "digest": "sha256:3eafabb4c93fcb8b36b666e07a43f096cb157bc6b07dce4b2492b895c63cf37f",
+      "platforms": [
+        "linux/amd64",
+        "linux/arm64"
+      ]
+    }
+  },
+  "releases": {
+    "mongodb": {
+      "8.0": "mongo:8.0.28"
+    },
+    "mysql": {
+      "8.4": "mysql:8.4.10"
+    },
+    "pgvector": {
+      "17": "pgvector/pgvector:0.8.7-pg17-bookworm",
+      "18": "pgvector/pgvector:0.8.7-pg18-bookworm"
+    },
+    "postgis": {
+      "17": "postgis/postgis:17-3.5",
+      "18": "postgis/postgis:18-3.6"
+    },
+    "postgres": {
+      "17": "postgres:17.10-bookworm",
+      "18": "postgres:18.4-bookworm"
+    },
+    "redis": {
+      "8": "redis:8.8.1"
+    }
+  }
+}

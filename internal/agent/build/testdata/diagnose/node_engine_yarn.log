@@ -1,0 +1,9 @@
+yarn install v1.22.22
+warning package.json: No license field
+info No lockfile found.
+warning a@1.0.0: No license field
+[1/5] Validating package.json...
+warning a@1.0.0: No license field
+error a@1.0.0: The engine "node" is incompatible with this module. Expected version ">=30". Got "22.23.4"
+info Visit https://yarnpkg.com/en/docs/cli/install for documentation about this command.
+error Found incompatible module.

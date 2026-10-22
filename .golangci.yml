@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# golangci-lint v2 configuration (pinned in the Makefile). Shared by every
+# work package; changes go through the integrator.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - copyloopvar
+    - errorlint
+    - misspell
+    - nilerr
+    - unconvert
+    - usestdlibvars
+  settings:
+    misspell:
+      # No locale: the spec and comments use British spelling (labelled, colour).
+      ignore-rules: []
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+  exclusions:
+    generated: strict
+    paths:
+      - web/node_modules
+      - reference
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/musakkka/5050cloud
+  exclusions:
+    paths:
+      - web/node_modules

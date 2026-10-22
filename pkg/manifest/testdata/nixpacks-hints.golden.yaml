@@ -1,0 +1,15 @@
+aptPkgs:
+- libvips
+buildCmds:
+- npm run build
+ignoredKeys:
+- providers
+- staticAssets
+nixPkgs:
+- ffmpeg
+providerHint: node
+sourceLines:
+  startCmd: 7
+startCmd: node dist/index.js
+variables:
+  NODE_ENV: production

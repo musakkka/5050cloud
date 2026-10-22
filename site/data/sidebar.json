@@ -1,0 +1,134 @@
+[
+ {
+  "label": "Get started",
+  "items": [
+   "docs/quick-start",
+   "docs/basics",
+   "docs/coming-from-railway",
+   "docs/production-checklist"
+  ]
+ },
+ {
+  "label": "Guides",
+  "items": [
+   "docs/guides/deploy-from-github",
+   "docs/guides/deploy-docker-image",
+   "docs/guides/deploy-with-cli",
+   "docs/guides/config-as-code",
+   "docs/guides/import-from-railway",
+   "docs/guides/move-database-from-railway",
+   "docs/guides/import-docker-compose",
+   "docs/guides/templates",
+   "docs/guides/databases",
+   "docs/guides/variables",
+   "docs/guides/staged-changes",
+   "docs/guides/custom-domains",
+   "docs/guides/use-all-cores",
+   "docs/guides/add-a-host",
+   "docs/guides/replicas-zero-downtime",
+   "docs/guides/health-checks",
+   "docs/guides/rollbacks",
+   "docs/guides/cron-jobs",
+   "docs/guides/volumes",
+   "docs/guides/backups",
+   "docs/guides/database-major-upgrades",
+   "docs/guides/monorepos",
+   "docs/guides/pre-deploy",
+   "docs/guides/private-networking",
+   "docs/guides/quarantined-environments",
+   "docs/guides/monitors",
+   "docs/guides/email-notifications",
+   "docs/guides/members-roles-2fa",
+   "docs/guides/upgrading",
+   "docs/guides/control-plane-backup",
+   "docs/guides/rebuild-control-host",
+   "docs/guides/rotate-master-key",
+   "docs/guides/behind-cloudflare",
+   "docs/guides/troubleshooting"
+  ]
+ },
+ {
+  "label": "Reference",
+  "items": [
+   "docs/reference/install-options",
+   "docs/reference/service-settings",
+   "docs/reference/config-file",
+   "docs/reference/variables",
+   "docs/reference/deployment-statuses",
+   "docs/reference/log-filters",
+   "docs/reference/templates",
+   "docs/reference/api",
+   "docs/reference/agent-protocol",
+   "docs/reference/architecture",
+   "docs/reference/security-model",
+   "docs/reference/ports-firewall",
+   "docs/reference/limits",
+   "docs/reference/honest-limits"
+  ]
+ },
+ {
+  "label": "CLI",
+  "items": [
+   "docs/cli/overview",
+   "docs/cli/global-options",
+   "docs/cli/railway-alias",
+   "docs/cli/login",
+   "docs/cli/logout",
+   "docs/cli/whoami",
+   "docs/cli/init",
+   "docs/cli/link",
+   "docs/cli/unlink",
+   "docs/cli/status",
+   "docs/cli/list",
+   "docs/cli/open",
+   "docs/cli/up",
+   "docs/cli/redeploy",
+   "docs/cli/restart",
+   "docs/cli/down",
+   "docs/cli/deploy",
+   "docs/cli/templates",
+   "docs/cli/add",
+   "docs/cli/import",
+   "docs/cli/logs",
+   "docs/cli/variables",
+   "docs/cli/run",
+   "docs/cli/shell",
+   "docs/cli/ssh",
+   "docs/cli/connect",
+   "docs/cli/domain",
+   "docs/cli/tcp-proxy",
+   "docs/cli/environment",
+   "docs/cli/service",
+   "docs/cli/scale",
+   "docs/cli/volume",
+   "docs/cli/cron",
+   "docs/cli/metrics",
+   "docs/cli/usage",
+   "docs/cli/config",
+   "docs/cli/host",
+   "docs/cli/upgrade",
+   "docs/cli/alias",
+   "docs/cli/completion",
+   "docs/cli/version"
+  ]
+ },
+ {
+  "label": "Compare",
+  "items": [
+   "docs/compare/railway",
+   "docs/compare/coolify",
+   "docs/compare/dokploy",
+   "docs/compare/kamal",
+   "docs/compare/dokku",
+   "docs/compare/vps"
+  ]
+ },
+ {
+  "label": "Contribute",
+  "items": [
+   "docs/contribute/build-from-source",
+   "docs/contribute/makefile",
+   "docs/contribute/writing-a-template"
+  ]
+ }
+]

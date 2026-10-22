@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MIT
+#
+# Postgres configuration rendered by 5050cloud at each deploy (templates/README.md).
+# Memory settings follow the memory limit of the service, or a quarter of the
+# host's memory when the service has no limit. Settings changed with
+# ALTER SYSTEM live in postgresql.auto.conf inside the data directory and win.
+
+listen_addresses = '*'
+port = 5432
+unix_socket_directories = '/var/run/postgresql'
+max_connections = {{ .Postgres.MaxConnections }}
+
+shared_buffers = {{ .Postgres.SharedBuffersMB }}MB
+effective_cache_size = {{ .Postgres.EffectiveCacheSizeMB }}MB
+work_mem = {{ .Postgres.WorkMemMB }}MB
+maintenance_work_mem = {{ .Postgres.MaintenanceWorkMemMB }}MB
+dynamic_shared_memory_type = posix
+
+wal_level = replica
+wal_compression = zstd
+max_wal_size = {{ .Postgres.MaxWALSizeMB }}MB
+min_wal_size = 80MB
+checkpoint_completion_target = 0.9
+
+# Continuous archiving. archive-wal exits 0 without uploading only while no
+# backup bucket is configured; once one is, a failed upload exits non-zero so
+# Postgres keeps the segment and retries.
+archive_mode = on
+archive_timeout = 60
+archive_command = '/opt/5050/bin/archive-wal %p'
+
+shared_preload_libraries = 'pg_stat_statements'
+pg_stat_statements.track = top
+pg_stat_statements.max = 5000
+
+log_min_duration_statement = 1000
+log_checkpoints = on
+log_lock_waits = on
+log_timezone = 'UTC'
+timezone = 'UTC'
+datestyle = 'iso, mdy'
+default_text_search_config = 'pg_catalog.english'

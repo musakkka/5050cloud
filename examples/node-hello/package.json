@@ -1,0 +1,14 @@
+{
+  "name": "node-hello",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "A tiny HTTP app for 5050cloud docs and tests",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

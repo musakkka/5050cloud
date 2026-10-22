@@ -1,0 +1,7 @@
+#11 [build 3/4] RUN npm ci
+#11 12.31 npm error code ENOSPC
+#11 12.31 npm error syscall write
+#11 12.31 npm error errno -28
+#11 12.31 npm error nospc ENOSPC: no space left on device, write
+#11 ERROR: process "/bin/sh -c npm ci" did not complete successfully: exit code: 228
+ERROR: failed to build: failed to solve: process "/bin/sh -c npm ci" did not complete successfully: exit code: 228

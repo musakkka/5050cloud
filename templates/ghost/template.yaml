@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: MIT
+id: ghost
+name: Ghost
+tagline: Publishing platform for blogs and newsletters, backed by MySQL.
+description: >-
+  Ghost with its own MySQL. Open /ghost on your domain to create the owner
+  account. Set the mail__ variables to send newsletters and sign-in emails.
+docs: https://5050cloud.com/docs/templates/ghost
+icon: ghost.svg
+category: app
+inputs:
+  - name: url
+    label: Site URL
+    description: The public address of the site. It defaults to the generated domain; change it after adding a custom domain.
+    default: https://${{FIFTY_PUBLIC_DOMAIN}}
+    required: true
+    secret: false
+services:
+  - name: MySQL
+    data: mysql
+    images:
+      "8.4": mysql:8.4.10
+    config:
+      name: MySQL
+      icon: mysql
+      kind: database
+      template: mysql
+      templateVersion: "8.4"
+      source:
+        type: image
+        image: mysql:8.4.10
+      deploy:
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        placement:
+          roles: [data]
+      networking:
+        port: 3306
+        privateName: mysql
+    variables:
+      MYSQL_ROOT_PASSWORD: ${{secret(32)}}
+      MYSQL_DATABASE: railway
+      MYSQLHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      MYSQLPORT: "3306"
+      MYSQLUSER: root
+      MYSQLPASSWORD: ${{MYSQL_ROOT_PASSWORD}}
+      MYSQLDATABASE: ${{MYSQL_DATABASE}}
+      MYSQL_URL: mysql://root:${{MYSQL_ROOT_PASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:3306/${{MYSQL_DATABASE}}
+      MYSQL_PUBLIC_URL: mysql://root:${{MYSQL_ROOT_PASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}/${{MYSQL_DATABASE}}
+    volume:
+      mountPath: /var/lib/mysql
+    files:
+      - path: /etc/mysql/conf.d/5050.cnf
+        template: mysql/my.cnf.tmpl
+        mode: 420
+    probe:
+      health: [mysqladmin, ping, -h, 127.0.0.1, --silent]
+      check: [mysqladmin, ping, -h, 127.0.0.1]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5
+  - name: Ghost
+    dependsOn: [MySQL]
+    domain: true
+    config:
+      name: Ghost
+      icon: ghost
+      kind: web
+      template: ghost
+      source:
+        type: image
+        image: ghost:6.67.0
+      deploy:
+        memoryReservationMb: 512
+      networking:
+        port: 2368
+    variables:
+      url: ${{input.url}}
+      NODE_ENV: production
+      database__client: mysql
+      database__connection__host: ${{MySQL.MYSQLHOST}}
+      database__connection__port: ${{MySQL.MYSQLPORT}}
+      database__connection__user: ${{MySQL.MYSQLUSER}}
+      database__connection__password: ${{MySQL.MYSQLPASSWORD}}
+      database__connection__database: ${{MySQL.MYSQLDATABASE}}
+    volume:
+      mountPath: /var/lib/ghost/content

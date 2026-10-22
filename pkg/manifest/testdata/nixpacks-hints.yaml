@@ -1,0 +1,11 @@
+# What pkg/configfile keeps from a nixpacks.toml.
+startCmd: node dist/index.js
+buildCmds: [npm run build]
+variables:
+  NODE_ENV: production
+nixPkgs: [ffmpeg]
+aptPkgs: [libvips]
+ignoredKeys: [providers, staticAssets]
+sourceLines:
+  startCmd: 7
+providerHint: node

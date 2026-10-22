@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: MIT
+id: postgis
+name: Postgres with PostGIS
+tagline: Postgres with PostGIS for geographic data.
+description: >-
+  The Postgres template with the PostGIS image: the same backups,
+  point-in-time restore and settings. Run CREATE EXTENSION postgis, or Enable
+  it in the Data tab. The upstream image is published for amd64 hosts only.
+docs: https://5050cloud.com/docs/databases/postgis
+icon: postgis.svg
+category: database
+majorVersions: ["17", "18"]
+inputs: []
+services:
+  - name: Postgres
+    data: postgres
+    images:
+      "17": postgis/postgis:17-3.5
+      "18": postgis/postgis:18-3.6
+    config:
+      name: Postgres
+      icon: postgis
+      kind: database
+      template: postgis
+      templateVersion: "17"
+      source:
+        type: image
+        image: postgis/postgis:17-3.5
+      deploy:
+        startCommand: postgres -c config_file=/etc/postgresql/5050.conf
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        shmSizeMb: 256
+        placement:
+          roles: [data]
+      networking:
+        port: 5432
+        privateName: postgres
+    variables:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${{secret(32)}}
+      POSTGRES_DB: railway
+      PGUSER: ${{POSTGRES_USER}}
+      PGPASSWORD: ${{POSTGRES_PASSWORD}}
+      PGDATABASE: ${{POSTGRES_DB}}
+      PGHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      PGPORT: "5432"
+      PGDATA: /var/lib/postgresql/data/pgdata
+      DATABASE_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}
+      DATABASE_PUBLIC_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}/${{PGDATABASE}}
+    volume:
+      mountPath: /var/lib/postgresql/data
+    files:
+      - path: /etc/postgresql/5050.conf
+        template: postgres/postgresql.conf.tmpl
+        mode: 420
+      - path: /docker-entrypoint-initdb.d/5050-init.sql
+        template: postgres/init.sql
+        mode: 420
+      - path: /opt/5050/bin/archive-wal
+        template: postgres/archive-wal.sh
+        mode: 493
+      - path: /opt/5050/bin/backup-postgres
+        template: postgres/backup-postgres.sh
+        mode: 493
+      - path: /opt/5050/bin/restore-postgres
+        template: postgres/restore-postgres.sh
+        mode: 493
+      - path: /opt/5050/bin/pg-metrics
+        template: postgres/pg-metrics.sh
+        mode: 493
+      - path: /opt/5050/bin/check-archiving
+        template: postgres/check-archiving.sh
+        mode: 493
+    tools: [wal-g]
+    backup:
+      kind: postgres_wal
+      runIn: service
+      backup: [/opt/5050/bin/backup-postgres]
+      restore: [/opt/5050/bin/restore-postgres]
+      retention: [/opt/5050/bin/wal-g, delete, retain, FULL, "{{.RetainDays}}", --confirm]
+      verify: [/opt/5050/bin/check-archiving]
+      continuous: true
+      # Dump and Load run in one job, piped together, for Upgrade to a new
+      # major version (SOURCE_HOST and TARGET_HOST are the private names).
+      dump: [sh, -c, 'exec pg_dumpall -h "$SOURCE_HOST" -U "$POSTGRES_USER"']
+      load: [sh, -c, 'exec psql -X -q -h "$TARGET_HOST" -U "$POSTGRES_USER" -d postgres']
+    probe:
+      health: [pg_isready, -q, -h, 127.0.0.1, -p, "5432"]
+      metrics: [/opt/5050/bin/pg-metrics]
+      check: [psql, -X, -At, -c, SELECT count(*) FROM pg_class]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5

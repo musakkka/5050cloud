@@ -1,0 +1,180 @@
+# SPDX-License-Identifier: MIT
+id: plausible
+name: Plausible CE
+tagline: Lightweight, cookie-free web analytics with Postgres and ClickHouse.
+description: >-
+  Plausible Community Edition with Postgres for accounts and ClickHouse for
+  events. Registration is open until you create the first account; set
+  DISABLE_REGISTRATION to true afterwards.
+docs: https://5050cloud.com/docs/templates/plausible
+icon: plausible.svg
+category: app
+inputs:
+  - name: SECRET_KEY_BASE
+    label: Secret key base
+    description: Signs sessions and cookies. At least 64 characters.
+    generate: secret(64)
+    required: true
+    secret: true
+  - name: TOTP_VAULT_KEY
+    label: TOTP vault key
+    description: >-
+      Encrypts two-factor secrets: the Base64 form of 32 random bytes without
+      its final "=" (5050cloud adds it). The generated value is already in
+      that form.
+    generate: secret(43, "AEIMQUYcgkosw048")
+    required: true
+    secret: true
+services:
+  - name: Postgres
+    data: postgres
+    images:
+      "17": postgres:17.10-bookworm
+      "18": postgres:18.4-bookworm
+    config:
+      name: Postgres
+      icon: postgres
+      kind: database
+      template: postgres
+      templateVersion: "17"
+      source:
+        type: image
+        image: postgres:17.10-bookworm
+      deploy:
+        startCommand: postgres -c config_file=/etc/postgresql/5050.conf
+        restartPolicy: always
+        replicas: 1
+        singleton: true
+        memoryReservationMb: 512
+        shmSizeMb: 256
+        placement:
+          roles: [data]
+      networking:
+        port: 5432
+        privateName: postgres
+    variables:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${{secret(32)}}
+      POSTGRES_DB: railway
+      PGUSER: ${{POSTGRES_USER}}
+      PGPASSWORD: ${{POSTGRES_PASSWORD}}
+      PGDATABASE: ${{POSTGRES_DB}}
+      PGHOST: ${{FIFTY_PRIVATE_DOMAIN}}
+      PGPORT: "5432"
+      PGDATA: /var/lib/postgresql/data/pgdata
+      DATABASE_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}
+      DATABASE_PUBLIC_URL: postgresql://${{PGUSER}}:${{PGPASSWORD}}@${{FIFTY_TCP_PROXY_DOMAIN}}:${{FIFTY_TCP_PROXY_PORT}}/${{PGDATABASE}}
+    volume:
+      mountPath: /var/lib/postgresql/data
+    files:
+      - path: /etc/postgresql/5050.conf
+        template: postgres/postgresql.conf.tmpl
+        mode: 420
+      - path: /docker-entrypoint-initdb.d/5050-init.sql
+        template: postgres/init.sql
+        mode: 420
+      - path: /opt/5050/bin/archive-wal
+        template: postgres/archive-wal.sh
+        mode: 493
+      - path: /opt/5050/bin/backup-postgres
+        template: postgres/backup-postgres.sh
+        mode: 493
+      - path: /opt/5050/bin/restore-postgres
+        template: postgres/restore-postgres.sh
+        mode: 493
+      - path: /opt/5050/bin/pg-metrics
+        template: postgres/pg-metrics.sh
+        mode: 493
+      - path: /opt/5050/bin/check-archiving
+        template: postgres/check-archiving.sh
+        mode: 493
+    tools: [wal-g]
+    backup:
+      kind: postgres_wal
+      runIn: service
+      backup: [/opt/5050/bin/backup-postgres]
+      restore: [/opt/5050/bin/restore-postgres]
+      retention: [/opt/5050/bin/wal-g, delete, retain, FULL, "{{.RetainDays}}", --confirm]
+      verify: [/opt/5050/bin/check-archiving]
+      continuous: true
+      # Dump and Load run in one job, piped together, for Upgrade to a new
+      # major version (SOURCE_HOST and TARGET_HOST are the private names).
+      dump: [sh, -c, 'exec pg_dumpall -h "$SOURCE_HOST" -U "$POSTGRES_USER"']
+      load: [sh, -c, 'exec psql -X -q -h "$TARGET_HOST" -U "$POSTGRES_USER" -d postgres']
+    probe:
+      health: [pg_isready, -q, -h, 127.0.0.1, -p, "5432"]
+      metrics: [/opt/5050/bin/pg-metrics]
+      check: [psql, -X, -At, -c, SELECT count(*) FROM pg_class]
+    monitors:
+      - metric: disk
+        threshold: 80
+        forMinutes: 5
+  - name: ClickHouse
+    config:
+      name: ClickHouse
+      icon: clickhouse
+      kind: database
+      template: plausible
+      source:
+        type: image
+        image: clickhouse/clickhouse-server:24.12.6.70-alpine
+      deploy:
+        healthcheckPath: /ping
+        restartPolicy: always
+        singleton: true
+        memoryReservationMb: 512
+        placement:
+          roles: [data]
+      networking:
+        port: 8123
+        privateName: clickhouse
+    variables:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    volume:
+      mountPath: /var/lib/clickhouse
+    files:
+      - path: /etc/clickhouse-server/config.d/logs.xml
+        template: plausible/clickhouse/logs.xml
+        mode: 420
+      - path: /etc/clickhouse-server/config.d/ipv4-only.xml
+        template: plausible/clickhouse/ipv4-only.xml
+        mode: 420
+      - path: /etc/clickhouse-server/config.d/low-resources.xml
+        template: plausible/clickhouse/low-resources.xml
+        mode: 420
+      - path: /etc/clickhouse-server/users.d/default-profile-low-resources-overrides.xml
+        template: plausible/clickhouse/default-profile-low-resources-overrides.xml
+        mode: 420
+    backup:
+      kind: volume
+      runIn: job
+      backup: [/opt/5050/bin/backup-volume]
+      restore: [/opt/5050/bin/restore-volume]
+      retention: [/opt/5050/bin/retention-restic]
+  - name: Plausible
+    dependsOn: [Postgres, ClickHouse]
+    domain: true
+    config:
+      name: Plausible
+      icon: plausible
+      kind: web
+      template: plausible
+      source:
+        type: image
+        image: ghcr.io/plausible/community-edition:v3.2.1
+      deploy:
+        startCommand: sh -c "/entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+        healthcheckPath: /api/health
+        memoryReservationMb: 512
+      networking:
+        port: 8000
+    variables:
+      BASE_URL: https://${{FIFTY_PUBLIC_DOMAIN}}
+      SECRET_KEY_BASE: ${{input.SECRET_KEY_BASE}}
+      TOTP_VAULT_KEY: ${{input.TOTP_VAULT_KEY}}=
+      HTTP_PORT: "8000"
+      DATABASE_URL: ${{Postgres.DATABASE_URL}}
+      CLICKHOUSE_DATABASE_URL: http://${{ClickHouse.FIFTY_PRIVATE_DOMAIN}}:8123/plausible_events_db
+      TMPDIR: /var/lib/plausible/tmp
+    volume:
+      mountPath: /var/lib/plausible

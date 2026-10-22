@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: MIT
+id: minio
+name: MinIO
+tagline: S3-compatible object storage with a web console.
+description: >-
+  MinIO on a volume. The console is on the generated domain; apps in the
+  environment reach the S3 API at MINIO_PRIVATE_ENDPOINT. The image is the
+  community build published as pgsty/minio, since upstream stopped publishing
+  container images.
+docs: https://5050cloud.com/docs/templates/minio
+icon: minio.svg
+category: app
+inputs:
+  - name: MINIO_ROOT_USER
+    label: Root user
+    description: The access key of the root account.
+    default: admin
+    required: true
+    secret: false
+  - name: MINIO_ROOT_PASSWORD
+    label: Root password
+    description: The secret key of the root account.
+    generate: secret(32)
+    required: true
+    secret: true
+services:
+  - name: MinIO
+    domain: true
+    config:
+      name: MinIO
+      icon: minio
+      kind: web
+      template: minio
+      source:
+        type: image
+        image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+      deploy:
+        startCommand: minio server /data --address :9000 --console-address :9001
+        singleton: true
+        placement:
+          roles: [data]
+      networking:
+        port: 9001
+        privateName: minio
+    variables:
+      MINIO_ROOT_USER: ${{input.MINIO_ROOT_USER}}
+      MINIO_ROOT_PASSWORD: ${{input.MINIO_ROOT_PASSWORD}}
+      MINIO_BROWSER_REDIRECT_URL: https://${{FIFTY_PUBLIC_DOMAIN}}
+      MINIO_PRIVATE_ENDPOINT: http://${{FIFTY_PRIVATE_DOMAIN}}:9000
+    volume:
+      mountPath: /data
+    backup:
+      kind: volume
+      runIn: job
+      backup: [/opt/5050/bin/backup-volume]
+      restore: [/opt/5050/bin/restore-volume]
+      retention: [/opt/5050/bin/retention-restic]

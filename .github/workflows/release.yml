@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: The signing key and the embedded key are in place
+        env:
+          MINISIGN_KEY: ${{ secrets.MINISIGN_KEY }}
+        run: |
+          test -n "$MINISIGN_KEY" || { echo "Set the MINISIGN_KEY secret (e2e/scripts/release-key.sh)." >&2; exit 1; }
+          REQUIRE_RELEASE_KEY=1 sh e2e/scripts/check-release-keys.sh
+      - name: No contract stubs left
+        run: STRICT_STUBS=1 make check-public
+      - name: Console
+        run: make web
+      - name: Signing key file
+        env:
+          MINISIGN_KEY: ${{ secrets.MINISIGN_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$MINISIGN_KEY" > "$RUNNER_TEMP/release.key"
+          echo "MINISIGN_KEY_FILE=$RUNNER_TEMP/release.key" >> "$GITHUB_ENV"
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.12.7
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Signature verifies with the embedded key
+        run: |
+          key=$(grep -v '^#' internal/upgrade/release-keys.txt | sed '/^$/d' | head -n 1)
+          go run ./e2e/signtool verify -P "$key" -m dist/checksums.txt -x dist/checksums.txt.minisig

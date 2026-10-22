@@ -1,0 +1,5 @@
+╭─────────────────╮
+│ Railpack 0.40.1 │
+╰─────────────────╯
+  ↳ Detected Python
+  ✖ No start command detected. Specify a start command: https://railpack.com/config/file#deploy

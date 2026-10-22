@@ -1,0 +1,46 @@
+$schema: https://railway.com/railway.schema.json
+build:
+  buildCommand: npm run build
+  builder: NIXPACKS
+  dockerfilePath: Dockerfile
+  nixpacksConfigPath: nixpacks.toml
+  nixpacksPlan:
+    phases:
+      setup:
+        nixPkgs:
+        - ffmpeg
+  railpackVersion: 0.40.1
+  watchPatterns:
+  - src/**
+  - '!src/**/*.test.ts'
+deploy:
+  cronSchedule: ""
+  drainingSeconds: 30
+  healthcheckPath: /health
+  healthcheckTimeout: 120
+  multiRegionConfig:
+    us-east4-eqdc4a:
+      numReplicas: 2
+  numReplicas: 2
+  overlapSeconds: 10
+  placement:
+    roles:
+    - app
+  preDeployCommand:
+  - npm run migrate
+  - npm run seed
+  processes: auto
+  region: us-east4-eqdc4a
+  restartPolicyMaxRetries: 5
+  restartPolicyType: ON_FAILURE
+  runtime: V2
+  singleton: false
+  sleepApplication: false
+  startCommand: node server.js
+environments:
+  production:
+    build:
+      buildCommand: npm run build:prod
+    deploy:
+      numReplicas: 3
+      preDeployCommand: npm run migrate

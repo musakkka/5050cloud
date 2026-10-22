@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Console build and size budget
+        run: make web
+      - name: go mod tidy is clean
+        run: go mod tidy && git diff --exit-code -- go.mod go.sum
+      - name: Lint
+        run: make lint
+      - name: Test
+        run: make test
+      - name: Coverage floors
+        run: make cover
+      - name: Build
+        run: make build cross
+      - name: Generated API files are current
+        run: make check-gen
+      - name: Public tree check
+        run: make check-public
+      - name: Release keys agree
+        run: sh e2e/scripts/check-release-keys.sh
+      - name: govulncheck
+        run: make vulncheck
+
+  linux-integration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Agent integration tests against Docker
+        run: make test-linux
+
+  site:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build the docs site
+        run: |
+          if [ -f site/package-lock.json ]; then cd site && npm ci --no-audit --no-fund && npm run build; else echo "no site yet"; fi

@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-22",
+  "source": "https://railway.com/pricing",
+  "currency": "USD",
+  "hoursPerMonth": 730,
+  "note": "Railway list prices on the date above. Railway bills usage by the minute; these are the monthly equivalents. Check current prices.",
+  "cpuPerVcpuMonth": 20,
+  "memoryPerGbMonth": 10,
+  "egressPerGb": 0.05,
+  "volumePerGbMonth": 0.15,
+  "proPlanMonthly": 20,
+  "proPlanCreditedAgainstUsage": true
+}

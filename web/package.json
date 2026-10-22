@@ -1,0 +1,47 @@
+{
+  "name": "@5050cloud/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:mocks": "VITE_MOCKS=1 vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "npm --prefix e2e test"
+  },
+  "dependencies": {
+    "@fontsource/inter": "5.2.5",
+    "@xyflow/react": "12.6.0",
+    "lucide-react": "0.511.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.30.0",
+    "recharts": "2.15.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/react": "18.3.20",
+    "@types/react-dom": "18.3.6",
+    "@vitejs/plugin-react": "4.4.1",
+    "autoprefixer": "10.4.21",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "globals": "17.13.0",
+    "msw": "2.15.0",
+    "postcss": "8.5.3",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.71.1",
+    "vite": "6.3.5",
+    "vitest": "3.2.7"
+  },
+  "license": "AGPL-3.0-only",
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+name: site
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "install/**"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build
+        run: |
+          cd site && npm ci --no-audit --no-fund && npm run build
+          cp ../install/install.sh dist/install.sh
+          # The latest release tag, read by 5050d's update check.
+          tag=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1) || true
+          if [ -n "$tag" ]; then echo "$tag" > dist/latest; echo "$tag" > dist/latest.txt; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

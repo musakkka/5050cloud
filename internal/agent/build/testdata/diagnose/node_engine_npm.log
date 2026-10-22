@@ -1,0 +1,7 @@
+npm error code EBADENGINE
+npm error engine Unsupported engine
+npm error engine Not compatible with your version of node/npm: a@1.0.0
+npm error notsup Not compatible with your version of node/npm: a@1.0.0
+npm error notsup Required: {"node":">=30"}
+npm error notsup Actual:   {"npm":"10.9.9","node":"v22.23.4"}
+npm error A complete log of this run can be found in: /root/.npm/_logs/2026-10-22T03_56_40_964Z-debug-0.log

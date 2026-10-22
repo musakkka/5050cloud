@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+
+/* Light theme: the same token names as the dark theme in src/index.css, so every
+   Tailwind class follows. html.light is set by kit/theme.ts. */
+html.light {
+  --foreground: hsl(250, 20%, 12%);
+  --background: hsl(240, 14%, 97%);
+  --secondaryBg: hsl(0, 0%, 100%);
+  --gray-50: hsl(240, 14%, 96%); --gray-100: hsl(240, 12%, 93%); --gray-200: hsl(240, 10%, 86%);
+  --gray-300: hsl(240, 8%, 74%); --gray-400: hsl(240, 6%, 60%); --gray-500: hsl(240, 5%, 46%);
+  --gray-600: hsl(240, 6%, 36%); --gray-700: hsl(240, 8%, 26%); --gray-800: hsl(240, 10%, 18%);
+  --gray-900: hsl(240, 12%, 12%); --gray-950: hsl(240, 14%, 8%);
+  --blue-50: hsl(220, 80%, 97%); --blue-100: hsl(220, 80%, 93%); --blue-200: hsl(220, 75%, 85%);
+  --blue-300: hsl(220, 70%, 72%); --blue-400: hsl(220, 70%, 60%); --blue-500: hsl(220, 72%, 50%);
+  --blue-600: hsl(220, 72%, 42%); --blue-700: hsl(220, 72%, 34%); --blue-800: hsl(220, 72%, 26%);
+  --blue-900: hsl(220, 72%, 18%); --blue-950: hsl(220, 72%, 10%);
+  --red-50: hsl(1, 80%, 97%); --red-100: hsl(1, 80%, 94%); --red-200: hsl(1, 75%, 86%);
+  --red-300: hsl(1, 70%, 76%); --red-400: hsl(1, 66%, 64%); --red-500: hsl(1, 62%, 52%);
+  --red-600: hsl(1, 62%, 42%); --red-700: hsl(1, 62%, 34%); --red-800: hsl(1, 62%, 26%);
+  --red-900: hsl(1, 62%, 18%); --red-950: hsl(1, 62%, 10%);
+  --pink-50: hsl(270, 80%, 97%); --pink-100: hsl(270, 75%, 94%); --pink-200: hsl(270, 70%, 87%);
+  --pink-300: hsl(270, 65%, 77%); --pink-400: hsl(270, 60%, 64%); --pink-500: hsl(270, 58%, 52%);
+  --pink-600: hsl(270, 58%, 44%); --pink-700: hsl(270, 58%, 36%); --pink-800: hsl(270, 58%, 28%);
+  --pink-900: hsl(270, 58%, 20%); --pink-950: hsl(270, 58%, 12%);
+  --green-50: hsl(152, 50%, 96%); --green-100: hsl(152, 45%, 91%); --green-200: hsl(152, 40%, 82%);
+  --green-300: hsl(152, 38%, 68%); --green-400: hsl(152, 38%, 52%); --green-500: hsl(152, 45%, 40%);
+  --green-600: hsl(152, 50%, 30%); --green-700: hsl(152, 50%, 24%); --green-800: hsl(152, 50%, 18%);
+  --green-900: hsl(152, 50%, 12%); --green-950: hsl(152, 50%, 8%);
+  --yellow-50: hsl(44, 90%, 96%); --yellow-100: hsl(44, 90%, 90%); --yellow-200: hsl(44, 85%, 80%);
+  --yellow-300: hsl(44, 80%, 66%); --yellow-400: hsl(44, 78%, 52%); --yellow-500: hsl(40, 80%, 44%);
+  --yellow-600: hsl(36, 80%, 34%); --yellow-700: hsl(36, 80%, 28%); --yellow-800: hsl(36, 80%, 22%);
+  --yellow-900: hsl(36, 80%, 16%); --yellow-950: hsl(36, 80%, 10%);
+  color-scheme: light;
+}
+html.light .dot-grid {
+  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 1a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z' fill='%23000' fill-opacity='.12'/%3E%3C/svg%3E");
+}
+html.light .text-success { color: hsl(152, 50%, 30%); }
+
+/* Staged changes use the purple family (SPEC 13.2). */
+.staged-ring { box-shadow: 0 0 0 2px var(--pink-500); border-color: var(--pink-500) !important; }
+.staged-strike { opacity: .45; text-decoration: line-through; }

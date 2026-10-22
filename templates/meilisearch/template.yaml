@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: MIT
+id: meilisearch
+name: Meilisearch
+tagline: Fast, typo-tolerant search engine with a simple API.
+description: >-
+  Meilisearch with its indexes on a volume. Use MEILI_MASTER_KEY to create
+  scoped API keys for your apps.
+docs: https://5050cloud.com/docs/templates/meilisearch
+icon: meilisearch.svg
+category: app
+inputs:
+  - name: MEILI_MASTER_KEY
+    label: Master key
+    description: Protects the API. Use it to create the keys your apps use.
+    generate: secret(32)
+    required: true
+    secret: true
+services:
+  - name: Meilisearch
+    domain: true
+    config:
+      name: Meilisearch
+      icon: meilisearch
+      kind: web
+      template: meilisearch
+      source:
+        type: image
+        image: getmeili/meilisearch:v1.54.3
+      deploy:
+        healthcheckPath: /health
+        singleton: true
+      networking:
+        port: 7700
+        privateName: meilisearch
+    variables:
+      MEILI_MASTER_KEY: ${{input.MEILI_MASTER_KEY}}
+      MEILI_ENV: production
+      MEILI_HTTP_ADDR: 0.0.0.0:7700
+      MEILI_NO_ANALYTICS: "true"
+    volume:
+      mountPath: /meili_data
+    backup:
+      kind: volume
+      runIn: job
+      backup: [/opt/5050/bin/backup-volume]
+      restore: [/opt/5050/bin/restore-volume]
+      retention: [/opt/5050/bin/retention-restic]

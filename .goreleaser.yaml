@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Release build (docs/SPEC.md 17.2 and 17.3). `make release-snapshot` runs it
+# locally, signed with the test key in e2e/keys; .github/workflows/release.yml
+# runs it on a v* tag, signed with the MINISIGN_KEY secret.
+version: 2
+project_name: "5050"
+
+before:
+  hooks:
+    - go mod download
+    - sh -c 'test -f web/dist/index.html || make dist-placeholder'
+    - sh -c 'mkdir -p .release && echo "v{{ .Version }}" > .release/latest.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot.{{ .ShortCommit }}"
+
+builds:
+  - id: 5050d
+    main: ./cmd/5050d
+    binary: 5050d
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: &ldflags
+      - -s -w
+      - -X github.com/musakkka/5050cloud/pkg/version.Version=v{{ .Version }}
+      - -X github.com/musakkka/5050cloud/pkg/version.Commit={{ .ShortCommit }}
+      - -X github.com/musakkka/5050cloud/pkg/version.Date={{ .Date }}
+  - id: 5050-agent
+    main: ./cmd/5050-agent
+    binary: 5050-agent
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: *ldflags
+  - id: cli-server
+    main: ./cmd/5050
+    binary: "5050"
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: *ldflags
+  - id: cli
+    main: ./cmd/5050
+    binary: "5050"
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags: [-trimpath]
+    ldflags: *ldflags
+
+archives:
+  - id: server
+    ids: [5050d, 5050-agent, cli-server]
+    name_template: "5050_{{ .Version }}_linux_{{ .Arch }}"
+    formats: [tar.gz]
+    files:
+      - LICENSE
+      - LICENSING.md
+      - src: install/systemd/*.service
+        dst: systemd
+        strip_parent: true
+  - id: cli
+    ids: [cli]
+    name_template: "5050-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - src: pkg/LICENSE
+        dst: LICENSE
+        strip_parent: true
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+  extra_files:
+    - glob: ./install/install.sh
+
+signs:
+  - id: minisign
+    artifacts: checksum
+    cmd: sh
+    args: ["e2e/scripts/sign-checksums.sh", "${artifact}"]
+    signature: "${artifact}.minisig"
+
+release:
+  github:
+    owner: musakkka
+    name: 5050cloud
+  draft: false
+  prerelease: auto
+  extra_files:
+    - glob: ./.release/latest.txt
+    - glob: ./install/install.sh
+
+changelog:
+  use: github
+  sort: asc
