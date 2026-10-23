@@ -44,8 +44,8 @@ export function demoSection(r, demo) {
     </div>
     <div class="mat demo-body">
       <video class="demo-video" controls muted playsinline preload="none" poster="${posterSrc}" width="${p.ratio[0]}" height="${p.ratio[1]}">
-        <source src="${r('/demo/5050cloud-demo.webm')}" type="video/webm">
         <source src="${r('/demo/5050cloud-demo.mp4')}" type="video/mp4">
+        <source src="${r('/demo/5050cloud-demo.webm')}" type="video/webm">
         <track kind="captions" src="${r('/demo/5050cloud-demo.en.vtt')}" srclang="en" label="English" default>
         ${demo.chapters ? `<track kind="chapters" src="${r('/demo/chapters.vtt')}" srclang="en" label="Chapters">` : ''}
       </video>
@@ -102,8 +102,8 @@ export function landing({ shell, rel, claims, pricing, bench, media, report, dem
     .map((c) => `<li><button type="button" class="step" data-at="${c.start}" data-end="${c.end}"><span class="step-bar" aria-hidden="true"></span><span class="step-text">${e(c.text)}</span></button></li>`)
     .join('');
   const heroVideo = `<video class="hero-video" muted loop playsinline preload="metadata" poster="${r(`/media/hero-poster-${hp.widths[hp.widths.length - 1]}.webp`)}" width="${hv.w}" height="${hv.h}" aria-label="${e(`A recording of the real console: ${raw('hero-recording').toLowerCase()}`)}" data-autoplay>
-<source src="${r('/media/hero.webm')}" type="video/webm">
 <source src="${r('/media/hero.mp4')}" type="video/mp4">
+<source src="${r('/media/hero.webm')}" type="video/webm">
 <track kind="captions" src="${r('/media/hero.en.vtt')}" srclang="en" label="English">
 <track kind="chapters" src="${r('/media/hero.chapters.vtt')}" srclang="en" label="Steps">
 </video>`;

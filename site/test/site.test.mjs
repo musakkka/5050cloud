@@ -120,9 +120,8 @@ test('the landing page is built around real product media', () => {
   assert.match(html, /<track kind="chapters" src="media\/hero\.chapters\.vtt"/);
   assert.match(html, /<details class="transcript"><summary>Read the steps<\/summary>/);
   for (const f of ['media/hero.en.vtt', 'media/hero.chapters.vtt']) assert.match(readFileSync(join(OUT, f), 'utf8'), /^WEBVTT\n/, f);
-  // The wordmark is text, not an invented logo mark (K1).
-  assert.match(html, /<span class="wordmark">5050cloud<\/span>/);
-  assert.doesNotMatch(html, /class="logo"/);
+  // The owner chose the 5050 logo over the text wordmark; the link names the site.
+  assert.match(html, /<a class="brand" href="[^"]*" aria-label="5050cloud home"><svg class="logo"/);
   // The hero recording: muted, looping, inline, with a poster and both formats,
   // and its steps (from the render's chapters) beside it as buttons.
   const allVideos = [...html.matchAll(/<video [^>]*>[\s\S]*?<\/video>/g)].map((m) => m[0]);

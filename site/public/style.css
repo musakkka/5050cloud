@@ -625,3 +625,7 @@ details:not([open]) > :not(summary) { display: none; }
 .docs:has(> .toc:empty) { max-width: calc(248px + 72ch + 48px + 2 * var(--margin)); }
 @media (max-width: 1200px) { .docs { max-width: calc(232px + 72ch + 48px + 2 * var(--margin)); } }
 @media (max-width: 900px) { .docs, .docs:has(> .toc:empty) { max-width: none; } }
+.logo { display: block; height: 34px; width: auto; margin: 5px 0; }
+.logo-a { fill: var(--accent); }
+.logo-b { fill: currentColor; }
+.foot .logo { height: 36px; }

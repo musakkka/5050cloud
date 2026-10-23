@@ -39,8 +39,8 @@ export function loop(r, media, { name, poster, label, cls = '', eager = false })
   const posterSrc = r(`/media/${poster}-${p.widths[p.widths.length - 1]}.webp`);
   return `<div class="loop ${cls}">
 <video class="loop-video" muted loop playsinline preload="none" poster="${posterSrc}" width="${v.w}" height="${v.h}" aria-label="${e(label)}" data-autoplay${eager ? ' data-eager' : ''}>
-<source src="${r(`/media/${name}.webm`)}" type="video/webm">
 <source src="${r(`/media/${name}.mp4`)}" type="video/mp4">
+<source src="${r(`/media/${name}.webm`)}" type="video/webm">
 </video>
 <button class="loop-toggle" type="button" hidden>Play</button>
 </div>`;
