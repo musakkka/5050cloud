@@ -629,9 +629,19 @@ details:not([open]) > :not(summary) { display: none; }
 .logo-a { fill: var(--accent); }
 .logo-b { fill: currentColor; }
 .foot .logo { height: 36px; }
-/* The hero recording always fits in one screen: its height is capped by the
-   viewport, and the frame narrows to keep 16:9. */
-@media (min-width: 721px) {
-  .hero-screen { max-width: min(100%, calc((100svh - 150px) * 16 / 9)); margin-inline: auto; }
-  .hero-cap { max-width: min(100%, calc((100svh - 150px) * 16 / 9)); margin-inline: auto; }
+/* Wide screens: the hero text and the recording sit side by side, so the
+   headline, the install command and the whole recording are seen together. */
+@media (min-width: 1101px) {
+  .hero-grid { align-items: center; }
+  .hero-text { display: flex; flex-direction: column; grid-column: 1 / span 5; grid-row: 1; }
+  .hero h1 { font-size: var(--step-head); max-width: 14ch; }
+  .hero .lead { margin-top: 20px; max-width: 40ch; }
+  .hero-cmd { margin-top: 28px; }
+  .hero-demo { grid-column: 6 / -1; grid-row: 1; margin-top: 0; }
+  .hero-note, .transcript { grid-column: 1 / -1; }
+  .step { font-size: var(--step-small); }
+}
+/* Medium screens: stacked, with the recording capped to one screen height. */
+@media (min-width: 721px) and (max-width: 1100px) {
+  .hero-screen, .hero-cap { max-width: min(100%, calc((100svh - 150px) * 16 / 9)); margin-inline: auto; }
 }
