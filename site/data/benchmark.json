@@ -1,13 +1,20 @@
 {
- "measured": "2026-10-22",
+ "measured": "2026-10-23",
  "source": "reference/design/benchmark.md in the 5050cloud repository, from the demo pipeline's make bench",
- "build": "a pre-release build of 5050cloud",
- "vm": "Ubuntu 24.04, 2 vCPU (AMD EPYC), 8 GB RAM, one host. lscpu: 1 core, 2 threads per core.",
+ "build": "5050cloud 0.1.1",
+ "vm": "Ubuntu 24.04, 8 vCPU (4 physical cores, 2 threads each, AMD EPYC), 32 GB RAM, one host.",
  "app": "apps/node-cpu: each request counts the primes below LIMIT on Node's main thread",
- "load": "oha 1.16.0 on the same VM through the HTTPS proxy, 16 connections, 15 s warm-up, median of 3 runs of 30 s",
+ "load": "oha 1.16.0 on the same VM through the HTTPS proxy, 32 connections, 15 s warm-up, median of 3 runs of 30 s",
  "rows": [
-  { "work": "60,000 primes per request (about 2 ms)", "off": 516, "on": 554, "offRuns": [514.8, 516.3, 517.7], "onRuns": [529.6, 553.8, 559.9] },
-  { "work": "300,000 primes per request (32 ms)", "off": 58.9, "on": 60.4, "offRuns": [58.9, 58.7, 58.9], "onRuns": [60.4, 60.8, 60.3] }
+  { "work": "300,000 primes per request (about 35 ms)", "off": 59.2, "on": 239, "offRuns": [59.0, 59.2, 60.0], "onRuns": [242.0, 238.8, 239.2] },
+  { "work": "60,000 primes per request", "off": 534, "on": 2232, "offRuns": [535.4, 534.2, 532.9], "onRuns": [2171.6, 2232.0, 2242.5] }
  ],
- "why": "The VM's two vCPUs are two hardware threads of one physical core, and this work keeps that core's divider busy, so a second process mostly waits for the same unit."
+ "earlier": {
+  "vm": "2 vCPU, 1 physical core with 2 threads",
+  "rows": [
+   { "work": "300,000 primes per request", "off": 58.9, "on": 60.4 },
+   { "work": "60,000 primes per request", "off": 516, "on": 554 }
+  ]
+ },
+ "why": "The gain is about the number of physical cores. On an earlier 2 vCPU VM whose two vCPUs were two threads of one core, the same test gained only 1.03x to 1.07x, because both processes shared one core's divider."
 }

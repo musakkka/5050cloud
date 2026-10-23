@@ -180,11 +180,11 @@
   },
   {
    "id": "bench",
-   "claim": "Use all cores, measured.",
+   "claim": "Use all cores, measured: 4.05x on a 4-core VM.",
    "evidence": [
     "bench:data/benchmark.json"
    ],
-   "condition": "2026-10-22, one 2 vCPU VM whose vCPUs are two threads of one core: 1.07x at 60,000 primes per request, 1.03x at 300,000. The page states the reason and that larger VMs are not measured."
+   "condition": "2026-10-23, one 8 vCPU VM with 4 physical cores: 4.05x at 300,000 primes per request (59.2 to 239 req/s) and 4.18x at 60,000 (534 to 2,232). An earlier 2 vCPU, 1-core run gained 1.03x and 1.07x, so the gain is about physical cores. One VM size, one day, one region."
   }
  ]
 }

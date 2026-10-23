@@ -120,7 +120,7 @@ export function landing({ shell, rel, claims, pricing, bench, media, report, dem
   ];
   const tabs = tour.map((t, i) => `<a class="tab" id="t-${t.id}" href="#p-${t.id}" role="tab" aria-controls="p-${t.id}" aria-selected="${i === 0}">${e(t.tab)}</a>`).join('');
   const benchLine = bench
-    ? ` <span class="bench-line">${e(raw('bench'))} On a 2 vCPU VM whose vCPUs are two threads of one core, a CPU-bound Node service went from ${bench.rows.map((x) => `${x.off} to ${x.on} req/s`).join(' and from ')} (${bench.rows.map((x) => `${(x.on / x.off).toFixed(2)}x`).join(', ')}). ${e(bench.why)} <a href="${r('/docs/guides/use-all-cores')}">How it was measured</a></span>`
+    ? ` <span class="bench-line">${e(raw('bench'))} On an 8 vCPU VM with 4 physical cores, a CPU-bound Node service went from ${bench.rows.map((x) => `${x.off} to ${x.on} req/s`).join(' and from ')} (${bench.rows.map((x) => `${(x.on / x.off).toFixed(2)}x`).join(', ')}). ${e(bench.why)} <a href="${r('/docs/guides/use-all-cores')}">How it was measured</a></span>`
     : '';
   const panels = tour
     .map((t, i) => `<div class="tour-panel" id="p-${t.id}" role="tabpanel" aria-labelledby="t-${t.id}"${i ? ' data-hidden' : ''}><figure>
