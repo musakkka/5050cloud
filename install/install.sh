@@ -113,7 +113,7 @@ FORCE=$(env_or FORCE)
 YES=$(env_or YES)
 BINARIES_CHANGED=""
 
-need_arg() { [ "$#" -ge 2 ] && [ -n "$2" ] || die "$1 needs a value."; }
+need_arg() { if [ "$#" -lt 2 ] || [ -z "$2" ]; then die "$1 needs a value."; fi; }
 while [ "$#" -gt 0 ]; do
 	case "$1" in
 	--version) need_arg "$@"; VERSION=$2; shift ;;
@@ -377,6 +377,7 @@ preflight() {
 	[ -r /etc/os-release ] || die "cannot read /etc/os-release."
 	# Read os-release in a subshell: it defines VERSION, which would replace
 	# the release version chosen with --version.
+	# shellcheck disable=SC1091
 	osr() { (. /etc/os-release && eval "printf '%s' \"\${$1:-}\""); }
 	OS_ID=$(osr ID)
 	OS_CODENAME=$(osr VERSION_CODENAME)
