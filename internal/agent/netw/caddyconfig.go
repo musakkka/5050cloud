@@ -66,7 +66,7 @@ func validDomain(d string) bool {
 			return false
 		}
 		for _, c := range label {
-			if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-') {
+			if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' {
 				return false
 			}
 		}
@@ -77,17 +77,20 @@ func validDomain(d string) bool {
 // normRoute is a validated route.
 type normRoute struct {
 	proto.Route
-	tls string // "acme" | "internal" | "off"
+	tls string // "acme" | "internal" | "off" | "pending"
 }
 
 func normalizeRoutes(in proto.Ingress) ([]normRoute, []error) {
 	var errs []error
 	var out []normRoute
 	seen := map[string]bool{}
-	all := append([]proto.Route{}, in.Routes...)
+	// The console comes first so a service route with the same name can
+	// never take it over.
+	var all []proto.Route
 	if in.Console != nil {
 		all = append(all, *in.Console)
 	}
+	all = append(all, in.Routes...)
 	for _, r := range all {
 		r.Domain = strings.ToLower(strings.TrimSpace(r.Domain))
 		if !validDomain(r.Domain) {
@@ -106,7 +109,7 @@ func normalizeRoutes(in proto.Ingress) ([]normRoute, []error) {
 		switch t {
 		case "", "acme":
 			t = "acme"
-		case "internal", "off":
+		case "internal", "off", "pending":
 		default:
 			errs = append(errs, fmt.Errorf("the route for %s asks for TLS mode %q, which is not acme, internal or off; using acme", r.Domain, r.TLS))
 			t = "acme"
@@ -217,7 +220,10 @@ func renderCaddy(p caddyParams, in proto.Ingress) ([]byte, []error) {
 	for _, r := range routes {
 		h := proxyHandler(r, p, delay)
 		switch r.tls {
-		case "off":
+		case "off", "pending":
+			// "pending" is a custom domain whose DNS does not point here
+			// yet: served on :80 (the challenge path exists) but kept out
+			// of the ACME policy until the control plane sees the record.
 			httpRoutes = append(httpRoutes, hostRoute([]string{r.Domain}, h))
 		case "internal":
 			internalDomains = append(internalDomains, r.Domain)

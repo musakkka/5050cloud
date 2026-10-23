@@ -5,6 +5,7 @@ package netw
 import (
 	"context"
 	"errors"
+	"net/netip"
 	"strings"
 	"testing"
 
@@ -124,11 +125,26 @@ func TestRestoreOnlySkipsDockerAndDNS(t *testing.T) {
 }
 
 func TestRestoreEntryPoint(t *testing.T) {
-	// Without iptables on the test machine Restore must fail with a sentence,
-	// not panic, and must not need Docker.
-	err := Restore(context.Background(), Options{DataDir: t.TempDir()}, proto.DesiredState{Networks: testNets()})
+	// Without iptables Restore must fail with a sentence, not panic, and must
+	// not need Docker. The test is hermetic: it hides every executable (so the
+	// result does not depend on the machine) and uses no host names (so it
+	// does not depend on DNS).
+	t.Setenv("PATH", t.TempDir())
+	nets := testNets()
+	for i := range nets {
+		var keep []string
+		for _, e := range nets[i].EgressAllow {
+			if _, err := netip.ParseAddr(e); err == nil {
+				keep = append(keep, e)
+			} else if _, err := netip.ParsePrefix(e); err == nil {
+				keep = append(keep, e)
+			}
+		}
+		nets[i].EgressAllow = keep
+	}
+	err := Restore(context.Background(), Options{DataDir: t.TempDir()}, proto.DesiredState{Networks: nets})
 	if err == nil {
-		t.Skip("iptables is available here; the integration test covers Restore")
+		t.Fatal("Restore succeeded without iptables")
 	}
 	if !strings.Contains(err.Error(), "iptables") && !strings.Contains(err.Error(), "firewall") {
 		t.Errorf("err = %v", err)

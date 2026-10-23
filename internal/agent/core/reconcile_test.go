@@ -53,6 +53,9 @@ func TestReconcileCreatesReplica(t *testing.T) {
 		st, ok := c.lastStatus(t, "rep_1")
 		return ok && st.State == "healthy"
 	})
+	// state_applied is sent after apply returns and the cache is saved, while
+	// health checks run concurrently, so wait for it instead of reading once.
+	waitFor(t, "state_applied", func() bool { return len(c.of(proto.TStateApplied)) > 0 })
 	applied := c.of(proto.TStateApplied)
 	if len(applied) != 1 || decodeAs[proto.StateApplied](t, applied[0]).Generation != 1 {
 		t.Fatalf("state_applied = %+v", applied)

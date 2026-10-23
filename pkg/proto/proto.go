@@ -129,6 +129,8 @@ const (
 
 	// a> the ACME primary ingress host issued or renewed a certificate (CertIssued)
 	TCertIssued = "cert_issued"
+	// a> the ACME primary's certificate states changed (CertStatus)
+	TCertStatus = "cert_status"
 	// cp> new host token over the open socket (TokenRotate); a> ack after it is on disk
 	TTokenRotate = "token_rotate"
 	// cp> host maintenance order (Maintenance, 9.16); a> ack when done
@@ -417,7 +419,7 @@ type Route struct {
 	// "svc-abc.upstream.5050"). Caddy's dynamic "a" upstream reads it every second.
 	UpstreamName string `json:"upstreamName"`
 	Port         int    `json:"port"` // target port on the replicas
-	TLS          string `json:"tls"`  // "acme" | "internal" | "off"
+	TLS          string `json:"tls"`  // "acme" | "internal" | "off" | "pending" (served on :80, no certificate yet)
 	ServiceID    string `json:"serviceId"`
 	// Panic is set when every running replica fails its health check: the
 	// route then keeps all running replicas instead of none (7.4).
@@ -443,6 +445,18 @@ type CertBundle struct {
 // CertIssued is sent by the ACME primary after it obtains or renews a certificate.
 type CertIssued struct {
 	CertBundle
+}
+
+// CertStatus is sent by the ACME primary when any domain's certificate state
+// changes. Domains holds every domain it manages; Error is Caddy's last
+// issuance error sentence while Status is "error".
+type CertStatus struct {
+	Domains map[string]CertDomainState `json:"domains"`
+}
+
+type CertDomainState struct {
+	Status string `json:"status"` // "issuing" | "active" | "error"
+	Error  string `json:"error,omitempty"`
 }
 
 type TCPProxy struct {

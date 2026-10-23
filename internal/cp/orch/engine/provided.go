@@ -3,7 +3,6 @@
 package engine
 
 import (
-	"io/fs"
 	"strconv"
 	"strings"
 
@@ -208,8 +207,6 @@ func startArgv(cmd string) []string {
 	return out
 }
 
-func readFS(f fs.FS, name string) ([]byte, error) { return fs.ReadFile(f, name) }
-
 // leadingAssign reports whether a command starts with NAME=value.
 func leadingAssign(cmd string) bool {
 	first, _, _ := strings.Cut(cmd, " ")
@@ -218,7 +215,7 @@ func leadingAssign(cmd string) bool {
 		return false
 	}
 	for i, r := range name {
-		if r != '_' && !(r >= 'A' && r <= 'Z') && !(r >= 'a' && r <= 'z') && (i == 0 || r < '0' || r > '9') {
+		if r != '_' && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && (i == 0 || r < '0' || r > '9') {
 			return false
 		}
 	}

@@ -106,7 +106,7 @@ func (o *Orchestrator) VolumeRuntime(ctx context.Context, envID, serviceID strin
 	h, err := hub.LoadHost(ctx, o.db, hostID)
 	if err != nil {
 		vr.HostLost = true
-		return vr, nil
+		return vr, nil //nolint:nilerr // a lost host is reported through HostLost
 	}
 	vr.HostName = h.Name
 	vr.HostLost = h.State == sched.StateLost

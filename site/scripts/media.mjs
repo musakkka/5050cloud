@@ -38,11 +38,12 @@ const BRAND = resolve(arg('--brand', join(SITE, '..', '5050cloud-brand')));
 const HERO = resolve(arg('--hero', join(SITE, '..', '5050cloud-demo', 'work', 'hero')));
 // The loop starts at the first console step: the install command is printed
 // as text right beside it, so the recording does not open on a terminal. The
-// poster is the moment DATABASE_URL is set to ${{Postgres.DATABASE_URL}}, with
-// the reference suggested as it is typed: a readable piece of the console, and
-// the Railway syntax the page is about.
+// poster is a frame from the middle of the loop (seconds into the encoded
+// video), at the moment both services are deployed on the whole canvas, so the
+// project name and the sidebar are in view and the frame is not cropped. The
+// loop itself opens on an empty canvas, which is a poor first impression.
 const HERO_FROM = arg('--hero-from', 'image');
-const HERO_POSTER_AT = Number(arg('--hero-poster-at', '22'));
+const HERO_POSTER_AT = Number(arg('--hero-poster-at', '11.5'));
 // The phone picture: the same dialog from the capture itself (3200 x 1800),
 // cropped to the dialog so its text stays readable at 390 px.
 const HERO_PHONE = { take: join(HERO, '..', 'takes-hero', 'deploy', 'frames', '000076.jpg'), crop: { x: 1060, y: 548, w: 1080, h: 810 } };
@@ -239,7 +240,7 @@ async function main() {
 }
 
 // heroLoop encodes the hero recording at 1280x720 and 30 fps (MP4 and WebM),
-// takes its poster from the variables step, and reads its chapters, which the
+// takes its poster from the middle of the loop, and reads its chapters, which the
 // page shows as the list of steps beside the video.
 async function heroLoop(media, toWebp) {
   const master = join(HERO, 'master.mkv');
@@ -258,8 +259,8 @@ async function heroLoop(media, toWebp) {
     media.videos[v] = { w, h, duration: Math.round(duration * 10) / 10, bytes: statSync(join(OUT, v)).size };
   }
   const png = join(tmpdir(), `5050site-hero-poster-${process.pid}.png`);
-  ff('-ss', String(HERO_POSTER_AT), '-i', master, '-frames:v', '1', png);
-  media.posters['hero-poster'] = still(png, 'hero-poster', null, [800, 1600], toWebp);
+  ff('-ss', String(HERO_POSTER_AT), '-i', join(OUT, 'hero.mp4'), '-frames:v', '1', png);
+  media.posters['hero-poster'] = still(png, 'hero-poster', null, [800, 1280], toWebp);
   if (!existsSync(HERO_PHONE.take)) throw new Error(`no hero take frame at ${HERO_PHONE.take}`);
   media.posters['hero-phone'] = still(HERO_PHONE.take, 'hero-phone', HERO_PHONE.crop, [720, 1080], toWebp);
   const runFile = join(HERO, '..', 'run.json');

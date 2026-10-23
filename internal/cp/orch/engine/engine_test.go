@@ -70,8 +70,9 @@ func TestJoinAndConnect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer resp.Body.Close()
 	var jr proto.JoinResponse
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		var b bytes.Buffer
 		_, _ = b.ReadFrom(resp.Body)
 		t.Fatalf("join: %d %s", resp.StatusCode, b.String())
@@ -79,13 +80,12 @@ func TestJoinAndConnect(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&jr); err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
 	if jr.HostID == "" || jr.HostToken == "" {
 		t.Fatalf("join response incomplete: %+v", jr)
 	}
 
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/api/agent/v1/connect"
-	c, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer " + jr.HostToken}}})
+	c, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer " + jr.HostToken}}}) //nolint:bodyclose // the websocket library owns the response body
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestJoinAndConnect(t *testing.T) {
 	seen := map[string]bool{}
 	rctx, rcancel := context.WithTimeout(ctx, 10*time.Second)
 	defer rcancel()
-	for !(seen[proto.THelloAck] && seen[proto.TDesired]) {
+	for !seen[proto.THelloAck] || !seen[proto.TDesired] {
 		typ, b, err := c.Read(rctx)
 		if err != nil {
 			t.Fatalf("read: %v (seen %v)", err, seen)

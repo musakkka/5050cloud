@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: MIT
+#
+# After a release is published: update the Homebrew tap and push the CLI
+# image. A release made by the release workflow's GITHUB_TOKEN does not fire
+# `release` events for other workflows, so this runs on workflow_run.
+#
+# Needs the TAP_TOKEN secret: a fine-grained token with contents: write on
+# musakkka/homebrew-tap only.
+name: cli-dist
+on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release tag (vX.Y.Z)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - id: v
+        env:
+          FROM_INPUT: ${{ github.event.inputs.version }}
+          FROM_RUN: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          v=${FROM_INPUT:-$FROM_RUN}
+          [[ "$v" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::$v is not a release tag"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if [[ "$v" == *-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+
+  tap:
+    needs: version
+    if: needs.version.outputs.prerelease == 'false'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          path: src
+          ref: ${{ needs.version.outputs.version }}
+          persist-credentials: false
+      - uses: actions/checkout@v4.2.2
+        with:
+          repository: musakkka/homebrew-tap
+          path: tap
+          token: ${{ secrets.TAP_TOKEN }}
+      - name: Write the formula
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          git -C tap config user.name "github-actions[bot]"
+          git -C tap config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          sh src/packaging/homebrew/update-tap.sh --version "$VERSION" --tap tap --push
+
+  image:
+    needs: version
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ needs.version.outputs.version }}
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@v3.6.0
+      - uses: docker/setup-buildx-action@v3.10.0
+      - uses: docker/login-action@v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tags
+        id: tags
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          tags="ghcr.io/musakkka/5050-cli:$VERSION"
+          if [ "$PRERELEASE" = false ]; then tags="$tags,ghcr.io/musakkka/5050-cli:latest"; fi
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6.15.0
+        with:
+          context: .
+          file: packaging/docker/Dockerfile.cli
+          platforms: linux/amd64,linux/arm64
+          build-args: VERSION=${{ needs.version.outputs.version }}
+          tags: ${{ steps.tags.outputs.tags }}
+          push: true

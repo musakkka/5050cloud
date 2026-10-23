@@ -40,7 +40,7 @@ func (a *Agent) diskMounts() []string {
 	if st, err := os.Stat("/data"); err == nil && st.IsDir() && !sample.SameDevice("/", "/data") {
 		mounts = append(mounts, "/data")
 	}
-	if a.o.DataDir != "" && !sample.SameDevice("/", a.o.DataDir) && !(len(mounts) > 1 && sample.SameDevice("/data", a.o.DataDir)) {
+	if a.o.DataDir != "" && !sample.SameDevice("/", a.o.DataDir) && (len(mounts) <= 1 || !sample.SameDevice("/data", a.o.DataDir)) {
 		mounts = append(mounts, a.o.DataDir)
 	}
 	return mounts

@@ -12,10 +12,10 @@ func Statfs(path string) (used, total int64, err error) {
 	if err := syscall.Statfs(path, &st); err != nil {
 		return 0, 0, err
 	}
-	bs := int64(st.Bsize)
-	total = int64(st.Blocks) * bs
+	bs := int64(st.Bsize)         //nolint:unconvert // the field is int32 on some platforms
+	total = int64(st.Blocks) * bs //nolint:unconvert // the field type differs by platform
 	// Use what an unprivileged writer would see: total minus available.
-	used = total - int64(st.Bavail)*bs
+	used = total - int64(st.Bavail)*bs //nolint:unconvert // the field type differs by platform
 	return used, total, nil
 }
 

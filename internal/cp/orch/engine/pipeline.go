@@ -5,7 +5,6 @@ package engine
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -1645,9 +1644,4 @@ func (o *Orchestrator) deliverBuild(res proto.BuildResult) bool {
 	default:
 	}
 	return true
-}
-
-func mustJSON(v any) json.RawMessage {
-	b, _ := json.Marshal(v)
-	return b
 }

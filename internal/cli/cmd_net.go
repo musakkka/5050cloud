@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -33,19 +34,88 @@ func (a *App) printDomain(d api.Domain) error {
 	if d.Message != "" {
 		a.printf("%s\n", d.Message)
 	}
+	if d.CertExpiresAt > 0 && d.CertOK {
+		a.printf("Certificate valid until %s\n", time.UnixMilli(d.CertExpiresAt).UTC().Format("2006-01-02"))
+	}
 	if d.Kind == "custom" && !d.DNSOK && len(d.DNS) > 0 {
-		a.printf("Add one of these DNS records:\n")
-		rows := [][]string{{"TYPE", "NAME", "VALUE"}}
+		a.printf("Add these DNS records (an A record to each address, or a CNAME where your provider allows it):\n")
+		rows := [][]string{{"TYPE", "HOST", "NAME", "VALUE"}}
 		for _, r := range d.DNS {
-			rows = append(rows, []string{r.Type, r.Name, r.Value})
+			host := r.Host
+			if host == "" {
+				host = r.Name
+			}
+			rows = append(rows, []string{r.Type, host, r.Name, r.Value})
 		}
 		a.table(a.Out, rows)
+		for _, r := range d.DNS {
+			if r.Note != "" {
+				a.printf("%s record: %s\n", r.Type, r.Note)
+			}
+		}
+	}
+	return nil
+}
+
+// Polling cadence and cap for `5050 domain --wait`.
+var (
+	domainPollEvery = 5 * time.Second
+	domainPollMax   = 5 * time.Minute
+)
+
+// waitDomain re-checks a domain until it is active or its certificate fails.
+// It returns the last state it saw.
+func (a *App) waitDomain(ctx context.Context, t *Target, d api.Domain) (api.Domain, error) {
+	deadline := time.Now().Add(domainPollMax)
+	for {
+		if d.Status == "active" || d.Status == "error" {
+			return d, nil
+		}
+		if !a.JSON {
+			a.printf("Waiting: %s (%s)\n", d.Status, d.Message)
+		}
+		if time.Now().After(deadline) {
+			return d, fmt.Errorf("%s is still %s after %s. Run `5050 domain status %s` to look again", d.Domain, d.Status, domainPollMax, d.Domain)
+		}
+		select {
+		case <-ctx.Done():
+			return d, ctx.Err()
+		case <-time.After(domainPollEvery):
+		}
+		var out api.Domain
+		if err := t.C.Do(ctx, "POST", "/domains/"+d.ID+"/check", nil, &out); err != nil {
+			return d, err
+		}
+		d = out
+	}
+}
+
+// finishDomain prints a domain and, with wait, follows it to a final state.
+func (a *App) finishDomain(ctx context.Context, t *Target, d api.Domain, wait bool) error {
+	if !wait {
+		return a.printDomain(d)
+	}
+	if !a.JSON {
+		if err := a.printDomain(d); err != nil {
+			return err
+		}
+	}
+	d, err := a.waitDomain(ctx, t, d)
+	if err != nil {
+		return err
+	}
+	if err := a.printDomain(d); err != nil {
+		return err
+	}
+	if d.Status == "error" {
+		return fmt.Errorf("the certificate for %s failed", d.Domain)
 	}
 	return nil
 }
 
 func (a *App) cmdDomain() *cobra.Command {
 	var port int
+	var wait bool
 	c := &cobra.Command{
 		Use:   "domain [DOMAIN]",
 		Short: "No argument: generate a domain; with one: add a custom domain and print the DNS records",
@@ -64,10 +134,11 @@ func (a *App) cmdDomain() *cobra.Command {
 			if err := t.C.Do(ctx, "POST", svcPath(t)+"/domains", req, &d); err != nil {
 				return err
 			}
-			return a.printDomain(d)
+			return a.finishDomain(ctx, t, d, wait)
 		},
 	}
 	c.Flags().IntVar(&port, "port", 0, "target port (default: the service's port)")
+	c.Flags().BoolVar(&wait, "wait", false, "wait until the domain is active or its certificate fails (up to 5 minutes)")
 	withDomain := func(use, short string, fn func(ctx context.Context, t *Target, d api.Domain) error) *cobra.Command {
 		return &cobra.Command{
 			Use: use, Short: short, Args: cobra.ExactArgs(1),
@@ -118,13 +189,15 @@ func (a *App) cmdDomain() *cobra.Command {
 		a.printf("Deleted %s\n", d.Domain)
 		return nil
 	})
+	var statusWait bool
 	status := withDomain("status DOMAIN", "Check DNS and the certificate of a domain", func(ctx context.Context, t *Target, d api.Domain) error {
 		var out api.Domain
 		if err := t.C.Do(ctx, "POST", "/domains/"+d.ID+"/check", nil, &out); err != nil {
 			return err
 		}
-		return a.printDomain(out)
+		return a.finishDomain(ctx, t, out, statusWait)
 	})
+	status.Flags().BoolVar(&statusWait, "wait", false, "wait until the domain is active or its certificate fails (up to 5 minutes)")
 	var newPort int
 	update := withDomain("update DOMAIN", "Change the target port of a domain", func(ctx context.Context, t *Target, d api.Domain) error {
 		if newPort == 0 {

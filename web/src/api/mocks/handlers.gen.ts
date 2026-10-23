@@ -211,10 +211,15 @@ export const handlers: RequestHandler[] = [
       "backupsReady": true,
       "baseDomain": "app-x7k2.203-0-113-7.sslip.io",
       "buildTimeoutMin": 1,
+      "cloudflareRanges": [
+        "example"
+      ],
       "consoleUrl": "https://console.example.com/",
       "githubApp": true,
       "latestVersion": "v0.1.0",
       "name": "api",
+      "oldConsoleDomain": "app-x7k2.203-0-113-7.sslip.io",
+      "oldConsoleUntil": 1,
       "publicIp": "203.0.113.7",
       "railwayAliases": true,
       "readOnly": true,
@@ -249,10 +254,15 @@ export const handlers: RequestHandler[] = [
       "backupsReady": true,
       "baseDomain": "app-x7k2.203-0-113-7.sslip.io",
       "buildTimeoutMin": 1,
+      "cloudflareRanges": [
+        "example"
+      ],
       "consoleUrl": "https://console.example.com/",
       "githubApp": true,
       "latestVersion": "v0.1.0",
       "name": "api",
+      "oldConsoleDomain": "app-x7k2.203-0-113-7.sslip.io",
+      "oldConsoleUntil": 1,
       "publicIp": "203.0.113.7",
       "railwayAliases": true,
       "readOnly": true,
@@ -289,10 +299,15 @@ export const handlers: RequestHandler[] = [
       "backupsReady": true,
       "baseDomain": "app-x7k2.203-0-113-7.sslip.io",
       "buildTimeoutMin": 1,
+      "cloudflareRanges": [
+        "example"
+      ],
       "consoleUrl": "https://console.example.com/",
       "githubApp": true,
       "latestVersion": "v0.1.0",
       "name": "api",
+      "oldConsoleDomain": "app-x7k2.203-0-113-7.sslip.io",
+      "oldConsoleUntil": 1,
       "publicIp": "203.0.113.7",
       "railwayAliases": true,
       "readOnly": true,
@@ -329,10 +344,15 @@ export const handlers: RequestHandler[] = [
       "backupsReady": true,
       "baseDomain": "app-x7k2.203-0-113-7.sslip.io",
       "buildTimeoutMin": 1,
+      "cloudflareRanges": [
+        "example"
+      ],
       "consoleUrl": "https://console.example.com/",
       "githubApp": true,
       "latestVersion": "v0.1.0",
       "name": "api",
+      "oldConsoleDomain": "app-x7k2.203-0-113-7.sslip.io",
+      "oldConsoleUntil": 1,
       "publicIp": "203.0.113.7",
       "railwayAliases": true,
       "readOnly": true,
@@ -349,6 +369,8 @@ export const handlers: RequestHandler[] = [
       ],
       "version": "v0.1.0"
     },
+    "needTotp": true,
+    "ticket": "example",
     "user": {
       "createdAt": 1767225600000,
       "disabled": true,
@@ -360,7 +382,7 @@ export const handlers: RequestHandler[] = [
       "role": "owner",
       "totpEnabled": true
     }
-  } satisfies T.Me)),
+  } satisfies T.LoginResponse)),
   http.post("*/api/v1/auth/verify-email", () => new HttpResponse(null, { status: 204 })),
   http.get("*/api/v1/me", () => HttpResponse.json({
     "install": {
@@ -368,10 +390,15 @@ export const handlers: RequestHandler[] = [
       "backupsReady": true,
       "baseDomain": "app-x7k2.203-0-113-7.sslip.io",
       "buildTimeoutMin": 1,
+      "cloudflareRanges": [
+        "example"
+      ],
       "consoleUrl": "https://console.example.com/",
       "githubApp": true,
       "latestVersion": "v0.1.0",
       "name": "api",
+      "oldConsoleDomain": "app-x7k2.203-0-113-7.sslip.io",
+      "oldConsoleUntil": 1,
       "publicIp": "203.0.113.7",
       "railwayAliases": true,
       "readOnly": true,
@@ -552,10 +579,15 @@ export const handlers: RequestHandler[] = [
       "backupsReady": true,
       "baseDomain": "app-x7k2.203-0-113-7.sslip.io",
       "buildTimeoutMin": 1,
+      "cloudflareRanges": [
+        "example"
+      ],
       "consoleUrl": "https://console.example.com/",
       "githubApp": true,
       "latestVersion": "v0.1.0",
       "name": "api",
+      "oldConsoleDomain": "app-x7k2.203-0-113-7.sslip.io",
+      "oldConsoleUntil": 1,
       "publicIp": "203.0.113.7",
       "railwayAliases": true,
       "readOnly": true,
@@ -616,10 +648,15 @@ export const handlers: RequestHandler[] = [
     "backupsReady": true,
     "baseDomain": "app-x7k2.203-0-113-7.sslip.io",
     "buildTimeoutMin": 1,
+    "cloudflareRanges": [
+      "example"
+    ],
     "consoleUrl": "https://console.example.com/",
     "githubApp": true,
     "latestVersion": "v0.1.0",
     "name": "api",
+    "oldConsoleDomain": "app-x7k2.203-0-113-7.sslip.io",
+    "oldConsoleUntil": 1,
     "publicIp": "203.0.113.7",
     "railwayAliases": true,
     "readOnly": true,
@@ -641,10 +678,15 @@ export const handlers: RequestHandler[] = [
     "backupsReady": true,
     "baseDomain": "app-x7k2.203-0-113-7.sslip.io",
     "buildTimeoutMin": 1,
+    "cloudflareRanges": [
+      "example"
+    ],
     "consoleUrl": "https://console.example.com/",
     "githubApp": true,
     "latestVersion": "v0.1.0",
     "name": "api",
+    "oldConsoleDomain": "app-x7k2.203-0-113-7.sslip.io",
+    "oldConsoleUntil": 1,
     "publicIp": "203.0.113.7",
     "railwayAliases": true,
     "readOnly": true,
@@ -1565,7 +1607,9 @@ export const handlers: RequestHandler[] = [
             "cloudflare": true,
             "dns": [
               {
+                "host": "app-x7k2.203-0-113-7.sslip.io",
                 "name": "api",
+                "note": "example",
                 "type": "example",
                 "value": "example"
               }
@@ -1873,7 +1917,7 @@ export const handlers: RequestHandler[] = [
     "id": "id_01jexample0000000000000000",
     "message": "Example sentence."
   } satisfies T.CommitDetail)),
-  http.get("*/api/v1/events", () => new HttpResponse("event: message\ndata: {\"activity\":{\"actor\":\"example\",\"id\":\"id_01jexample0000000000000000\",\"kind\":\"example\",\"ref\":\"example\",\"serviceId\":\"id_01jexample0000000000000000\",\"status\":\"ok\",\"text\":\"Example sentence.\",\"ts\":1767225600000},\"changesCount\":1,\"deployment\":{\"active\":true,\"actor\":\"example\",\"canRollback\":true,\"commit\":{\"author\":\"example\",\"branch\":\"example\",\"message\":\"Example sentence.\",\"sha\":\"example\",\"time\":1767225600000,\"url\":\"https://console.example.com/\"},\"createdAt\":1767225600000,\"diagnosis\":\"Example sentence.\",\"digest\":\"example\",\"environmentId\":\"id_01jexample0000000000000000\",\"finishedAt\":1767225600000,\"id\":\"id_01jexample0000000000000000\",\"image\":\"example\",\"label\":\"example\",\"message\":\"Example sentence.\",\"reason\":\"Example sentence.\",\"restarts\":1,\"rollbackOf\":\"example\",\"serviceId\":\"id_01jexample0000000000000000\",\"startedAt\":1767225600000,\"status\":\"SUCCESS\",\"steps\":[{\"detail\":\"example\",\"finishedAt\":1767225600000,\"name\":\"api\",\"startedAt\":1767225600000,\"state\":\"ok\"}],\"trigger\":\"example\"},\"environmentId\":\"id_01jexample0000000000000000\",\"groups\":[{\"icon\":\"example\",\"id\":\"id_01jexample0000000000000000\",\"name\":\"api\",\"parent\":\"example\",\"services\":[\"example\"]}],\"host\":{\"acmePrimary\":true,\"arch\":\"example\",\"conflicts\":[{\"ip\":\"203.0.113.7\",\"machineId\":\"id_01jexample0000000000000000\",\"seenAt\":1767225600000,\"wgPublicKey\":\"example\"}],\"cpuUsed\":0.5,\"cpus\":1,\"disks\":[{\"mount\":\"example\",\"total\":1,\"used\":1}],\"egressIp\":\"203.0.113.7\",\"id\":\"id_01jexample0000000000000000\",\"lastSeen\":1767225600000,\"memBytes\":1,\"memUsed\":1,\"meshIp\":\"203.0.113.7\",\"name\":\"api\",\"os\":\"example\",\"publicIp\":\"203.0.113.7\",\"rebootRequired\":true,\"replicas\":1,\"reserveMb\":1,\"reservedMb\":1,\"roles\":[\"example\"],\"state\":\"ok\",\"unreachable\":[\"example\"],\"version\":\"v0.1.0\",\"warnings\":[\"example\"]},\"install\":{\"acmeEmail\":\"ada@example.com\",\"backupsReady\":true,\"baseDomain\":\"app-x7k2.203-0-113-7.sslip.io\",\"buildTimeoutMin\":1,\"consoleUrl\":\"https://console.example.com/\",\"githubApp\":true,\"latestVersion\":\"v0.1.0\",\"name\":\"api\",\"publicIp\":\"203.0.113.7\",\"railwayAliases\":true,\"readOnly\":true,\"registryCapPct\":1,\"requireTotp\":true,\"restore\":{\"snapshotAt\":1767225600000,\"unknownHosts\":1,\"unknownReplicas\":1},\"smtpReady\":true,\"trustedProxies\":[\"example\"],\"version\":\"v0.1.0\"},\"notification\":{\"id\":\"id_01jexample0000000000000000\",\"kind\":\"example\",\"link\":\"https://console.example.com/\",\"readAt\":1767225600000,\"ref\":\"example\",\"text\":\"Example sentence.\",\"ts\":1767225600000},\"origin\":\"example\",\"positions\":{\"example\":[0.5,0.5]},\"presence\":[{\"cursor\":[0.5,0.5],\"lastSeen\":1767225600000,\"name\":\"api\",\"userId\":\"id_01jexample0000000000000000\"}],\"service\":{\"activeDeployment\":\"example\",\"config\":{\"build\":{\"buildCommand\":\"example\",\"builder\":\"example\",\"configPath\":\"example\",\"dockerfilePath\":\"example\",\"nixpacksCompat\":true,\"noCache\":true,\"railpackVersion\":\"v0.1.0\",\"timeoutMin\":1,\"watchPaths\":[\"example\"]},\"deploy\":{\"cpuLimit\":0.5,\"cronOverlap\":\"example\",\"cronSchedule\":\"example\",\"cronTimeoutSec\":1,\"cronTimezone\":\"example\",\"drainingSec\":1,\"healthcheckPath\":\"example\",\"healthcheckTimeoutSec\":1,\"maxSurge\":\"example\",\"memoryLimitMb\":1,\"memoryReservationMb\":1,\"overlapSec\":1,\"placement\":{\"hosts\":[\"example\"],\"roles\":[\"example\"]},\"preDeployCommand\":\"example\",\"preDeployTimeoutSec\":1,\"processes\":\"example\",\"replicas\":1,\"restartMaxRetries\":1,\"restartPolicy\":\"example\",\"runAsUser\":\"example\",\"shmSizeMb\":1,\"singleton\":true,\"startCommand\":\"example\"},\"icon\":\"example\",\"kind\":\"web\",\"name\":\"api\",\"networking\":{\"allowMetadata\":true,\"port\":1,\"privateName\":\"api\",\"publicAccess\":true},\"source\":{\"autoDeploy\":true,\"branch\":\"example\",\"image\":\"example\",\"registryCredential\":\"example\",\"repo\":\"example\",\"rootDir\":\"example\",\"type\":\"example\",\"waitForCi\":true},\"template\":\"example\",\"templateVersion\":\"v0.1.0\"},\"configFile\":{\"commitSha\":\"example\",\"format\":\"example\",\"path\":\"example\",\"url\":\"https://console.example.com/\"},\"createdAt\":1767225600000,\"domains\":[{\"certExpiresAt\":1767225600000,\"certOk\":true,\"cloudflare\":true,\"dns\":[{\"name\":\"api\",\"type\":\"example\",\"value\":\"example\"}],\"dnsOk\":true,\"domain\":\"app-x7k2.203-0-113-7.sslip.io\",\"id\":\"id_01jexample0000000000000000\",\"kind\":\"example\",\"message\":\"Example sentence.\",\"port\":1,\"serviceId\":\"id_01jexample0000000000000000\",\"status\":\"ok\"}],\"environmentId\":\"id_01jexample0000000000000000\",\"id\":\"id_01jexample0000000000000000\",\"kind\":\"web\",\"listeningPorts\":[1],\"monitorFiring\":true,\"outboundIps\":[\"203.0.113.7\"],\"privateDomain\":\"app-x7k2.203-0-113-7.sslip.io\",\"processes\":1,\"processesText\":\"example\",\"projectId\":\"id_01jexample0000000000000000\",\"replicas\":[{\"deploymentId\":\"id_01jexample0000000000000000\",\"hostId\":\"id_01jexample0000000000000000\",\"hostName\":\"api\",\"id\":\"id_01jexample0000000000000000\",\"note\":\"example\",\"restarts\":1,\"singleton\":true,\"startedAt\":1767225600000,\"state\":\"ok\"}],\"source\":{\"example\":\"example\"},\"staged\":{\"build\":{\"buildCommand\":\"example\",\"builder\":\"example\",\"configPath\":\"example\",\"dockerfilePath\":\"example\",\"nixpacksCompat\":true,\"noCache\":true,\"railpackVersion\":\"v0.1.0\",\"timeoutMin\":1,\"watchPaths\":[\"example\"]},\"deploy\":{\"cpuLimit\":0.5,\"cronOverlap\":\"example\",\"cronSchedule\":\"example\",\"cronTimeoutSec\":1,\"cronTimezone\":\"example\",\"drainingSec\":1,\"healthcheckPath\":\"example\",\"healthcheckTimeoutSec\":1,\"maxSurge\":\"example\",\"memoryLimitMb\":1,\"memoryReservationMb\":1,\"overlapSec\":1,\"placement\":{\"hosts\":[\"example\"],\"roles\":[\"example\"]},\"preDeployCommand\":\"example\",\"preDeployTimeoutSec\":1,\"processes\":\"example\",\"replicas\":1,\"restartMaxRetries\":1,\"restartPolicy\":\"example\",\"runAsUser\":\"example\",\"shmSizeMb\":1,\"singleton\":true,\"startCommand\":\"example\"},\"icon\":\"example\",\"kind\":\"web\",\"name\":\"api\",\"networking\":{\"allowMetadata\":true,\"port\":1,\"privateName\":\"api\",\"publicAccess\":true},\"source\":{\"autoDeploy\":true,\"branch\":\"example\",\"image\":\"example\",\"registryCredential\":\"example\",\"repo\":\"example\",\"rootDir\":\"example\",\"type\":\"example\",\"waitForCi\":true},\"template\":\"example\",\"templateVersion\":\"v0.1.0\"},\"stagedAction\":\"example\",\"status\":\"online\",\"statusText\":\"example\",\"tcpProxies\":[{\"address\":\"example\",\"hostPort\":1,\"id\":\"id_01jexample0000000000000000\",\"targetPort\":1}],\"volume\":{\"alertAtPct\":1,\"hostId\":\"id_01jexample0000000000000000\",\"hostLost\":true,\"hostName\":\"api\",\"id\":\"id_01jexample0000000000000000\",\"mountPath\":\"example\",\"name\":\"api\",\"serviceId\":\"id_01jexample0000000000000000\",\"staged\":\"example\",\"usedBytes\":1}},\"serviceId\":\"id_01jexample0000000000000000\",\"type\":\"example\"}\n\n", { headers: { "content-type": "text/event-stream" } })),
+  http.get("*/api/v1/events", () => new HttpResponse("event: message\ndata: {\"activity\":{\"actor\":\"example\",\"id\":\"id_01jexample0000000000000000\",\"kind\":\"example\",\"ref\":\"example\",\"serviceId\":\"id_01jexample0000000000000000\",\"status\":\"ok\",\"text\":\"Example sentence.\",\"ts\":1767225600000},\"changesCount\":1,\"deployment\":{\"active\":true,\"actor\":\"example\",\"canRollback\":true,\"commit\":{\"author\":\"example\",\"branch\":\"example\",\"message\":\"Example sentence.\",\"sha\":\"example\",\"time\":1767225600000,\"url\":\"https://console.example.com/\"},\"createdAt\":1767225600000,\"diagnosis\":\"Example sentence.\",\"digest\":\"example\",\"environmentId\":\"id_01jexample0000000000000000\",\"finishedAt\":1767225600000,\"id\":\"id_01jexample0000000000000000\",\"image\":\"example\",\"label\":\"example\",\"message\":\"Example sentence.\",\"reason\":\"Example sentence.\",\"restarts\":1,\"rollbackOf\":\"example\",\"serviceId\":\"id_01jexample0000000000000000\",\"startedAt\":1767225600000,\"status\":\"SUCCESS\",\"steps\":[{\"detail\":\"example\",\"finishedAt\":1767225600000,\"name\":\"api\",\"startedAt\":1767225600000,\"state\":\"ok\"}],\"trigger\":\"example\"},\"environmentId\":\"id_01jexample0000000000000000\",\"groups\":[{\"icon\":\"example\",\"id\":\"id_01jexample0000000000000000\",\"name\":\"api\",\"parent\":\"example\",\"services\":[\"example\"]}],\"host\":{\"acmePrimary\":true,\"arch\":\"example\",\"conflicts\":[{\"ip\":\"203.0.113.7\",\"machineId\":\"id_01jexample0000000000000000\",\"seenAt\":1767225600000,\"wgPublicKey\":\"example\"}],\"cpuUsed\":0.5,\"cpus\":1,\"disks\":[{\"mount\":\"example\",\"total\":1,\"used\":1}],\"egressIp\":\"203.0.113.7\",\"id\":\"id_01jexample0000000000000000\",\"lastSeen\":1767225600000,\"memBytes\":1,\"memUsed\":1,\"meshIp\":\"203.0.113.7\",\"name\":\"api\",\"os\":\"example\",\"publicIp\":\"203.0.113.7\",\"rebootRequired\":true,\"replicas\":1,\"reserveMb\":1,\"reservedMb\":1,\"roles\":[\"example\"],\"state\":\"ok\",\"unreachable\":[\"example\"],\"version\":\"v0.1.0\",\"warnings\":[\"example\"]},\"install\":{\"acmeEmail\":\"ada@example.com\",\"backupsReady\":true,\"baseDomain\":\"app-x7k2.203-0-113-7.sslip.io\",\"buildTimeoutMin\":1,\"cloudflareRanges\":[\"example\"],\"consoleUrl\":\"https://console.example.com/\",\"githubApp\":true,\"latestVersion\":\"v0.1.0\",\"name\":\"api\",\"oldConsoleDomain\":\"app-x7k2.203-0-113-7.sslip.io\",\"oldConsoleUntil\":1,\"publicIp\":\"203.0.113.7\",\"railwayAliases\":true,\"readOnly\":true,\"registryCapPct\":1,\"requireTotp\":true,\"restore\":{\"snapshotAt\":1767225600000,\"unknownHosts\":1,\"unknownReplicas\":1},\"smtpReady\":true,\"trustedProxies\":[\"example\"],\"version\":\"v0.1.0\"},\"notification\":{\"id\":\"id_01jexample0000000000000000\",\"kind\":\"example\",\"link\":\"https://console.example.com/\",\"readAt\":1767225600000,\"ref\":\"example\",\"text\":\"Example sentence.\",\"ts\":1767225600000},\"origin\":\"example\",\"positions\":{\"example\":[0.5,0.5]},\"presence\":[{\"cursor\":[0.5,0.5],\"lastSeen\":1767225600000,\"name\":\"api\",\"userId\":\"id_01jexample0000000000000000\"}],\"service\":{\"activeDeployment\":\"example\",\"config\":{\"build\":{\"buildCommand\":\"example\",\"builder\":\"example\",\"configPath\":\"example\",\"dockerfilePath\":\"example\",\"nixpacksCompat\":true,\"noCache\":true,\"railpackVersion\":\"v0.1.0\",\"timeoutMin\":1,\"watchPaths\":[\"example\"]},\"deploy\":{\"cpuLimit\":0.5,\"cronOverlap\":\"example\",\"cronSchedule\":\"example\",\"cronTimeoutSec\":1,\"cronTimezone\":\"example\",\"drainingSec\":1,\"healthcheckPath\":\"example\",\"healthcheckTimeoutSec\":1,\"maxSurge\":\"example\",\"memoryLimitMb\":1,\"memoryReservationMb\":1,\"overlapSec\":1,\"placement\":{\"hosts\":[\"example\"],\"roles\":[\"example\"]},\"preDeployCommand\":\"example\",\"preDeployTimeoutSec\":1,\"processes\":\"example\",\"replicas\":1,\"restartMaxRetries\":1,\"restartPolicy\":\"example\",\"runAsUser\":\"example\",\"shmSizeMb\":1,\"singleton\":true,\"startCommand\":\"example\"},\"icon\":\"example\",\"kind\":\"web\",\"name\":\"api\",\"networking\":{\"allowMetadata\":true,\"port\":1,\"privateName\":\"api\",\"publicAccess\":true},\"source\":{\"autoDeploy\":true,\"branch\":\"example\",\"image\":\"example\",\"registryCredential\":\"example\",\"repo\":\"example\",\"rootDir\":\"example\",\"type\":\"example\",\"waitForCi\":true},\"template\":\"example\",\"templateVersion\":\"v0.1.0\"},\"configFile\":{\"commitSha\":\"example\",\"format\":\"example\",\"path\":\"example\",\"url\":\"https://console.example.com/\"},\"createdAt\":1767225600000,\"domains\":[{\"certExpiresAt\":1767225600000,\"certOk\":true,\"cloudflare\":true,\"dns\":[{\"host\":\"app-x7k2.203-0-113-7.sslip.io\",\"name\":\"api\",\"note\":\"example\",\"type\":\"example\",\"value\":\"example\"}],\"dnsOk\":true,\"domain\":\"app-x7k2.203-0-113-7.sslip.io\",\"id\":\"id_01jexample0000000000000000\",\"kind\":\"example\",\"message\":\"Example sentence.\",\"port\":1,\"serviceId\":\"id_01jexample0000000000000000\",\"status\":\"ok\"}],\"environmentId\":\"id_01jexample0000000000000000\",\"id\":\"id_01jexample0000000000000000\",\"kind\":\"web\",\"listeningPorts\":[1],\"monitorFiring\":true,\"outboundIps\":[\"203.0.113.7\"],\"privateDomain\":\"app-x7k2.203-0-113-7.sslip.io\",\"processes\":1,\"processesText\":\"example\",\"projectId\":\"id_01jexample0000000000000000\",\"replicas\":[{\"deploymentId\":\"id_01jexample0000000000000000\",\"hostId\":\"id_01jexample0000000000000000\",\"hostName\":\"api\",\"id\":\"id_01jexample0000000000000000\",\"note\":\"example\",\"restarts\":1,\"singleton\":true,\"startedAt\":1767225600000,\"state\":\"ok\"}],\"source\":{\"example\":\"example\"},\"staged\":{\"build\":{\"buildCommand\":\"example\",\"builder\":\"example\",\"configPath\":\"example\",\"dockerfilePath\":\"example\",\"nixpacksCompat\":true,\"noCache\":true,\"railpackVersion\":\"v0.1.0\",\"timeoutMin\":1,\"watchPaths\":[\"example\"]},\"deploy\":{\"cpuLimit\":0.5,\"cronOverlap\":\"example\",\"cronSchedule\":\"example\",\"cronTimeoutSec\":1,\"cronTimezone\":\"example\",\"drainingSec\":1,\"healthcheckPath\":\"example\",\"healthcheckTimeoutSec\":1,\"maxSurge\":\"example\",\"memoryLimitMb\":1,\"memoryReservationMb\":1,\"overlapSec\":1,\"placement\":{\"hosts\":[\"example\"],\"roles\":[\"example\"]},\"preDeployCommand\":\"example\",\"preDeployTimeoutSec\":1,\"processes\":\"example\",\"replicas\":1,\"restartMaxRetries\":1,\"restartPolicy\":\"example\",\"runAsUser\":\"example\",\"shmSizeMb\":1,\"singleton\":true,\"startCommand\":\"example\"},\"icon\":\"example\",\"kind\":\"web\",\"name\":\"api\",\"networking\":{\"allowMetadata\":true,\"port\":1,\"privateName\":\"api\",\"publicAccess\":true},\"source\":{\"autoDeploy\":true,\"branch\":\"example\",\"image\":\"example\",\"registryCredential\":\"example\",\"repo\":\"example\",\"rootDir\":\"example\",\"type\":\"example\",\"waitForCi\":true},\"template\":\"example\",\"templateVersion\":\"v0.1.0\"},\"stagedAction\":\"example\",\"status\":\"online\",\"statusText\":\"example\",\"tcpProxies\":[{\"address\":\"example\",\"hostPort\":1,\"id\":\"id_01jexample0000000000000000\",\"targetPort\":1}],\"volume\":{\"alertAtPct\":1,\"hostId\":\"id_01jexample0000000000000000\",\"hostLost\":true,\"hostName\":\"api\",\"id\":\"id_01jexample0000000000000000\",\"mountPath\":\"example\",\"name\":\"api\",\"serviceId\":\"id_01jexample0000000000000000\",\"staged\":\"example\",\"usedBytes\":1}},\"serviceId\":\"id_01jexample0000000000000000\",\"type\":\"example\"}\n\n", { headers: { "content-type": "text/event-stream" } })),
   http.get("*/api/v1/environments/:eid/shared-variables", () => HttpResponse.json({
     "provided": [
       "example"
@@ -2194,7 +2238,9 @@ export const handlers: RequestHandler[] = [
             "cloudflare": true,
             "dns": [
               {
+                "host": "app-x7k2.203-0-113-7.sslip.io",
                 "name": "api",
+                "note": "example",
                 "type": "example",
                 "value": "example"
               }
@@ -2417,7 +2463,9 @@ export const handlers: RequestHandler[] = [
         "cloudflare": true,
         "dns": [
           {
+            "host": "app-x7k2.203-0-113-7.sslip.io",
             "name": "api",
+            "note": "example",
             "type": "example",
             "value": "example"
           }
@@ -2638,7 +2686,9 @@ export const handlers: RequestHandler[] = [
         "cloudflare": true,
         "dns": [
           {
+            "host": "app-x7k2.203-0-113-7.sslip.io",
             "name": "api",
+            "note": "example",
             "type": "example",
             "value": "example"
           }
@@ -2859,7 +2909,9 @@ export const handlers: RequestHandler[] = [
         "cloudflare": true,
         "dns": [
           {
+            "host": "app-x7k2.203-0-113-7.sslip.io",
             "name": "api",
+            "note": "example",
             "type": "example",
             "value": "example"
           }
@@ -3080,7 +3132,9 @@ export const handlers: RequestHandler[] = [
         "cloudflare": true,
         "dns": [
           {
+            "host": "app-x7k2.203-0-113-7.sslip.io",
             "name": "api",
+            "note": "example",
             "type": "example",
             "value": "example"
           }
@@ -3841,7 +3895,9 @@ export const handlers: RequestHandler[] = [
       "cloudflare": true,
       "dns": [
         {
+          "host": "app-x7k2.203-0-113-7.sslip.io",
           "name": "api",
+          "note": "example",
           "type": "example",
           "value": "example"
         }
@@ -3862,7 +3918,9 @@ export const handlers: RequestHandler[] = [
     "cloudflare": true,
     "dns": [
       {
+        "host": "app-x7k2.203-0-113-7.sslip.io",
         "name": "api",
+        "note": "example",
         "type": "example",
         "value": "example"
       }
@@ -3882,7 +3940,9 @@ export const handlers: RequestHandler[] = [
     "cloudflare": true,
     "dns": [
       {
+        "host": "app-x7k2.203-0-113-7.sslip.io",
         "name": "api",
+        "note": "example",
         "type": "example",
         "value": "example"
       }
@@ -3903,7 +3963,9 @@ export const handlers: RequestHandler[] = [
     "cloudflare": true,
     "dns": [
       {
+        "host": "app-x7k2.203-0-113-7.sslip.io",
         "name": "api",
+        "note": "example",
         "type": "example",
         "value": "example"
       }
@@ -3923,7 +3985,9 @@ export const handlers: RequestHandler[] = [
     "cloudflare": true,
     "dns": [
       {
+        "host": "app-x7k2.203-0-113-7.sslip.io",
         "name": "api",
+        "note": "example",
         "type": "example",
         "value": "example"
       }
@@ -4455,7 +4519,9 @@ export const handlers: RequestHandler[] = [
             "cloudflare": true,
             "dns": [
               {
+                "host": "app-x7k2.203-0-113-7.sslip.io",
                 "name": "api",
+                "note": "example",
                 "type": "example",
                 "value": "example"
               }

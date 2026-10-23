@@ -146,15 +146,23 @@ func (s *Server) table() map[string]handler {
 		if err != nil {
 			return nil, err
 		}
-		u, err := c.ResetPassword(ctxOf(x), req.Token, req.Password)
+		u, ticket, err := c.ResetPassword(ctxOf(x), req.Token, req.Password)
 		if err != nil {
 			return nil, err
+		}
+		if ticket != "" {
+			// The account has a second factor: finish through /auth/login/totp.
+			return api.LoginResponse{NeedTOTP: true, Ticket: ticket}, nil
 		}
 		x.A = core.Actor{UserID: u.ID, Email: u.Email, Role: u.Role}
 		if err := s.setSession(x.W, x.R, u.ID); err != nil {
 			return nil, err
 		}
-		return c.Me(ctxOf(x), u.ID)
+		me, err := c.Me(ctxOf(x), u.ID)
+		if err != nil {
+			return nil, err
+		}
+		return api.LoginResponse{User: &me.User, Install: &me.Install}, nil
 	})
 	add("POST /auth/verify-email", func(x *Ctx) (any, error) {
 		req, err := body[api.VerifyEmailRequest](x)

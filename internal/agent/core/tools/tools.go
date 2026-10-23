@@ -203,7 +203,7 @@ func extract(archive, member, dir string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		defer gz.Close()
+		defer func() { _ = gz.Close() }()
 		r = gz
 	}
 	want := path.Clean(strings.TrimPrefix(member, "./"))

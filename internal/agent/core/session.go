@@ -69,8 +69,9 @@ func WebSocketURL(control string) (string, error) {
 }
 
 // HTTPClient returns a client that trusts the system roots plus caPEM, and
-// when pin is set ("sha256:<hex>") accepts a certificate chain containing a
-// certificate with that SHA-256 fingerprint even if no root signs it.
+// when pin is set ("sha256:<hex>") accepts a server certificate with that
+// SHA-256 fingerprint, or one signed by a certificate with it, even if no root
+// signs it (see verifyPinned).
 func HTTPClient(caPEM []byte, pin string) (*http.Client, error) {
 	cfg := &tls.Config{MinVersion: tls.VersionTLS12}
 	if len(caPEM) > 0 {
@@ -90,19 +91,49 @@ func HTTPClient(caPEM []byte, pin string) (*http.Client, error) {
 			return nil, fmt.Errorf("the certificate pin %q must look like sha256:<64 hex characters>", pin)
 		}
 		cfg.InsecureSkipVerify = true // replaced by the pin check below
-		cfg.VerifyConnection = func(cs tls.ConnectionState) error {
-			for _, c := range cs.PeerCertificates {
-				sum := sha256.Sum256(c.Raw)
-				if hex.EncodeToString(sum[:]) == want {
-					return nil
-				}
-			}
-			return errors.New("the console certificate does not match the pinned fingerprint")
-		}
+		cfg.VerifyConnection = func(cs tls.ConnectionState) error { return verifyPinned(cs, want) }
 	}
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.TLSClientConfig = cfg
 	return &http.Client{Transport: tr, Timeout: 0}, nil
+}
+
+// verifyPinned accepts a connection when the server's leaf certificate has the
+// pinned fingerprint, or when a certificate with that fingerprint signs the
+// chain: the pinned certificate becomes the only trust root and the leaf must
+// verify against it for the requested host name. A pinned certificate that
+// merely appears in the chain (it is public) is not enough.
+func verifyPinned(cs tls.ConnectionState, want string) error {
+	if len(cs.PeerCertificates) == 0 {
+		return errors.New("the console sent no certificate")
+	}
+	fp := func(c *x509.Certificate) string {
+		sum := sha256.Sum256(c.Raw)
+		return hex.EncodeToString(sum[:])
+	}
+	leaf := cs.PeerCertificates[0]
+	if fp(leaf) == want {
+		return nil
+	}
+	roots := x509.NewCertPool()
+	inter := x509.NewCertPool()
+	pinned := false
+	for _, c := range cs.PeerCertificates[1:] {
+		if fp(c) == want {
+			roots.AddCert(c)
+			pinned = true
+		} else {
+			inter.AddCert(c)
+		}
+	}
+	if pinned {
+		_, err := leaf.Verify(x509.VerifyOptions{Roots: roots, Intermediates: inter, DNSName: cs.ServerName})
+		if err == nil {
+			return nil
+		}
+		return fmt.Errorf("the console certificate is not signed by the pinned certificate: %w", err)
+	}
+	return errors.New("the console certificate does not match the pinned fingerprint")
 }
 
 // connectLoop keeps one connection up, reconnecting with exponential

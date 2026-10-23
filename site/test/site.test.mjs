@@ -114,7 +114,7 @@ test('the landing page is built around real product media', () => {
   assert.doesNotMatch(html, /media\/logs-/);
   // The hero's poster and phone picture are real, readable console frames, and
   // the recording has a captions track, a steps track and a transcript.
-  assert.match(html, /poster="media\/hero-poster-1600\.webp"/);
+  assert.match(html, /poster="media\/hero-poster-1280\.webp"/);
   assert.match(html, /media\/hero-phone-720\.avif/);
   assert.match(html, /<track kind="captions" src="media\/hero\.en\.vtt"/);
   assert.match(html, /<track kind="chapters" src="media\/hero\.chapters\.vtt"/);

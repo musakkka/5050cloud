@@ -60,7 +60,7 @@ func (d *Data) WipeVolume(ctx context.Context, envID, serviceID, actor string) e
 		if _, err := d.run.Deploy(ctx, cpapi.DeployInput{EnvID: envID, ServiceID: serviceID, Trigger: "redeploy", Actor: actor,
 			Message: "Volume wiped"}); err != nil {
 			if wipeErr != nil {
-				return fmt.Errorf("%v The service could not be started again either: %w", wipeErr, err)
+				return fmt.Errorf("%w The service could not be started again either: %w", wipeErr, err)
 			}
 			return fmt.Errorf("The volume was wiped, but the service could not be started again: %w", err)
 		}

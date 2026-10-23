@@ -178,6 +178,19 @@ func TestSpecHashIgnoresRuntimeOnlyFields(t *testing.T) {
 	}
 }
 
+// Dropping the probe port of a worker (Port 0, 5050.port label kept) must
+// not recreate its container.
+func TestSpecHashWorkerWithoutProbePort(t *testing.T) {
+	a := worker("rep_1")
+	a.Port = 8080
+	a.Labels = map[string]string{"5050.port": "8080"}
+	b := a
+	b.Port = 0
+	if SpecHash(a) != SpecHash(b) {
+		t.Fatal("dropping the probe port changed the hash")
+	}
+}
+
 func TestRestartPolicyMapping(t *testing.T) {
 	cases := map[string]engine.Restart{
 		"always":     {Name: "unless-stopped"},

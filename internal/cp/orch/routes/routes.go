@@ -130,11 +130,17 @@ func Compute(services []Service) Output {
 			if port == 0 {
 				port = s.Port
 			}
+			mode := TLSMode(d.Domain)
+			if mode == "acme" && d.Kind == "custom" && !d.DNSOK {
+				// Hold the certificate request until the name points here:
+				// every failed validation counts against the CA's limits.
+				mode = "pending"
+			}
 			out.Routes = append(out.Routes, proto.Route{
 				Domain:       strings.ToLower(d.Domain),
 				UpstreamName: name,
 				Port:         port,
-				TLS:          TLSMode(d.Domain),
+				TLS:          mode,
 				ServiceID:    s.Snap.ServiceID,
 				Panic:        panic,
 			})

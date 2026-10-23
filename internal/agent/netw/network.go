@@ -171,7 +171,7 @@ func (n *Net) applyMeshLocked(m proto.Mesh) error {
 		n.peers = map[string]string{}
 		d, err := n.meshDriverLocked()
 		if err != nil {
-			return nil // no mesh support and no mesh wanted
+			return nil //nolint:nilerr // no mesh support and no mesh wanted
 		}
 		return d.DeleteLink(MeshInterface)
 	}
@@ -378,6 +378,6 @@ func (n *Net) Close() error {
 func Restore(ctx context.Context, o Options, st proto.DesiredState) error {
 	o.RestoreOnly = true
 	n := newNet(o)
-	defer n.Close()
+	defer func() { _ = n.Close() }()
 	return n.Apply(ctx, st.Host, st.Mesh, st.Networks, nil)
 }

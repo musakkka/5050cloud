@@ -17,7 +17,7 @@ Proxy your domains through Cloudflare while 5050cloud keeps issuing certificates
 2. Add the records 5050cloud shows for each name: an A record to your ingress host's IP, or a CNAME to the service's generated name.
 3. Set **Proxy status** to **Proxied** for the names you want behind Cloudflare.
 
-5050cloud notices a proxied record and shows, next to the domain: "This record points at Cloudflare's proxy. Set SSL mode to Full (strict)."
+5050cloud notices a proxied record and shows, next to the domain: "Cloudflare proxy detected: set SSL/TLS mode to Full (strict), and turn off Always Use HTTPS until this domain is Active."
 
 ## SSL/TLS mode
 
@@ -36,20 +36,15 @@ Pick one way through:
 
 If a certificate failed, fix the setting, then select **Retry certificate** in the service's **Settings**, **Networking**, or run `5050 domain certificate retry shop.example.com`. Renewals use the same challenge, so keep a way through, for example a Cloudflare rule that skips the HTTPS redirect for `/.well-known/acme-challenge/*`.
 
-> **Not yet:** the console's Cloudflare note does not mention **Always Use HTTPS**, and a failed certificate stays on **Issuing certificate** instead of showing Cloudflare's reason. [What is not in this release](/docs/reference/honest-limits#not-yet).
-
 ## Real client IPs
 
 Behind the proxy, every request comes from a Cloudflare address. Tell 5050cloud which addresses to trust, so it takes the visitor's IP from the `X-Forwarded-For` header for those sources only:
 
-1. Copy Cloudflare's current IPv4 ranges from their published list at `https://www.cloudflare.com/ips-v4`.
-2. In the console, go to **Settings**, **General**.
-3. Paste the ranges into **Trusted proxies**, one per line, for example `173.245.48.0/20`.
-4. Select **Save**.
+1. In the console, go to **Settings**, **General**.
+2. Under **Trusted proxies**, select **Use Cloudflare ranges**. It adds Cloudflare's IPv4 and IPv6 ranges, one per line.
+3. Select **Save**.
 
-Compare the list with Cloudflare's page now and then, and update it when theirs changes.
-
-> **Not yet:** there is no button that fills **Trusted proxies** with Cloudflare's ranges, so paste them by hand. [What is not in this release](/docs/reference/honest-limits#not-yet).
+The list is the one 5050cloud ships. Compare it with Cloudflare's page at `https://www.cloudflare.com/ips` now and then, and add any range that is missing.
 
 ## The console behind Cloudflare
 

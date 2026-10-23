@@ -249,7 +249,7 @@ func (a *App) cmdOpen() *cobra.Command {
 			}
 			if err := openBrowser(u); err != nil {
 				a.printf("%s\n", u)
-				return nil
+				return nil //nolint:nilerr // the URL was printed instead
 			}
 			a.printf("Opened %s\n", u)
 			return nil

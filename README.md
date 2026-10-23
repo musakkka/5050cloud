@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="site/public/brand/lockup-on-dark.svg">
+    <img src="site/public/brand/lockup.svg" alt="5050cloud" width="280">
+  </picture>
+</p>
+
 # 5050cloud
 
 Railway's developer experience on servers you own.

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 # Creates the release signing key (docs/SPEC.md 9.16 and 17.3) and embeds
-# its public key in install/install.sh and internal/upgrade/release-keys.txt.
+# its public key in install/install.sh, install/install-cli.sh and internal/upgrade/release-keys.txt.
 #
 #   e2e/scripts/release-key.sh OUT_DIR          new current key
 #   e2e/scripts/release-key.sh --next OUT_DIR   announce a next key
@@ -32,8 +32,10 @@ grep '^#' "$root/internal/upgrade/release-keys.txt" | grep -v 'No release key\|r
 for k in $keys; do echo "$k" >>"$tmp"; done
 mv "$tmp" "$root/internal/upgrade/release-keys.txt"
 chmod 0644 "$root/internal/upgrade/release-keys.txt"
-sed "s|^RELEASE_PUBKEYS=.*|RELEASE_PUBKEYS=\"$keys\"|" "$root/install/install.sh" >"$root/install/install.sh.new"
-mv "$root/install/install.sh.new" "$root/install/install.sh"
-chmod 0755 "$root/install/install.sh"
+for f in install/install.sh install/install-cli.sh; do
+	sed "s|^RELEASE_PUBKEYS=.*|RELEASE_PUBKEYS=\"$keys\"|" "$root/$f" >"$root/$f.new"
+	mv "$root/$f.new" "$root/$f"
+	chmod 0755 "$root/$f"
+done
 echo "Public key: $pub"
 echo "Secret key: $out/release.key. Store it as the MINISIGN_KEY secret (gh secret set MINISIGN_KEY < $out/release.key), then delete it."

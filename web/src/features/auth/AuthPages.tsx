@@ -128,8 +128,24 @@ export function ForgotPage() {
 export function ResetPage() {
   const { token = "" } = useParams();
   const [password, setPassword] = useState("");
+  const [ticket, setTicket] = useState<string>();
+  const [code, setCode] = useState("");
   const done = useSignedIn();
-  const s = useSubmit(async () => done(await api.reset(token, password)));
+  const s = useSubmit(async () => {
+    if (ticket) { done(await api.loginTotp(ticket, code.replace(/\s/g, ""))); return; }
+    const r = await api.reset(token, password);
+    if (r.needTotp && r.ticket) { setTicket(r.ticket); return; }
+    if (r.user && r.install) done({ user: r.user, install: r.install });
+  });
+  if (ticket) return (
+    <Card title="Two-factor code" sub="Your password is changed. Enter the 6-digit code from your authenticator app, or a recovery code, to sign in.">
+      <form onSubmit={s.onSubmit} className="space-y-4">
+        <Field label="Code"><Input required autoFocus inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} /></Field>
+        <ErrorLine error={s.error} />
+        <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Verify</Button>
+      </form>
+    </Card>
+  );
   return (
     <Card title="Choose a new password">
       <form onSubmit={s.onSubmit} className="space-y-4">

@@ -8,15 +8,10 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"net/http"
-	"net/http/httptest"
 	"sort"
-	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/coder/websocket"
 
 	"github.com/musakkka/5050cloud/internal/agent/agentapi"
 	"github.com/musakkka/5050cloud/internal/agent/core/engine"
@@ -226,7 +221,7 @@ func newTestAgentIn(t *testing.T, dir string, eng *engine.Fake, key []byte, mod 
 		a.stopAllFollowers()
 		a.regFront.close()
 		time.Sleep(10 * time.Millisecond)
-		a.logs.Close()
+		_ = a.logs.Close()
 	})
 	ta.Agent = a
 	return ta
@@ -259,21 +254,6 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 		time.Sleep(2 * time.Millisecond)
 	}
 	t.Fatalf("timed out waiting for %s", what)
-}
-
-// frames decodes every envelope queued on s so far.
-func frames(s *session) []proto.Envelope {
-	var out []proto.Envelope
-	for {
-		select {
-		case b := <-s.ctl:
-			var env proto.Envelope
-			_ = json.Unmarshal(b, &env)
-			out = append(out, env)
-		default:
-			return out
-		}
-	}
 }
 
 // collector keeps every frame a session sent, in order.
@@ -354,112 +334,6 @@ func baseState(gen int64, reps ...proto.ReplicaSpec) proto.DesiredState {
 		Networks: []proto.Network{{EnvironmentID: "env_1", Name: "5050-env_1", Subnet: "10.129.4.0/24", Gateway: "10.129.4.1", Egress: "allowed"}},
 		Replicas: reps,
 	}
-}
-
-// fakeCP is a control plane speaking the agent protocol over a real WebSocket.
-type fakeCP struct {
-	t         *testing.T
-	srv       *httptest.Server
-	mu        sync.Mutex
-	hellos    []proto.Hello
-	got       []proto.Envelope
-	tokens    []string
-	conns     []*websocket.Conn
-	onHello   func(c *websocket.Conn, h proto.Hello)
-	closeWith string // close every connection right after hello with this reason
-}
-
-func newFakeCP(t *testing.T) *fakeCP {
-	cp := &fakeCP{t: t}
-	cp.srv = httptest.NewServer(http.HandlerFunc(cp.serve))
-	t.Cleanup(cp.srv.Close)
-	return cp
-}
-
-func (cp *fakeCP) serve(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/api/agent/v1/connect" {
-		http.NotFound(w, r)
-		return
-	}
-	c, err := websocket.Accept(w, r, nil)
-	if err != nil {
-		return
-	}
-	c.SetReadLimit(proto.MaxMessageBytes)
-	cp.mu.Lock()
-	cp.tokens = append(cp.tokens, strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-	cp.conns = append(cp.conns, c)
-	closeWith := cp.closeWith
-	cp.mu.Unlock()
-	ctx := r.Context()
-	_, b, err := c.Read(ctx)
-	if err != nil {
-		return
-	}
-	var env proto.Envelope
-	_ = json.Unmarshal(b, &env)
-	var h proto.Hello
-	_ = json.Unmarshal(env.D, &h)
-	cp.mu.Lock()
-	cp.hellos = append(cp.hellos, h)
-	cp.mu.Unlock()
-	if closeWith != "" {
-		_ = c.Close(websocket.StatusPolicyViolation, closeWith)
-		return
-	}
-	cp.send(c, proto.THelloAck, "", proto.HelloAck{HostID: h.HostID, ServerVersion: "v0.1.0", ProtocolVersion: proto.ProtocolVersion, Epoch: "ep1"})
-	if cp.onHello != nil {
-		cp.onHello(c, h)
-	}
-	for {
-		typ, b, err := c.Read(ctx)
-		if err != nil {
-			return
-		}
-		if typ != websocket.MessageText {
-			continue
-		}
-		var env proto.Envelope
-		_ = json.Unmarshal(b, &env)
-		cp.mu.Lock()
-		cp.got = append(cp.got, env)
-		cp.mu.Unlock()
-	}
-}
-
-func (cp *fakeCP) send(c *websocket.Conn, typ, id string, v any) {
-	b, _ := encodeEnvelope(typ, id, "", v)
-	_ = c.Write(context.Background(), websocket.MessageText, b)
-}
-
-func (cp *fakeCP) of(typ string) []proto.Envelope {
-	cp.mu.Lock()
-	defer cp.mu.Unlock()
-	var out []proto.Envelope
-	for _, e := range cp.got {
-		if e.T == typ {
-			out = append(out, e)
-		}
-	}
-	return out
-}
-
-func (cp *fakeCP) helloCount() int {
-	cp.mu.Lock()
-	defer cp.mu.Unlock()
-	return len(cp.hellos)
-}
-
-func (cp *fakeCP) hello(i int) proto.Hello {
-	cp.mu.Lock()
-	defer cp.mu.Unlock()
-	return cp.hellos[i]
-}
-
-func (cp *fakeCP) lastConn() *websocket.Conn {
-	cp.mu.Lock()
-	defer cp.mu.Unlock()
-	return cp.conns[len(cp.conns)-1]
 }
 
 func sortedKeys(m map[string][]string) []string {

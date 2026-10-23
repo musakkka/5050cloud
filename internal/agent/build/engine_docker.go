@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 )
@@ -81,5 +82,5 @@ func (d *dockerEngine) Container(ctx context.Context, name string) (string, bool
 
 // isNotFound matches the Engine API's not-found errors.
 func isNotFound(err error) bool {
-	return err != nil && client.IsErrNotFound(err)
+	return err != nil && cerrdefs.IsNotFound(err)
 }

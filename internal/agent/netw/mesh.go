@@ -57,7 +57,7 @@ func (k keyStore) load() (wgtypes.Key, error) {
 	if err == nil {
 		key, perr := wgtypes.ParseKey(strings.TrimSpace(string(b)))
 		if perr != nil {
-			return wgtypes.Key{}, fmt.Errorf("the WireGuard key in %s is damaged (%v); move it away to make a new one, then rejoin this host", k.path, perr)
+			return wgtypes.Key{}, fmt.Errorf("the WireGuard key in %s is damaged (%w); move it away to make a new one, then rejoin this host", k.path, perr)
 		}
 		return key, nil
 	}
@@ -139,7 +139,7 @@ func planMesh(plan AddressPlan, m proto.Mesh, defaultPort int, resolve func(stri
 		if p.Endpoint != "" {
 			ep, err := resolve(p.Endpoint)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("the endpoint %q of mesh peer %s did not resolve (%v); waiting for that peer to reach this host instead", p.Endpoint, p.HostID, err))
+				errs = append(errs, fmt.Errorf("the endpoint %q of mesh peer %s did not resolve (%w); waiting for that peer to reach this host instead", p.Endpoint, p.HostID, err))
 			} else {
 				pp.Endpoint = ep
 			}

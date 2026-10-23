@@ -64,6 +64,9 @@ func TestRenderEveryTemplateAtHostSizes(t *testing.T) {
 						if bucket {
 							want = "on"
 						}
+						if _, leaked := r.Env["RESTIC_PASSWORD"]; leaked {
+							t.Fatalf("%s/%s: the restic password is in a Postgres container env", id, s.Name)
+						}
 						if r.Env["FIFTY_ARCHIVE"] != want {
 							t.Fatalf("%s/%s: FIFTY_ARCHIVE=%q, want %q", id, s.Name, r.Env["FIFTY_ARCHIVE"], want)
 						}

@@ -422,6 +422,7 @@ func (d *Data) backupJob(ctx context.Context, snap cpapi.ServiceSnapshot, info r
 		if r.Kind == "postgres_wal" {
 			user = "postgres"
 			svcEnv["PGDATA"] = pgData(info.svc)
+			env = walOnlyEnv(env)
 		}
 		return d.execInService(ctx, snap, "backup", r.Backup, copyEnv(svcEnv, env), user, nil, backupTimeoutSec)
 	}
@@ -727,7 +728,7 @@ func isHexID(s string) bool {
 		return false
 	}
 	for _, r := range s {
-		if !(r >= '0' && r <= '9' || r >= 'a' && r <= 'f') {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
 			return false
 		}
 	}
@@ -739,7 +740,7 @@ func isWalgName(s string) bool {
 		return false
 	}
 	for _, r := range s {
-		if !(r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r == '_' || r == 'D') {
+		if (r < '0' || r > '9') && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && r != '_' && r != 'D' {
 			return false
 		}
 	}

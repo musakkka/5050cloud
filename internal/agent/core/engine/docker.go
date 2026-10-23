@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
@@ -55,7 +56,7 @@ func NewDocker(host string) (*Docker, error) {
 func (d *Docker) Client() *client.Client { return d.c }
 
 func wrapNotFound(err error) error {
-	if err != nil && client.IsErrNotFound(err) {
+	if err != nil && cerrdefs.IsNotFound(err) {
 		return fmt.Errorf("%w: %s", ErrNotFound, err.Error())
 	}
 	return err
@@ -490,7 +491,7 @@ func (d *Docker) ImageExists(ctx context.Context, ref string) (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if client.IsErrNotFound(err) {
+	if cerrdefs.IsNotFound(err) {
 		return false, nil
 	}
 	return false, fmt.Errorf("could not inspect image %s: %w", ref, err)

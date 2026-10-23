@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="186" height="32" viewBox="0 0 186 32" role="img" aria-label="Deploy on 5050cloud"><rect width="186" height="32" rx="6" fill="#7c3aed"/><text x="93" y="21" fill="#fff" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="14" font-weight="600" text-anchor="middle">Deploy on 5050cloud</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="196" height="32" viewBox="0 0 196 32" role="img" aria-label="Deploy on 5050cloud">
+  <!-- README button: the mark at 32 px, then the label on near-black. Square corners. -->
+  <rect width="32" height="16" fill="#f5c400"/>
+  <rect y="16" width="196" height="16" fill="#141414"/>
+  <rect x="32" width="164" height="16" fill="#141414"/>
+  <g fill="none" stroke-width="2">
+    <g stroke="#141414"><path d="M14 4H7V8H11A2 2 0 0 1 11 12H6"/><rect x="19" y="4" width="6" height="8" rx="3"/></g>
+    <g stroke="#f5c400" transform="translate(0 16)"><path d="M14 4H7V8H11A2 2 0 0 1 11 12H6"/><rect x="19" y="4" width="6" height="8" rx="3"/></g>
+  </g>
+  <text x="44" y="21" fill="#ededea" font-family="Archivo, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600">Deploy on 5050cloud</text>
+</svg>

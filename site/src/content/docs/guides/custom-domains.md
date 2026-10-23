@@ -18,7 +18,7 @@ The name looks like `web-k3x9.203-0-113-10.sslip.io`, or `web-k3x9.apps.example.
 
 1. In the service's **Settings**, **Networking**, select **Custom Domain**.
 2. Type the **Domain**, for example `shop.example.com`, and check **Port the app listens on**. It defaults to the service's target port, else the only port it listens on, else 8080.
-3. Select **Add**.
+3. Select **Add**. Removing the domain later also deletes its stored certificate.
 
 From the CLI, in a linked folder:
 
@@ -40,10 +40,11 @@ At your DNS provider, create one of these for each name. For a host at `203.0.11
 
 - An A record works for any name, the apex included.
 - A CNAME works for subdomains. At the apex, most DNS providers refuse a CNAME; use the A record, or the provider's ALIAS or CNAME flattening if it has one.
-- The console shows the full name in **Name**; most DNS panels want only the part before your domain (`shop`, or `@` for the apex).
-- With two ingress hosts, create one A record per ingress host's IP. The console shows the control host's IP only, so add the others yourself.
+- The console shows the part most DNS panels want in **Host** (`shop`, or `@` for the apex); the full name is in the tooltip.
+- With two ingress hosts, create one A record per ingress host's IP. The console lists one A record for each.
+- At the apex the console adds a note to the CNAME: use it only where your provider supports CNAME flattening or an ALIAS record.
 - `www` and the apex are two domains: add each one to the service.
-- Remove any AAAA record on the name that points somewhere else. Let's Encrypt checks over IPv6 first when an AAAA record exists, and 5050cloud is IPv4 only.
+- Remove any AAAA record on the name that points somewhere else. Let's Encrypt checks over IPv6 first when an AAAA record exists, and 5050cloud is IPv4 only. The console tells you when it finds one.
 
 Check the record from your laptop before you wait on the console:
 
@@ -57,34 +58,37 @@ It must print your host's IP (for an A record) or the generated name and then th
 
 The domain's status moves through:
 
-1. **Waiting for DNS.** 5050cloud checks the name through public resolvers (1.1.1.1, then 8.8.8.8) every 30 seconds for the first 10 minutes, then every 10 minutes. Select **Check** to check now.
+1. **Waiting for DNS.** 5050cloud checks the name through public resolvers (1.1.1.1, then 8.8.8.8) every 30 seconds for the first 10 minutes, then every 10 minutes. Select **Check** to check now. No certificate is requested yet, so a name added before its record exists costs nothing.
 2. **Issuing certificate.** DNS points at your host; Let's Encrypt is validating it over port 80.
-3. **Active.** The console shows "Certificate valid until" a date. Certificates renew on their own about a month before they expire.
+3. **Error.** The certificate could not be issued. The console shows the reason the certificate authority gave, in red.
+4. **Active.** The console shows "Certificate valid until" a date. Certificates renew on their own about a month before they expire.
 
 From the CLI:
 
 ```sh
 5050 domain status shop.example.com
 5050 domain list
+5050 domain shop.example.com --wait
 ```
 
-> **Not yet:** issuance does not wait for DNS. The certificate is requested as soon as you add the domain, so a domain added before its record exists uses up Let's Encrypt's failed attempts (5 per name per hour) and then waits on Let's Encrypt's backoff. Create the record first, check it with `dig`, then add the domain. [What is not in this release](/docs/reference/honest-limits#not-yet).
+`--wait` follows the domain until it is active or its certificate fails, for up to 5 minutes.
 
 ## When the certificate does not come
 
 If a domain is still on **Issuing certificate** after five minutes:
 
-1. Check the record with `dig` as above, and remove any stray AAAA record.
-2. Check that port 80 on the ingress host is open to the internet: `curl -I http://shop.example.com` from your laptop should answer, not time out. See [Firewall](/docs/guides/firewall).
-3. Look for a CAA record on your domain (`dig +short CAA example.com`). If there is one, it must allow `letsencrypt.org`.
-4. Behind Cloudflare, read [Cloudflare in front](/docs/guides/behind-cloudflare): the SSL mode must be **Full (strict)** and **Always Use HTTPS** must let the challenge through.
-5. Then select **Retry certificate**, or run:
+1. Read the message under the domain. It is the reason the certificate authority gave.
+2. Check the record with `dig` as above, and remove any stray AAAA record.
+3. Check that port 80 on the ingress host is open to the internet: `curl -I http://shop.example.com` from your laptop should answer, not time out. See [Firewall](/docs/guides/firewall).
+4. Look for a CAA record on your domain (`dig +short CAA example.com`). If there is one, it must allow `letsencrypt.org`.
+5. Behind Cloudflare, read [Cloudflare in front](/docs/guides/behind-cloudflare): the SSL mode must be **Full (strict)** and **Always Use HTTPS** must let the challenge through.
+6. Then select **Retry certificate**, or run:
 
 ```sh
 5050 domain certificate retry shop.example.com
 ```
 
-> **Not yet:** the console does not show certificate errors. A failed certificate stays on **Issuing certificate**, so use the checks above. [What is not in this release](/docs/reference/honest-limits#not-yet).
+**Retry certificate** is hidden while the domain waits for DNS, because a retry then would only fail again.
 
 ## Change the port or remove a domain
 
@@ -95,7 +99,7 @@ If a domain is still on **Issuing certificate** after five minutes:
 
 - Wildcard custom domains (`*.example.com`) are refused: "Not in v0.1: wildcard domains. Add each name instead." For generated names under your own domain, install with `--domain` and a wildcard A record. See [Your domains](/docs/guides/console-domain).
 - IPv6 (AAAA records to your host).
-- Never add your console's own address to a service. The console does not refuse it yet, and the service would take over the console's name.
+- Your console's own address and names under your base domain: the console refuses them, so a service can never take over the console. IP addresses are refused too.
 
 ## What success looks like
 

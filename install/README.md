@@ -11,7 +11,8 @@ wget -qO- https://5050cloud.com/install.sh | sudo sh
 
 Piped it asks nothing; run from a terminal it asks for the domain, console
 address and email. Every answer is also a flag and a `FIFTY_*` variable
-(`--help` lists them).
+(`--help` lists them). With `--domain` it checks that the console name and the wildcard record
+point at the server first; `--skip-dns-check` turns that off.
 
 Release signatures are checked with `minisign` when it is installed, else
 with OpenSSL 3 (Ed25519 over the BLAKE2b-512 digest, as minisign does).

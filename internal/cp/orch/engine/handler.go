@@ -15,7 +15,6 @@ import (
 	"github.com/musakkka/5050cloud/internal/cp/orch/logs"
 	"github.com/musakkka/5050cloud/internal/cp/orch/metrics"
 	"github.com/musakkka/5050cloud/internal/cp/orch/routes"
-	"github.com/musakkka/5050cloud/internal/cp/orch/sched"
 	"github.com/musakkka/5050cloud/pkg/api"
 	"github.com/musakkka/5050cloud/pkg/proto"
 )
@@ -148,6 +147,11 @@ func (o *Orchestrator) HostMessage(ctx context.Context, hostID string, env proto
 			if err := o.storeCert(ctx, ci.CertBundle); err != nil {
 				o.log.Error("store certificate", "domain", ci.Domain, "err", err)
 			}
+		}
+	case proto.TCertStatus:
+		var cs proto.CertStatus
+		if json.Unmarshal(env.D, &cs) == nil {
+			o.storeCertStatus(ctx, cs)
 		}
 	case proto.THostLogsTail:
 		var t proto.HostLogsTail
@@ -446,9 +450,4 @@ func (o *Orchestrator) publishHost(ctx context.Context, hostID string) {
 		return
 	}
 	o.cfg.Publish(api.Event{Type: "host", Host: &h})
-}
-
-// schedHostsAll is schedHosts without an environment.
-func (o *Orchestrator) schedHostsAll(ctx context.Context) ([]sched.Host, error) {
-	return o.schedHosts(ctx, "")
 }

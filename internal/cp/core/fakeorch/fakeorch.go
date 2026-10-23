@@ -32,6 +32,20 @@ type Orch struct {
 	deps    map[string]api.Deployment
 	order   []string
 	Network []string // environments passed to NetworkChanged
+
+	// Certs is what DomainCertStatus answers per domain (tests set it).
+	Certs map[string]CertResult
+	// Retried and Forgotten record RetryCertificate and ForgetCertificate calls.
+	Retried, Forgotten []string
+	// IngressHosts is what Hosts answers (tests set it).
+	IngressHosts []api.Host
+}
+
+// CertResult is one canned DomainCertStatus answer.
+type CertResult struct {
+	Status   string
+	NotAfter int64
+	Message  string
 }
 
 var _ cpapi.Orchestrator = (*Orch)(nil)
@@ -70,7 +84,11 @@ func (o *Orch) AgentHandler() http.Handler {
 	})
 }
 
-func (o *Orch) Hosts(context.Context) ([]api.Host, error) { return []api.Host{}, nil }
+func (o *Orch) Hosts(context.Context) ([]api.Host, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return append([]api.Host{}, o.IngressHosts...), nil
+}
 func (o *Orch) CreateJoinToken(context.Context, api.CreateJoinTokenRequest) (api.JoinToken, error) {
 	return api.JoinToken{}, ErrDev
 }
@@ -263,10 +281,27 @@ func (o *Orch) NetworkChanged(_ context.Context, envID string) {
 	o.Network = append(o.Network, envID)
 	o.mu.Unlock()
 }
-func (o *Orch) DomainCertStatus(context.Context, string) (string, int64, error) {
-	return "issuing", 0, nil
+func (o *Orch) DomainCertStatus(_ context.Context, domain string) (string, int64, string, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if c, ok := o.Certs[domain]; ok {
+		return c.Status, c.NotAfter, c.Message, nil
+	}
+	return "issuing", 0, "", nil
 }
-func (o *Orch) RetryCertificate(context.Context, string) error { return nil }
+func (o *Orch) RetryCertificate(_ context.Context, domain string) error {
+	o.mu.Lock()
+	o.Retried = append(o.Retried, domain)
+	o.mu.Unlock()
+	return nil
+}
+func (o *Orch) ForgetCertificate(_ context.Context, domain string) error {
+	o.mu.Lock()
+	o.Forgotten = append(o.Forgotten, domain)
+	delete(o.Certs, domain)
+	o.mu.Unlock()
+	return nil
+}
 func (o *Orch) Logs(context.Context, cpapi.LogsQuery) (api.LogsResponse, error) {
 	return api.LogsResponse{Lines: []api.LogLine{}}, nil
 }

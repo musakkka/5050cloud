@@ -43,6 +43,10 @@ func (o *Orchestrator) storeCert(ctx context.Context, c proto.CertBundle) error 
 		_, err := tx.ExecContext(ctx, `INSERT INTO o_certificates (domain, cert_enc, not_after, updated_at, retry_at) VALUES (?, ?, ?, ?, 0)
 			ON CONFLICT(domain) DO UPDATE SET cert_enc = excluded.cert_enc, not_after = excluded.not_after, updated_at = excluded.updated_at, retry_at = 0`,
 			d, enc, c.NotAfter, now)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `DELETE FROM o_cert_errors WHERE domain = ?`, d)
 		return err
 	}); err != nil {
 		return err
@@ -97,24 +101,86 @@ func (o *Orchestrator) certBundles(ctx context.Context) ([]proto.CertBundle, err
 	return out, rows.Err()
 }
 
-// DomainCertStatus returns "issuing", "active" or "error" and the expiry.
-func (o *Orchestrator) DomainCertStatus(ctx context.Context, domain string) (string, int64, error) {
+// DomainCertStatus returns "issuing", "active" or "error", the expiry and,
+// for "error", the sentence Caddy gave for the last failed attempt.
+func (o *Orchestrator) DomainCertStatus(ctx context.Context, domain string) (string, int64, string, error) {
 	d := strings.ToLower(strings.TrimSpace(domain))
 	if routes.TLSMode(d) == "internal" {
-		return "active", 0, nil
+		return "active", 0, "", nil
 	}
 	var notAfter, retry int64
 	err := o.db.QueryRowContext(ctx, `SELECT not_after, retry_at FROM o_certificates WHERE domain = ?`, d).Scan(&notAfter, &retry)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "issuing", 0, nil
+		var msg string
+		err := o.db.QueryRowContext(ctx, `SELECT message FROM o_cert_errors WHERE domain = ?`, d).Scan(&msg)
+		if err == nil {
+			return "error", 0, msg, nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return "", 0, "", err
+		}
+		return "issuing", 0, "", nil
 	}
 	if err != nil {
-		return "", 0, err
+		return "", 0, "", err
 	}
 	if notAfter > 0 && notAfter < o.now().UnixMilli() {
-		return "error", notAfter, nil
+		var msg string
+		_ = o.db.QueryRowContext(ctx, `SELECT message FROM o_cert_errors WHERE domain = ?`, d).Scan(&msg)
+		if msg == "" {
+			msg = "The certificate for " + d + " has expired and was not renewed."
+		}
+		return "error", notAfter, msg, nil
 	}
-	return "active", notAfter, nil
+	return "active", notAfter, "", nil
+}
+
+// storeCertStatus keeps the primary's last issuance error per domain, and
+// clears it when the domain is active again.
+func (o *Orchestrator) storeCertStatus(ctx context.Context, cs proto.CertStatus) {
+	now := o.now().UnixMilli()
+	err := o.st.Write(ctx, func(tx *sql.Tx) error {
+		for d, st := range cs.Domains {
+			d = strings.ToLower(strings.TrimSpace(d))
+			if d == "" {
+				continue
+			}
+			if st.Status == "error" && st.Error != "" {
+				if _, err := tx.ExecContext(ctx, `INSERT INTO o_cert_errors (domain, message, updated_at) VALUES (?, ?, ?)
+					ON CONFLICT(domain) DO UPDATE SET message = excluded.message, updated_at = excluded.updated_at`, d, st.Error, now); err != nil {
+					return err
+				}
+			} else if st.Status == "active" {
+				if _, err := tx.ExecContext(ctx, `DELETE FROM o_cert_errors WHERE domain = ?`, d); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		o.log.Warn("store certificate status", "err", err)
+	}
+}
+
+// ForgetCertificate drops the stored certificate, its key and its last error
+// once no service uses the domain any more.
+func (o *Orchestrator) ForgetCertificate(ctx context.Context, domain string) error {
+	d := strings.ToLower(strings.TrimSpace(domain))
+	if d == "" {
+		return nil
+	}
+	if err := o.st.Write(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM o_certificates WHERE domain = ?`, d); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `DELETE FROM o_cert_errors WHERE domain = ?`, d)
+		return err
+	}); err != nil {
+		return err
+	}
+	o.hub.MarkDirty(o.ingressHosts(ctx)...)
+	return nil
 }
 
 // RetryCertificate forces a new issuance attempt: the route is withdrawn
@@ -152,6 +218,9 @@ func (o *Orchestrator) RetryCertificate(ctx context.Context, domain string) erro
 		o.hub.MarkDirty(ing...)
 	}()
 	_ = o.st.Write(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM o_cert_errors WHERE domain = ?`, d); err != nil {
+			return err
+		}
 		_, err := tx.ExecContext(ctx, `UPDATE o_certificates SET retry_at = ? WHERE domain = ?`, o.now().UnixMilli(), d)
 		return err
 	})

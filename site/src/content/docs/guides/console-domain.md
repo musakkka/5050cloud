@@ -24,7 +24,7 @@ At your DNS provider, for a host with the public IP `203.0.113.10` and the base 
 
 Most DNS panels want the name relative to your domain (`*.apps`, `console`); some want the full name. If the console sits under the base domain (the default, `console-ab12.apps.example.com`), the wildcard record covers it and one record is enough.
 
-Check each record from your laptop before you install. It must print the host's IP:
+Check each record from your laptop before you install. It must print the host's IP. With `--domain` the installer runs the same check against 1.1.1.1 and, if a name does not point at the server, prints the records to add and stops. Pass `--skip-dns-check` to install anyway.
 
 ```sh
 dig +short console.example.com @1.1.1.1
@@ -47,7 +47,7 @@ curl -fsSL {{GET}} | sudo sh -s -- --domain apps.example.com --console-domain co
 4. Open the new address.
 5. Run `5050 login https://<new console domain>` on each laptop, and update the console URL in CI secrets.
 
-The old name stops working at once, so make the change when you can reopen the console on the new name straight away.
+The old name keeps working for 24 hours, so you can sign in there while you move bookmarks and laptops. A name that a service already uses cannot become the console domain.
 
 > **Warning:** If you created a GitHub App, its webhook still points at the old console name. On GitHub, edit the app's webhook URL, callback URL and setup URL to the new name, or pushes stop deploying. See [GitHub App](/docs/guides/github-app#after-a-console-domain-change).
 

@@ -112,7 +112,7 @@ func (c *s3Client) do(ctx context.Context, method, key string, body []byte) ([]b
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("The bucket endpoint %s cannot be reached: %v.", c.endpoint.Host, unwrapURLError(err))
+		return nil, fmt.Errorf("The bucket endpoint %s cannot be reached: %w.", c.endpoint.Host, unwrapURLError(err))
 	}
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))

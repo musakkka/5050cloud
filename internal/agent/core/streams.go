@@ -102,13 +102,6 @@ func (t *streamTable) remove(st *stream) {
 	}
 }
 
-// count returns the number of open streams (tests).
-func (t *streamTable) count() int {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return len(t.streams)
-}
-
 // input hands an inbound binary frame to its stream. It blocks while the
 // stream's queue is full, which pauses the socket read loop.
 func (t *streamTable) input(kind byte, id uint64, payload []byte) {

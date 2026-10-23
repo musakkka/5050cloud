@@ -445,3 +445,23 @@ func TestGit(t *testing.T) {
 		t.Fatal("firstLineOf")
 	}
 }
+
+func TestRepoTokenIsScopedToOneRepository(t *testing.T) {
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		_ = json.NewEncoder(w).Encode(map[string]any{"token": "repo-token", "expires_at": time.Now().Add(time.Hour)})
+	}))
+	t.Cleanup(srv.Close)
+	c := NewClient(srv.URL, nil)
+	tok, err := c.RepoToken(context.Background(), testApp(t), 7, "app")
+	if err != nil || tok != "repo-token" {
+		t.Fatalf("token = %q %v", tok, err)
+	}
+	if repos, _ := got["repositories"].([]any); len(repos) != 1 || repos[0] != "app" {
+		t.Errorf("repositories = %v, want only app", got["repositories"])
+	}
+	if perms, _ := got["permissions"].(map[string]any); len(perms) != 1 || perms["contents"] != "read" {
+		t.Errorf("permissions = %v, want contents:read only", got["permissions"])
+	}
+}

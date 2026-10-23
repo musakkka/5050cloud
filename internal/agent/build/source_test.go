@@ -381,3 +381,40 @@ func TestFetchGitReal(t *testing.T) {
 		t.Errorf("a wrong token must fail")
 	}
 }
+
+func TestFetchGitTokenIsScopedAndNeedsHTTPS(t *testing.T) {
+	r := &fakeRunner{}
+	b := testBuilder(t, r, nil, nil)
+	log, _ := collect()
+	src := &proto.GitSource{URL: "https://github.com/acme/app.git", Token: "ghs_scoped", Commit: strings.Repeat("a", 40), Branch: "main"}
+	if err := b.fetchGit(context.Background(), src, filepath.Join(t.TempDir(), "src"), log); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range r.find(func(cmdSpec) bool { return true }) {
+		if v, _ := envValue(c.Env, "GIT_CONFIG_KEY_0"); v != "http.https://github.com/acme/app.git.extraHeader" {
+			t.Errorf("the token header is not scoped to the repository: %q", v)
+		}
+	}
+	// A token never travels in clear text to a remote host.
+	plain := &proto.GitSource{URL: "http://github.com/acme/app.git", Token: "ghs_scoped", Commit: strings.Repeat("a", 40)}
+	if err := b.fetchGit(context.Background(), plain, filepath.Join(t.TempDir(), "src"), log); err == nil || !strings.Contains(err.Error(), "https") {
+		t.Errorf("plain http with a token: err = %v", err)
+	}
+	// Submodules are limited to https.
+	dir := filepath.Join(t.TempDir(), "src")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".gitmodules"), []byte("[submodule \"x\"]\n\tpath = x\n\turl = https://example.com/x.git\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r2 := &fakeRunner{}
+	b2 := testBuilder(t, r2, nil, nil)
+	if err := b2.fetchGit(context.Background(), src, dir, log); err != nil {
+		t.Fatal(err)
+	}
+	sub := r2.find(func(c cmdSpec) bool { return strings.Contains(strings.Join(c.Args, " "), "submodule update") })
+	if len(sub) != 1 || !strings.Contains(strings.Join(sub[0].Args, " "), "protocol.allow=never -c protocol.https.allow=always") {
+		t.Errorf("submodule update is not restricted to https: %+v", sub)
+	}
+}

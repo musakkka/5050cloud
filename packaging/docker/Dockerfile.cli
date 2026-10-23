@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: MIT
+#
+# Minimal image with the 5050 CLI, for CI systems that run steps in
+# containers. Build from the repository root:
+#
+#   docker build -f packaging/docker/Dockerfile.cli --build-arg VERSION=v0.1.0 -t 5050-cli .
+#   docker run --rm -e FIFTY_URL -e FIFTY_TOKEN -v "$PWD:/work" 5050-cli up --ci -s web
+#
+# The binary comes from the signed GitHub release (install/install-cli.sh
+# checks the minisign signature and the SHA-256). The image also answers to
+# `railway` for pipelines written for the Railway CLI.
+
+FROM alpine:3.22.2 AS fetch
+ARG VERSION=latest
+ARG REPO=musakkka/5050cloud
+ARG RELEASE_BASE=""
+ARG RELEASE_PUBKEY=""
+ARG INSECURE_SKIP_VERIFY=""
+# The fetch stage needs openssl to check the release signature. Its packages
+# never reach the final image.
+# hadolint ignore=DL3018
+RUN apk add --no-cache curl openssl
+COPY install/install-cli.sh /tmp/install-cli.sh
+RUN if [ "$VERSION" = latest ]; then VERSION=""; fi && \
+    FIFTY_VERSION="$VERSION" FIFTY_REPO="$REPO" FIFTY_RELEASE_BASE="$RELEASE_BASE" \
+    FIFTY_RELEASE_PUBKEY="$RELEASE_PUBKEY" FIFTY_INSECURE_SKIP_VERIFY="$INSECURE_SKIP_VERIFY" \
+    sh /tmp/install-cli.sh --dir /out --quiet && \
+    /out/5050 version
+
+FROM alpine:3.22.2
+ARG VERSION=latest
+LABEL org.opencontainers.image.title="5050 CLI" \
+      org.opencontainers.image.description="Command-line client for 5050cloud" \
+      org.opencontainers.image.source="https://github.com/musakkka/5050cloud" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="$VERSION"
+COPY --from=fetch /out/5050 /usr/local/bin/5050
+RUN ln -s 5050 /usr/local/bin/railway && \
+    adduser -D -H -u 10001 fifty && \
+    mkdir -p /work && chown fifty /work
+ENV FIFTY_CONFIG=/tmp/5050/config.json
+USER fifty
+WORKDIR /work
+ENTRYPOINT ["5050"]
+CMD ["--help"]

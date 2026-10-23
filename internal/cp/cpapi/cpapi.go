@@ -277,9 +277,13 @@ type Orchestrator interface {
 	// NetworkChanged recomputes routes, TCP proxies, DNS and egress after
 	// domains, proxies or environment egress changed. Cheap; may be coalesced.
 	NetworkChanged(ctx context.Context, envID string)
-	// DomainCertStatus returns "issuing" | "active" | "error" and the expiry (Unix ms).
-	DomainCertStatus(ctx context.Context, domain string) (status string, notAfter int64, err error)
+	// DomainCertStatus returns "issuing" | "active" | "error", the expiry
+	// (Unix ms) and, for "error", one sentence saying why issuing failed.
+	DomainCertStatus(ctx context.Context, domain string) (status string, notAfter int64, message string, err error)
 	RetryCertificate(ctx context.Context, domain string) error
+	// ForgetCertificate deletes the stored certificate and key of a domain
+	// that no service uses any more.
+	ForgetCertificate(ctx context.Context, domain string) error
 
 	// --- logs, metrics, monitors, usage
 	Logs(ctx context.Context, q LogsQuery) (api.LogsResponse, error)

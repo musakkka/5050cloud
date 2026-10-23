@@ -507,7 +507,9 @@ func (c *Core) createCommitted(ctx context.Context, tx *sql.Tx, a Actor, env api
 	if err := c.insertActivity(ctx, tx, env.ID, api.Activity{ServiceID: sid, Kind: "commit", Text: message, Actor: a.Label(), Ref: cid}); err != nil {
 		return cpapi.CommitPlan{}, err
 	}
-	return cpapi.CommitPlan{CommitID: cid, EnvID: env.ID, Deploy: true, Actor: a.Label(), Message: message,
+	// An upload service has no source until `5050 up` sends one, and that
+	// upload starts its own deployment; deploying now would only fail.
+	return cpapi.CommitPlan{CommitID: cid, EnvID: env.ID, Deploy: cfg.Source.Type != "upload", Actor: a.Label(), Message: message,
 		Items: []cpapi.PlanItem{{ServiceID: sid, Action: changes.ActionCreate, Rebuild: true}}}, nil
 }
 

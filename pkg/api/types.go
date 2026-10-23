@@ -339,15 +339,21 @@ type Install struct {
 	BaseDomain    string `json:"baseDomain"` // e.g. "203-0-113-7.sslip.io" or "apps.example.com"
 	PublicIP      string `json:"publicIp"`
 	ACMEEmail     string `json:"acmeEmail,omitempty"`
+	// OldConsoleDomain keeps answering until OldConsoleUntil (Unix ms) after
+	// the console domain changed.
+	OldConsoleDomain string `json:"oldConsoleDomain,omitempty"`
+	OldConsoleUntil  int64  `json:"oldConsoleUntil,omitempty"`
 	// TrustedProxies are CIDRs whose X-Forwarded-For is trusted (9.11).
-	TrustedProxies  []string `json:"trustedProxies"`
-	RegistryCapPct  int      `json:"registryCapPct"`  // default 30
-	BuildTimeoutMin int      `json:"buildTimeoutMin"` // default 30
-	RailwayAliases  bool     `json:"railwayAliases"`  // RAILWAY_* provided variables, default true
-	RequireTOTP     bool     `json:"requireTotp"`
-	GitHubApp       bool     `json:"githubApp"` // a GitHub App is connected
-	BackupsReady    bool     `json:"backupsReady"`
-	SMTPReady       bool     `json:"smtpReady"`
+	TrustedProxies []string `json:"trustedProxies"`
+	// CloudflareRanges is the Cloudflare preset for TrustedProxies.
+	CloudflareRanges []string `json:"cloudflareRanges,omitempty"`
+	RegistryCapPct   int      `json:"registryCapPct"`  // default 30
+	BuildTimeoutMin  int      `json:"buildTimeoutMin"` // default 30
+	RailwayAliases   bool     `json:"railwayAliases"`  // RAILWAY_* provided variables, default true
+	RequireTOTP      bool     `json:"requireTotp"`
+	GitHubApp        bool     `json:"githubApp"` // a GitHub App is connected
+	BackupsReady     bool     `json:"backupsReady"`
+	SMTPReady        bool     `json:"smtpReady"`
 	// ReadOnly is set while the control host disk is full (6.6).
 	ReadOnly bool `json:"readOnly"`
 	// Restore is set while adopt mode is active after a state restore (9.17.1).
@@ -1191,9 +1197,15 @@ type Domain struct {
 }
 
 type DNSRecord struct {
-	Type  string `json:"type"` // "A" | "CNAME"
+	Type string `json:"type"` // "A" | "CNAME"
+	// Name is the full domain name; Host is the label most DNS panels ask
+	// for ("shop", or "@" at the apex).
 	Name  string `json:"name"`
+	Host  string `json:"host,omitempty"`
 	Value string `json:"value"`
+	// Note is a one-sentence hint, for example that a CNAME at the apex
+	// needs CNAME flattening or an ALIAS record.
+	Note string `json:"note,omitempty"`
 }
 
 type CreateDomainRequest struct {

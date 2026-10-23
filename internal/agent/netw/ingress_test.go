@@ -188,7 +188,7 @@ func TestIngressAdminDown(t *testing.T) {
 	dir := shortDir(t)
 	g := newIngress(IngressOptions{DataDir: dir, AdminSocket: filepath.Join(dir, "none.sock")})
 	g.sockets = newLoopSockets()
-	defer g.Close()
+	defer func() { _ = g.Close() }()
 	err := g.Apply(context.Background(), testIngress(), nil)
 	if err == nil || !strings.Contains(err.Error(), "did not answer") {
 		t.Fatalf("err = %v", err)

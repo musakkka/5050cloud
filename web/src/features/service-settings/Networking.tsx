@@ -92,7 +92,7 @@ export default function Networking({ eid, service, field }: { eid: string; servi
   );
 }
 
-function DomainRow({ d, onChange, onDelete }: { d: Domain; onChange: (d: Domain) => void; onDelete: () => void }) {
+export function DomainRow({ d, onChange, onDelete }: { d: Domain; onChange: (d: Domain) => void; onDelete: () => void }) {
   const [port, setPort] = useState(String(d.port));
   const a = useAction();
   const call = (path: string) => a.run(async () => onChange(await post<Domain>(`/domains/${encodeURIComponent(d.id)}/${path}`)));
@@ -109,25 +109,25 @@ function DomainRow({ d, onChange, onDelete }: { d: Domain; onChange: (d: Domain)
             onBlur={() => { if (Number(port) && Number(port) !== d.port) void a.run(async () => onChange(await patch<Domain>(`/domains/${encodeURIComponent(d.id)}`, { port: Number(port) }))); }}
             className="h-7 w-20 rounded border border-gray-200 bg-background px-2 text-xs" />
           {d.kind === "custom" && <Button variant="ghost" onClick={() => void call("check")}>Check</Button>}
-          {d.status === "error" || !d.certOk ? <Button variant="ghost" onClick={() => void call("retry-certificate")}>Retry certificate</Button> : null}
+          {d.status === "error" || d.status === "issuing" ? <Button variant="ghost" onClick={() => void call("retry-certificate")}>Retry certificate</Button> : null}
           <Button variant="ghost" onClick={onDelete}>Delete</Button>
         </div>
       </div>
-      {d.message && <div className="mt-1 text-xs text-gray-600">{d.message}</div>}
-      {d.cloudflare && <div className="mt-1 text-xs text-yellow-700">This record points at Cloudflare's proxy. Set SSL mode to Full (strict).</div>}
+      {d.message && <div className={cx("mt-1 text-xs", d.status === "error" ? "text-red-600" : d.cloudflare ? "text-yellow-700" : "text-gray-600")}>{d.message}</div>}
       {d.kind === "custom" && d.dns && d.dns.length > 0 && !d.dnsOk && (
-        <table className="mt-2 w-full text-xs">
-          <thead className="text-left text-gray-500"><tr><th className="py-1">Type</th><th>Name</th><th>Value</th></tr></thead>
+        <><div className="mt-2 text-xs text-gray-600">Add an A record to each address, or a CNAME where your DNS provider allows it. Use only one kind of record per name.</div>
+        <table className="mt-1 w-full text-xs">
+          <thead className="text-left text-gray-500"><tr><th className="py-1">Type</th><th>Host</th><th>Value</th></tr></thead>
           <tbody>
             {d.dns.map((r) => (
               <tr key={r.type + r.name + r.value} className="border-t border-gray-200">
                 <td className="py-1">{r.type}</td>
-                <td className="font-mono">{r.name} <CopyButton text={r.name} /></td>
-                <td className="font-mono">{r.value} <CopyButton text={r.value} /></td>
+                <td className="font-mono" title={r.name}>{r.host || r.name} <CopyButton text={r.host || r.name} /></td>
+                <td className="font-mono">{r.value} <CopyButton text={r.value} />{r.note && <div className="font-sans text-yellow-700">{r.note}</div>}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></>
       )}
       <ErrorLine>{a.error}</ErrorLine>
     </div>

@@ -56,6 +56,7 @@ Flags (each also an environment variable FIFTY_<FLAG>, for example FIFTY_DOMAIN)
   --public-ip IP             public IPv4 address (default: detected)
   --domain example.com       base domain for service domains (needs a wildcard A record)
   --console-domain NAME      console address (default console-<random>.<base domain>)
+  --skip-dns-check           with --domain: do not check that the names point at this server
   --acme-email EMAIL         email for Let's Encrypt notices
   --data-disk auto|none|/dev/X   blank disk to keep all state on (default auto)
   --no-swap                  do not add a 2 GB swap file
@@ -88,6 +89,7 @@ ACME_CA=$(env_or ACME_CA)
 PUBLIC_IP=$(env_or PUBLIC_IP)
 DOMAIN=$(env_or DOMAIN)
 CONSOLE_DOMAIN=$(env_or CONSOLE_DOMAIN)
+SKIP_DNS_CHECK=$(env_or SKIP_DNS_CHECK)
 ACME_EMAIL=$(env_or ACME_EMAIL)
 DATA_DISK=$(env_or DATA_DISK)
 NO_SWAP=$(env_or NO_SWAP)
@@ -109,6 +111,7 @@ UNINSTALL=$(env_or UNINSTALL)
 PURGE=$(env_or PURGE)
 FORCE=$(env_or FORCE)
 YES=$(env_or YES)
+BINARIES_CHANGED=""
 
 need_arg() { [ "$#" -ge 2 ] && [ -n "$2" ] || die "$1 needs a value."; }
 while [ "$#" -gt 0 ]; do
@@ -122,6 +125,7 @@ while [ "$#" -gt 0 ]; do
 	--public-ip) need_arg "$@"; PUBLIC_IP=$2; shift ;;
 	--domain) need_arg "$@"; DOMAIN=$2; shift ;;
 	--console-domain) need_arg "$@"; CONSOLE_DOMAIN=$2; shift ;;
+	--skip-dns-check) SKIP_DNS_CHECK=1 ;;
 	--acme-email) need_arg "$@"; ACME_EMAIL=$2; shift ;;
 	--data-disk) need_arg "$@"; DATA_DISK=$2; shift ;;
 	--no-swap) NO_SWAP=1 ;;
@@ -645,7 +649,10 @@ install_binaries() {
 	get_release "5050_@V@_linux_${ARCH}.tar.gz"
 	rel=$INSTALL_DIR/releases/$VERSION
 	sum=$(sha256_of "$RELEASE_FILE")
+	# A re-run that changes the binaries restarts the running services.
+	[ "$(readlink "$INSTALL_DIR/current" 2>/dev/null || true)" = "$rel" ] || BINARIES_CHANGED=1
 	if [ "$(cat "$rel/.sha256" 2>/dev/null || true)" != "$sum" ]; then
+		BINARIES_CHANGED=1
 		step "Unpacking $VERSION"
 		mkdir -p "$INSTALL_DIR/releases"
 		rm -rf "$rel.tmp"
@@ -710,6 +717,42 @@ detect_public_ip() {
 
 rand4() { LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 4; }
 
+# resolve_a NAME prints the IPv4 addresses NAME has on a public resolver, one
+# per line (nothing when it has none or no lookup tool exists).
+resolve_a() {
+	if have dig; then
+		dig +short +time=3 +tries=1 @1.1.1.1 A "$1" 2>/dev/null
+	elif have nslookup; then
+		nslookup -timeout=3 "$1" 1.1.1.1 2>/dev/null | sed -n '/^Name:/,$ s/^Address: *\([0-9.]*\)$/\1/p'
+	elif have getent; then
+		getent ahostsv4 "$1" 2>/dev/null | awk '{print $1}' | sort -u
+	fi | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true
+}
+
+# check_domain_dns makes sure the console name and a random name under the base
+# domain (which proves the wildcard record) point at this server, before the
+# certificate authority is asked. A wrong record would spend its failed-
+# validation allowance and end in a timeout.
+check_domain_dns() {
+	[ -z "$SKIP_DNS_CHECK" ] || return 0
+	case "$DOMAIN" in *.sslip.io | *.nip.io) return 0 ;; esac
+	have dig || have nslookup || have getent || { warn "no DNS lookup tool found; not checking $DOMAIN."; return 0; }
+	probe=x$(rand4).$DOMAIN
+	bad=""
+	for n in "$CONSOLE_DOMAIN" "$probe"; do
+		if ! resolve_a "$n" | grep -qx "$PUBLIC_IP"; then bad="$bad $n"; fi
+	done
+	[ -n "$bad" ] || return 0
+	warn "these names do not point at $PUBLIC_IP yet:$bad"
+	warn "add these DNS records at your DNS provider, then run the installer again:"
+	warn "  A   $CONSOLE_DOMAIN   $PUBLIC_IP"
+	warn "  A   *.$DOMAIN   $PUBLIC_IP"
+	if [ -n "$INTERACTIVE" ] && confirm "Continue anyway? Certificates will fail until the records exist."; then
+		return 0
+	fi
+	die "DNS is not ready. Add the records above (or pass --skip-dns-check to install anyway)."
+}
+
 init_control() {
 	detect_public_ip
 	sslip=$(printf '%s' "$PUBLIC_IP" | tr . -).sslip.io
@@ -727,6 +770,7 @@ init_control() {
 		ask CONSOLE_DOMAIN "Console address" "$CONSOLE_DOMAIN"
 		[ -n "$ACME_EMAIL" ] || ask ACME_EMAIL "Email for certificate notices (optional)" ""
 	fi
+	check_domain_dns
 	acme=$ACME_CA
 	case "$acme" in
 	production) acme=https://acme-v02.api.letsencrypt.org/directory ;;
@@ -758,6 +802,9 @@ init_control() {
 
 start_control() {
 	step "Starting 5050cloud"
+	if [ -n "$BINARIES_CHANGED" ] && systemctl is-active --quiet 5050d.service; then
+		systemctl restart 5050d.service
+	fi
 	systemctl enable --now 5050d.service >/dev/null
 	i=0
 	until curl -fsS --max-time 2 http://127.0.0.1:5050/healthz >/dev/null 2>&1; do
@@ -769,6 +816,9 @@ start_control() {
 		tok=$(cat "$ETC_DIR/local-join-token")
 		"$INSTALL_DIR/agent/5050-agent" join --url http://127.0.0.1:5050 --token "$tok" --public-ip "$PUBLIC_IP" >/dev/null
 		rm -f "$ETC_DIR/local-join-token"
+	fi
+	if [ -n "$BINARIES_CHANGED" ] && systemctl is-active --quiet 5050-agent.service; then
+		systemctl restart 5050-agent.service
 	fi
 	systemctl enable --now 5050-agent.service >/dev/null
 }
@@ -791,6 +841,11 @@ wait_console() {
 
 print_done() {
 	setup=$(cat "$ETC_DIR/setup-url.txt" 2>/dev/null || true)
+	# On a re-run the owner usually exists and the link no longer works.
+	if [ -n "$setup" ] && curl -fsS --max-time 5 http://127.0.0.1:5050/api/v1/setup 2>/dev/null | grep -q '"needsSetup":false'; then
+		setup=""
+		rm -f "$ETC_DIR/setup-url.txt"
+	fi
 	say ""
 	say "${B}5050cloud $VERSION is ready.${R}"
 	say ""

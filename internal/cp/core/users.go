@@ -548,13 +548,15 @@ func (c *Core) ResetLink(ctx context.Context, email string) (string, error) {
 }
 
 // ResetPassword sets a new password with a reset token and ends every session of the user.
-func (c *Core) ResetPassword(ctx context.Context, token, password string) (api.User, error) {
+// It returns a TOTP ticket instead of letting the caller sign the user in when
+// the account has a second factor: a mailbox alone must not be enough.
+func (c *Core) ResetPassword(ctx context.Context, token, password string) (u api.User, ticket string, err error) {
 	if err := auth.CheckPasswordPolicy("password", password); err != nil {
-		return api.User{}, err
+		return api.User{}, "", err
 	}
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		return api.User{}, err
+		return api.User{}, "", err
 	}
 	var uid string
 	err = c.st.Write(ctx, func(tx *sql.Tx) error {
@@ -568,7 +570,7 @@ func (c *Core) ResetPassword(ctx context.Context, token, password string) (api.U
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE password_resets SET used_at = ? WHERE token_hash = ?`, c.Now(), h); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL`, c.Now(), uid); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, uid); err != nil {
@@ -578,9 +580,19 @@ func (c *Core) ResetPassword(ctx context.Context, token, password string) (api.U
 		return err
 	})
 	if err != nil {
-		return api.User{}, err
+		return api.User{}, "", err
 	}
-	return c.User(ctx, uid)
+	row, err := c.userByID(ctx, c.st.Reader, uid)
+	if err != nil {
+		return api.User{}, "", err
+	}
+	if row.Disabled {
+		return api.User{}, "", fail.Forbidden("Your account is disabled. Ask an admin to enable it.")
+	}
+	if row.TOTPEnabled {
+		return api.User{}, tickets.put(row.ID, c.now()), nil
+	}
+	return row.User, "", nil
 }
 
 // sendVerification emails a verification link when SMTP is set.

@@ -41,17 +41,6 @@ func (f *fake) record(r *http.Request, body []byte) {
 	f.bodies[k] = string(body)
 }
 
-func (f *fake) called(k string) bool {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, c := range f.calls {
-		if c == k {
-			return true
-		}
-	}
-	return false
-}
-
 const tok = "5050_testtoken"
 
 var (
@@ -82,7 +71,7 @@ func (f *fake) handler(t *testing.T) http.Handler {
 	})
 	mux.HandleFunc("POST /api/v1/environments/env_p/services/svc_web/uploads", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/gzip" {
-			http.Error(w, "bad type", 400)
+			http.Error(w, "bad type", http.StatusBadRequest)
 		}
 		js(w, api.UploadResponse{DeploymentID: "dep_1"})
 	})
@@ -110,7 +99,7 @@ func (f *fake) handler(t *testing.T) http.Handler {
 	})
 	mux.HandleFunc("GET /api/v1/environments/env_p/services/svc_pg/tunnel", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("port") != "5432" {
-			http.Error(w, "wrong port", 400)
+			http.Error(w, "wrong port", http.StatusBadRequest)
 			return
 		}
 		c, err := websocket.Accept(w, r, nil)
@@ -122,7 +111,7 @@ func (f *fake) handler(t *testing.T) http.Handler {
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer "+tok {
-			w.WriteHeader(401)
+			w.WriteHeader(http.StatusUnauthorized)
 			js(w, api.Error{Error: "Log in first.", Code: api.CodeUnauthorized})
 			return
 		}

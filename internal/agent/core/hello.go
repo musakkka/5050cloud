@@ -73,7 +73,7 @@ func factMounts(dataDir string) []string {
 	if st, err := os.Stat("/data"); err == nil && st.IsDir() && !sample.SameDevice("/", "/data") {
 		out = append(out, "/data")
 	}
-	if dataDir != "" && !sample.SameDevice("/", dataDir) && !(len(out) > 1 && sample.SameDevice("/data", dataDir)) {
+	if dataDir != "" && !sample.SameDevice("/", dataDir) && (len(out) <= 1 || !sample.SameDevice("/data", dataDir)) {
 		out = append(out, dataDir)
 	}
 	return out

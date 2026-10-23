@@ -14,6 +14,8 @@ Back up databases and volumes to any S3-compatible bucket, and restore to a new 
 3. Go to **Settings**, **Backups**, enter the endpoint, bucket, region, prefix and both keys, select **Save**, then **Test bucket**.
 4. Turn on bucket versioning or object lock. Then a compromised database or a member with shell access cannot destroy history: data containers only hold the write key, and only the control host uses the retention key.
 
+> **One bucket, one trust level:** Postgres containers hold the write key and the WAL-G encryption key in their environment, because the database archives its own WAL. Anyone who can run code inside a database (for example anyone with the database password) can read that key and use it on the whole bucket prefix tree, including other projects' backups. Until backups move out of the data containers, turn backups on only for installs where every member is trusted with every project's data, or give each team its own install.
+
 Until a bucket is set, each database's **Backups** tab says "No backup bucket is set." [Backups bucket](/docs/guides/backups-bucket) walks through every field, with a key policy example.
 
 ## What is backed up

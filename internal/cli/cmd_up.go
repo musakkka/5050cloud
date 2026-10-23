@@ -55,7 +55,7 @@ func archiveRoot(linkDir, cwd string, args []string, pathAsRoot bool) (root, onl
 	}
 	rel, err := filepath.Rel(root, p)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return p, "", nil // outside the linked directory: it is its own root
+		return p, "", nil //nolint:nilerr // outside the linked directory: it is its own root
 	}
 	if rel == "." {
 		rel = ""

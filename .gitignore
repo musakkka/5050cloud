@@ -11,3 +11,5 @@ bin/
 .dev/
 e2e/out/
 .release/
+packaging/.fixture/
+packaging/.docker.log

@@ -165,7 +165,7 @@ func newStore(t *testing.T, now time.Time) (*Store, *time.Time) {
 	}
 	clock := now
 	s.SetClock(func() time.Time { return clock })
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 	return s, &clock
 }
 
@@ -260,7 +260,7 @@ func TestStoreQuery(t *testing.T) {
 	}
 
 	// A reopened store finds the services on disk.
-	s.Close()
+	_ = s.Close()
 	s2, err := Open(s.root)
 	if err != nil {
 		t.Fatal(err)

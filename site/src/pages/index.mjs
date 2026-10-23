@@ -352,7 +352,7 @@ ${demoSection(r, demo)}
     description: 'Open source and self-hosted. Install 5050cloud on a Linux VM and deploy apps and databases from a canvas, the way you do on Railway. You pay only for the VM.',
     main,
     bodyClass: 'home',
-    head: `<link rel="preload" as="image" href="${r('/media/hero-poster-1600.webp')}" media="(min-width: 721px)" fetchpriority="high">`,
+    head: `<link rel="preload" as="image" href="${r('/media/hero-poster-1280.webp')}" media="(min-width: 721px)" fetchpriority="high">`,
   });
 }
 

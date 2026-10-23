@@ -415,9 +415,19 @@ export interface Install {
   publicIp: string;
   acmeEmail?: string;
   /**
+   * OldConsoleDomain keeps answering until OldConsoleUntil (Unix ms) after
+   * the console domain changed.
+   */
+  oldConsoleDomain?: string;
+  oldConsoleUntil?: number /* int64 */;
+  /**
    * TrustedProxies are CIDRs whose X-Forwarded-For is trusted (9.11).
    */
   trustedProxies: string[];
+  /**
+   * CloudflareRanges is the Cloudflare preset for TrustedProxies.
+   */
+  cloudflareRanges?: string[];
   registryCapPct: number /* int */; // default 30
   buildTimeoutMin: number /* int */; // default 30
   railwayAliases: boolean; // RAILWAY_* provided variables, default true
@@ -1351,8 +1361,18 @@ export interface Domain {
 }
 export interface DNSRecord {
   type: string; // "A" | "CNAME"
+  /**
+   * Name is the full domain name; Host is the label most DNS panels ask
+   * for ("shop", or "@" at the apex).
+   */
   name: string;
+  host?: string;
   value: string;
+  /**
+   * Note is a one-sentence hint, for example that a CNAME at the apex
+   * needs CNAME flattening or an ALIAS record.
+   */
+  note?: string;
 }
 export interface CreateDomainRequest {
   kind: string; // "generated" | "custom"

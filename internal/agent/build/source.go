@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -51,6 +52,9 @@ func (b *builder) fetchGit(ctx context.Context, src *proto.GitSource, dir string
 	if !shaRe.MatchString(src.Commit) {
 		return fail("The commit %q is not a valid commit id.", src.Commit)
 	}
+	if src.Token != "" && u.Scheme == "http" && !loopbackHost(u.Hostname()) {
+		return fail("The repository URL must use https when an access token is sent. Use an https:// URL.")
+	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fail("The build directory could not be created: %v.", err)
 	}
@@ -68,9 +72,12 @@ func (b *builder) fetchGit(ctx context.Context, src *proto.GitSource, dir string
 	}
 	if src.Token != "" {
 		basic := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + src.Token))
+		// The header is scoped to this repository's URL, so a submodule or a
+		// redirect to another host or repository never receives the token.
+		scope := (&url.URL{Scheme: u.Scheme, Host: u.Host, Path: u.Path}).String()
 		env = append(env,
 			"GIT_CONFIG_COUNT=1",
-			"GIT_CONFIG_KEY_0=http.extraHeader",
+			"GIT_CONFIG_KEY_0=http."+scope+".extraHeader",
 			"GIT_CONFIG_VALUE_0=Authorization: Basic "+basic,
 		)
 	}
@@ -117,15 +124,25 @@ func (b *builder) fetchGit(ctx context.Context, src *proto.GitSource, dir string
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".gitmodules")); err == nil {
 		logf("Fetching git submodules")
-		if err := git("submodule", "update", "--init", "--recursive", "--depth", "1"); err != nil {
+		// Only https submodules: no file, ssh, git or plain http transports.
+		if err := git("-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "submodule", "update", "--init", "--recursive", "--depth", "1"); err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			return fail("The git submodules could not be fetched. Check that every submodule URL is reachable with the same access as the repository.")
+			return fail("The git submodules could not be fetched. Submodules must be public and use https; the repository's access token is never sent to them.")
 		}
 	}
 	// The .git directory is not part of the build context.
 	return os.RemoveAll(filepath.Join(dir, ".git"))
+}
+
+// loopbackHost reports whether a host name is the local machine.
+func loopbackHost(h string) bool {
+	if h == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // redactURL drops credentials and query strings from a URL for the log.

@@ -414,18 +414,6 @@ func (f *registryFront) close() {
 	f.mode = ""
 }
 
-// addrs returns the addresses served, for tests and the README example.
-func (f *registryFront) addrs() []string {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([]string, 0, len(f.lns))
-	for a := range f.lns {
-		out = append(out, a)
-	}
-	sort.Strings(out)
-	return out
-}
-
 // registryError writes an error in the registry API's JSON shape, which
 // docker and buildx print to the user.
 func registryError(w http.ResponseWriter, status int, code, msg string) {

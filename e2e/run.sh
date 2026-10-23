@@ -12,8 +12,8 @@
 # HTTP on 127.0.0.1, so the installer runs through --release-base and checks
 # the minisign signature and SHA-256 exactly as for a real release.
 #
-# Implemented now: E1 (fresh install), E21 (idempotent installer), E24
-# (uninstall). Every other E test is listed in the report as "not_run" with
+# Implemented now: E1 (fresh install), E21 (idempotent installer), E25 (custom
+# domain through nip.io), E24 (uninstall). Every other E test is listed in the report as "not_run" with
 # the reason; README.md in this directory tracks them.
 
 set -eu
@@ -120,6 +120,154 @@ if [ "$rc" != 0 ]; then record E21 fail "$start" "second install exited $rc (log
 elif [ "$before" != "$after" ]; then record E21 fail "$start" "containers restarted: before=[$before] after=[$after]"
 else record E21 pass "$start" "re-run exit 0; $(printf '%s\n' "$before" | grep -c . || true) containers kept their start times"; fi
 
+# ---------------------------------------------------------------- E25 custom domain (nip.io)
+
+# The install's base domain is <dashed ip>.sslip.io, so a name under nip.io is
+# another registered domain: it takes the custom path for real (public DNS,
+# the DNS check, ACME HTTP-01, the certificate push). E2E_CUSTOM_DOMAIN swaps
+# in a real domain; the bad-address and Cloudflare steps then do not apply.
+# Needs the console E1 installed, so it runs before the uninstall.
+
+jget() { python3 -c 'import json,sys
+d = json.load(sys.stdin)
+for k in sys.argv[1].split("."):
+	d = d[int(k)] if isinstance(d, list) else d.get(k)
+print("" if d is None else d)' "$1"; }
+# api METHOD PATH [JSON]: call the console API from the runner with the E25
+# session, verifying the console certificate like E1 does. The body of the
+# answer is followed by its HTTP status on the last line.
+api() {
+	cacert=""
+	[ "$ACME_CA" != staging ] || cacert="--cacert $out/stg-root.pem"
+	if [ -n "${3:-}" ]; then
+		# shellcheck disable=SC2086
+		curl -sS --max-time 30 $cacert -w '\n%{http_code}' -b "$out/E25.jar" -c "$out/E25.jar" -X "$1" -H 'Content-Type: application/json' -d "$3" "https://$console/api/v1$2"
+	else
+		# shellcheck disable=SC2086
+		curl -sS --max-time 30 $cacert -w '\n%{http_code}' -b "$out/E25.jar" -c "$out/E25.jar" -X "$1" "https://$console/api/v1$2"
+	fi
+}
+body() { sed '$d'; }
+code() { tail -n 1; }
+rand4() { od -An -N2 -tx1 /dev/urandom | tr -d ' \n'; }
+
+start=$(now_ms)
+why=""
+token=${setup##*token=}
+if [ -z "$setup" ] || [ -z "$token" ]; then
+	record E25 not_run 0 "E1 printed no setup URL, so there is no console to add a domain to"
+else
+	IP=${HOST#*@}
+	suffix=$(rand4)
+	name=${E2E_CUSTOM_DOMAIN:-e25-$suffix.$IP.nip.io}
+	bad=e25bad-$suffix.192.0.2.1.nip.io
+	cf=e25cf-$suffix.104.16.0.1.nip.io
+	t2=0; t6=0
+	api POST /setup "{\"token\":\"$token\",\"email\":\"e2e@example.com\",\"name\":\"E2E\",\"password\":\"correct horse battery\"}" >"$out/E25.setup" 2>&1 || true
+	[ "$(code <"$out/E25.setup")" = 200 ] || why="setup failed: $(cat "$out/E25.setup")"
+	if [ -z "$why" ]; then
+		api POST /projects '{"name":"e25"}' >"$out/E25.project" 2>&1 || true
+		eid=$(body <"$out/E25.project" | jget environments.0.id 2>/dev/null || true)
+		[ -n "$eid" ] || why="no project: $(cat "$out/E25.project")"
+	fi
+	if [ -z "$why" ]; then
+		api POST "/environments/$eid/services" '{"name":"whoami","deployNow":true,"source":{"type":"image","image":"traefik/whoami"}}' >"$out/E25.service" 2>&1 || true
+		sid=$(body <"$out/E25.service" | jget services.0.id 2>/dev/null || true)
+		[ -n "$sid" ] || why="no service: $(cat "$out/E25.service")"
+	fi
+	if [ -z "$why" ]; then
+		# 1. add the name
+		api POST "/environments/$eid/services/$sid/domains" "{\"kind\":\"custom\",\"domain\":\"$name\",\"port\":80}" >"$out/E25.add" 2>&1 || true
+		did=$(body <"$out/E25.add" | jget id 2>/dev/null || true)
+		st=$(body <"$out/E25.add" | jget status 2>/dev/null || true)
+		has_a=$(body <"$out/E25.add" | python3 -c 'import json,sys; print(any(r["type"]=="A" and r["value"]==sys.argv[1] for r in json.load(sys.stdin).get("dns") or []))' "$IP" 2>/dev/null || echo False)
+		[ -n "$did" ] || why="domain not created: $(cat "$out/E25.add")"
+		[ -n "$why" ] || { [ "$st" = pending_dns ] || [ "$st" = issuing ]; } || why="new domain status is $st"
+		[ -n "$why" ] || [ -n "${E2E_CUSTOM_DOMAIN:-}" ] || [ "$has_a" = True ] || why="the DNS records lack an A record for $IP"
+	fi
+	if [ -z "$why" ]; then
+		# 2. wait for Active
+		s2=$(now_ms); n=0; st=""; exp=0
+		while [ "$n" -lt 36 ]; do
+			api POST "/domains/$did/check" >"$out/E25.status" 2>&1 || true
+			st=$(body <"$out/E25.status" | jget status 2>/dev/null || true)
+			[ "$st" != active ] || break
+			[ "$st" != error ] || break
+			n=$((n + 1)); sleep 5
+		done
+		t2=$(($(now_ms) - s2))
+		exp=$(body <"$out/E25.status" | jget certExpiresAt 2>/dev/null || echo 0)
+		[ "$st" = active ] || why="the domain is $st after ${t2} ms: $(body <"$out/E25.status" | jget message 2>/dev/null)"
+		[ -n "$why" ] || [ "${exp:-0}" -gt $(( $(now_ms) + 60 * 86400000 )) ] || why="certificate expiry $exp is less than 60 days away"
+	fi
+	if [ -z "$why" ]; then
+		# 3. a verified request
+		cacert=""
+		[ "$ACME_CA" != staging ] || cacert="--cacert $out/stg-root.pem"
+		n=0; got=""
+		while [ "$n" -lt 12 ]; do
+			# shellcheck disable=SC2086
+			got=$(curl -fsS --max-time 10 $cacert --resolve "$name:443:$IP" "https://$name/" 2>/dev/null || true)
+			case "$got" in *Hostname*) break ;; esac
+			n=$((n + 1)); sleep 5
+		done
+		case "$got" in *Hostname*) ;; *) why="https://$name/ did not return the whoami page" ;; esac
+	fi
+	if [ -z "$why" ] && [ -z "${E2E_CUSTOM_DOMAIN:-}" ]; then
+		# 4. an address that is not ours stays pending, and no certificate is requested
+		api POST "/environments/$eid/services/$sid/domains" "{\"kind\":\"custom\",\"domain\":\"$bad\",\"port\":80}" >"$out/E25.bad" 2>&1 || true
+		bid=$(body <"$out/E25.bad" | jget id 2>/dev/null || true)
+		api POST "/domains/$bid/check" >"$out/E25.bad" 2>&1 || true
+		[ "$(body <"$out/E25.bad" | jget status 2>/dev/null)" = pending_dns ] || why="$bad is not pending_dns"
+		case "$(body <"$out/E25.bad" | jget message 2>/dev/null)" in *192.0.2.1*) ;; *) [ -n "$why" ] || why="the message for $bad does not name 192.0.2.1" ;; esac
+		orders=$(on "sudo docker logs \$(sudo docker ps -q --filter name=caddy | head -n1) 2>&1 | grep -c 'obtaining certificate.*$bad'" 2>/dev/null || true)
+		[ "${orders:-0}" = 0 ] || why="Caddy placed ${orders} order(s) for $bad"
+		# 5. a Cloudflare address
+		if [ -z "$why" ]; then
+			api POST "/environments/$eid/services/$sid/domains" "{\"kind\":\"custom\",\"domain\":\"$cf\",\"port\":80}" >"$out/E25.cf" 2>&1 || true
+			cid=$(body <"$out/E25.cf" | jget id 2>/dev/null || true)
+			api POST "/domains/$cid/check" >"$out/E25.cf" 2>&1 || true
+			[ "$(body <"$out/E25.cf" | jget cloudflare 2>/dev/null)" = True ] || why="$cf was not flagged as Cloudflare"
+			case "$(body <"$out/E25.cf" | jget message 2>/dev/null)" in *Cloudflare*) ;; *) [ -n "$why" ] || why="no Cloudflare message for $cf" ;; esac
+		fi
+	fi
+	if [ -z "$why" ]; then
+		# 6. retry
+		s6=$(now_ms)
+		api POST "/domains/$did/retry-certificate" >"$out/E25.retry" 2>&1 || true
+		[ "$(code <"$out/E25.retry")" = 200 ] || why="retry failed: $(cat "$out/E25.retry")"
+		n=0; st=""
+		while [ -z "$why" ] && [ "$n" -lt 12 ]; do
+			api POST "/domains/$did/check" >"$out/E25.status" 2>&1 || true
+			st=$(body <"$out/E25.status" | jget status 2>/dev/null || true)
+			[ "$st" != active ] || break
+			n=$((n + 1)); sleep 5
+		done
+		t6=$(($(now_ms) - s6))
+		[ -n "$why" ] || [ "$st" = active ] || why="after a retry the domain is $st"
+	fi
+	if [ -z "$why" ]; then
+		# 7. delete: the name gets the styled 404 page within 10 s
+		api DELETE "/domains/$did" >/dev/null 2>&1 || true
+		n=0; status404=""
+		while [ "$n" -lt 5 ]; do
+			sleep 2
+			status404=$(curl -sS --max-time 10 -k -o /dev/null -w '%{http_code}' --resolve "$name:443:$IP" "https://$name/" 2>/dev/null || true)
+			[ "$status404" != 404 ] || break
+			n=$((n + 1))
+		done
+		[ "$status404" = 404 ] || why="after delete https://$name/ answered ${status404:-nothing}, want 404"
+	fi
+	if [ -z "$why" ]; then
+		# 8. the console's own name is not available to a service
+		api POST "/environments/$eid/services/$sid/domains" "{\"kind\":\"custom\",\"domain\":\"$console\",\"port\":80}" >"$out/E25.console" 2>&1 || true
+		[ "$(code <"$out/E25.console")" = 422 ] || why="the console name was accepted as a custom domain: $(cat "$out/E25.console")"
+	fi
+	rm -f "$out/E25.jar"
+	if [ -z "$why" ]; then record E25 pass "$start" "custom domain $name active in ${t2} ms, retried in ${t6} ms, deleted, console name refused"
+	else record E25 fail "$start" "$why (files: $out/E25.*)"; fi
+fi
+
 # ---------------------------------------------------------------- E24 uninstall
 
 start=$(now_ms)
@@ -143,7 +291,7 @@ else record E24 fail "$start" "$why (log: $out/E24.log)"; fi
 
 i=2
 while [ "$i" -le 40 ]; do
-	case "$i" in 21 | 24) ;; *) record "E$i" not_run 0 "not automated in this harness yet; see e2e/README.md" ;; esac
+	case "$i" in 21 | 24 | 25) ;; *) record "E$i" not_run 0 "not automated in this harness yet; see e2e/README.md" ;; esac
 	i=$((i + 1))
 done
 

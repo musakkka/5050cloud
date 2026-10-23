@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"reflect"
 	"sync"
 	"time"
 
@@ -182,6 +183,40 @@ func (a *Agent) certLoop(ctx context.Context) {
 		if !sleepCtx(ctx, 30*time.Second) {
 			return
 		}
+	}
+}
+
+// certStatusLoop reports certificate errors and successes to the control
+// plane (cert_status) so the console can show why a certificate is missing.
+// Only "error" and "active" are sent: a host that is not the ACME primary
+// can only say "issuing", which is no news. A change is sent at once and the
+// whole set again every few minutes.
+func (a *Agent) certStatusLoop(ctx context.Context) {
+	var last map[string]proto.CertDomainState
+	var lastSent time.Time
+	for {
+		if !sleepCtx(ctx, 15*time.Second) {
+			return
+		}
+		st, err := a.o.Ingress.CertStatus(ctx)
+		if err != nil {
+			continue
+		}
+		cur := map[string]proto.CertDomainState{}
+		for d, s := range st {
+			if s.Status == "error" || s.Status == "active" {
+				cur[d] = proto.CertDomainState{Status: s.Status, Error: s.Error}
+			}
+		}
+		if len(cur) == 0 {
+			last = cur
+			continue
+		}
+		if reflect.DeepEqual(cur, last) && time.Since(lastSent) < 5*time.Minute {
+			continue
+		}
+		a.sendDurable(proto.TCertStatus, "", proto.CertStatus{Domains: cur})
+		last, lastSent = cur, time.Now()
 	}
 }
 

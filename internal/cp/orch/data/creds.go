@@ -97,7 +97,7 @@ func (d *Data) RegenerateCredentials(ctx context.Context, envID, serviceID, acto
 		// Put the old password back so the stored variables stay right.
 		if old != "" {
 			if rerr := d.applyPassword(ctx, snap, plan, old); rerr != nil {
-				return api.CommitResponse{}, fmt.Errorf("The new password was set in the database but could not be saved, and the old one could not be restored (%v). Set %s to the value in the database by hand: %w", rerr, plan.variable, err)
+				return api.CommitResponse{}, fmt.Errorf("The new password was set in the database but could not be saved, and the old one could not be restored (%w). Set %s to the value in the database by hand: %w", rerr, plan.variable, err)
 			}
 		}
 		return api.CommitResponse{}, fmt.Errorf("The new password could not be saved, so the old one was put back: %w", err)

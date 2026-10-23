@@ -61,7 +61,7 @@ func inNetns(ns netns.NsHandle, fn func() error) error {
 	if err != nil {
 		return err
 	}
-	defer orig.Close()
+	defer func() { _ = orig.Close() }()
 	if err := netns.Set(ns); err != nil {
 		return err
 	}

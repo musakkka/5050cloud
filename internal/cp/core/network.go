@@ -10,8 +10,11 @@ import (
 	"math/rand/v2"
 	"net"
 	"net/netip"
+	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/net/publicsuffix"
 
 	"github.com/musakkka/5050cloud/internal/cp/core/changes"
 	"github.com/musakkka/5050cloud/internal/cp/core/config"
@@ -19,6 +22,7 @@ import (
 	"github.com/musakkka/5050cloud/internal/cp/core/ids"
 	"github.com/musakkka/5050cloud/internal/cp/core/store"
 	"github.com/musakkka/5050cloud/pkg/api"
+	"github.com/musakkka/5050cloud/pkg/cfranges"
 )
 
 // ---------------------------------------------------------------- domains
@@ -40,18 +44,59 @@ func scanDomain(r interface{ Scan(...any) error }) (domainRow, error) {
 	return d, err
 }
 
+// ingressIPs are the public addresses of the hosts that take web traffic, so a
+// custom domain can point at any of them. It falls back to the install's own
+// address.
+func (c *Core) ingressIPs(ctx context.Context, in installSettings) []string {
+	seen := map[string]bool{}
+	var out []string
+	if c.orch != nil {
+		if hosts, err := c.orch.Hosts(ctx); err == nil {
+			for _, h := range hosts {
+				ingress := false
+				for _, r := range h.Roles {
+					ingress = ingress || r == "ingress"
+				}
+				if ingress && h.PublicIP != "" && !seen[h.PublicIP] {
+					seen[h.PublicIP] = true
+					out = append(out, h.PublicIP)
+				}
+			}
+		}
+	}
+	if len(out) == 0 && in.PublicIP != "" {
+		out = append(out, in.PublicIP)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// dnsLabel splits a name into the label a DNS panel asks for ("shop", or "@"
+// at the apex) and whether the name is the apex of its registered domain.
+func dnsLabel(name string) (label string, apex bool) {
+	root, err := publicsuffix.EffectiveTLDPlusOne(name)
+	if err != nil || root == name {
+		return "@", true
+	}
+	return strings.TrimSuffix(name, "."+root), false
+}
+
 // domainView fills DNS instructions and the certificate state.
 func (c *Core) domainView(ctx context.Context, d domainRow, in installSettings, generated string) api.Domain {
 	out := d.Domain
 	if out.Kind == "generated" {
 		out.DNSOK = true
 	} else {
-		ip := in.PublicIP
-		if ip != "" {
-			out.DNS = append(out.DNS, api.DNSRecord{Type: "A", Name: out.Domain, Value: ip})
+		label, apex := dnsLabel(out.Domain)
+		for _, ip := range c.ingressIPs(ctx, in) {
+			out.DNS = append(out.DNS, api.DNSRecord{Type: "A", Name: out.Domain, Host: label, Value: ip})
 		}
 		if generated != "" {
-			out.DNS = append(out.DNS, api.DNSRecord{Type: "CNAME", Name: out.Domain, Value: generated})
+			rec := api.DNSRecord{Type: "CNAME", Name: out.Domain, Host: label, Value: generated}
+			if apex {
+				rec.Note = "Only where your DNS provider supports CNAME flattening or an ALIAS record at the apex. Otherwise use the A record."
+			}
+			out.DNS = append(out.DNS, rec)
 		}
 	}
 	if !out.DNSOK {
@@ -63,17 +108,22 @@ func (c *Core) domainView(ctx context.Context, d domainRow, in installSettings, 
 	}
 	out.Status = "issuing"
 	if c.orch != nil {
-		if st, notAfter, err := c.orch.DomainCertStatus(ctx, out.Domain); err == nil && st != "" {
+		if st, notAfter, msg, err := c.orch.DomainCertStatus(ctx, out.Domain); err == nil && st != "" {
 			out.Status = st
 			out.CertOK = st == "active"
 			out.CertExpiresAt = notAfter
+			if st == "error" && msg != "" {
+				out.Message = msg
+			}
 		}
 	}
 	if out.Cloudflare && out.Message == "" {
-		out.Message = "Cloudflare proxy detected: set SSL/TLS mode to Full (strict)"
+		out.Message = cloudflareMessage
 	}
 	return out
 }
+
+const cloudflareMessage = "Cloudflare proxy detected: set SSL/TLS mode to Full (strict), and turn off Always Use HTTPS until this domain is Active."
 
 func (c *Core) envDomains(ctx context.Context, envID string) (map[string][]api.Domain, error) {
 	rows, err := store.All(ctx, c.st.Reader, func(r *sql.Rows) (domainRow, error) { return scanDomain(r) },
@@ -188,6 +238,12 @@ func (c *Core) CreateDomain(ctx context.Context, a Actor, envID, sid string, req
 		if !config.ValidDomain(name) {
 			return api.Domain{}, fail.Validation("domain", "%q is not a valid domain name.", req.Domain)
 		}
+		if isIPLiteral(name) {
+			return api.Domain{}, fail.Validation("domain", "%q is an IP address. Use a domain name.", req.Domain)
+		}
+		if c.reservedDomain(ctx, name) {
+			return api.Domain{}, fail.Validation("domain", "%q belongs to this install (the console or the base domain), so it cannot be used as a custom domain. Use a generated domain or a name you own elsewhere.", name)
+		}
 	default:
 		return api.Domain{}, fail.Validation("kind", "The domain kind must be generated or custom.")
 	}
@@ -211,6 +267,27 @@ func (c *Core) CreateDomain(ctx context.Context, a Actor, envID, sid string, req
 		go c.checkDomain(context.WithoutCancel(ctx), id)
 	}
 	return c.domainOne(ctx, id)
+}
+
+// reservedDomain reports whether a custom domain would collide with a name the
+// install uses itself: the console hosts, the base domain, and everything under
+// the base domain (generated names already cover that space).
+func (c *Core) reservedDomain(ctx context.Context, name string) bool {
+	name = strings.TrimSuffix(lower(name), ".")
+	for _, h := range c.ConsoleHosts(ctx) {
+		if h != "" && name == strings.TrimSuffix(lower(h), ".") {
+			return true
+		}
+	}
+	if inst, err := c.installRow(ctx, c.st.Reader); err == nil {
+		for _, b := range []string{inst.BaseDomain, c.file.BaseDomain, c.file.ConsoleDomain} {
+			b = strings.TrimSuffix(lower(trim(b)), ".")
+			if b != "" && (name == b || strings.HasSuffix(name, "."+b)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // UpdateDomain changes the target port.
@@ -243,8 +320,36 @@ func (c *Core) DeleteDomain(ctx context.Context, a Actor, id string) error {
 	})
 	if err == nil {
 		c.networkChanged(ctx, d.EnvID, d.ServiceID)
+		c.forgetCertificate(ctx, d.Domain.Domain)
 	}
 	return err
+}
+
+// forgetCertificate drops the stored certificate of a name no domain row uses.
+func (c *Core) forgetCertificate(ctx context.Context, name string) {
+	if c.orch == nil {
+		return
+	}
+	var n int
+	if err := c.st.Reader.QueryRowContext(ctx, `SELECT COUNT(*) FROM domains WHERE domain = ?`, name).Scan(&n); err != nil || n > 0 {
+		return
+	}
+	if err := c.orch.ForgetCertificate(ctx, name); err != nil {
+		c.log.Warn("drop the certificate of a removed domain", "domain", name, "err", err)
+	}
+}
+
+func isIPLiteral(name string) bool {
+	if _, err := netip.ParseAddr(name); err == nil {
+		return true
+	}
+	last := name[strings.LastIndexByte(name, '.')+1:]
+	for _, ch := range last {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	return last != ""
 }
 
 // CheckDomain runs the DNS check now.
@@ -261,6 +366,9 @@ func (c *Core) RetryCertificate(ctx context.Context, id string) (api.Domain, err
 	d, err := c.domainByID(ctx, c.st.Reader, id)
 	if err != nil {
 		return api.Domain{}, err
+	}
+	if d.Kind == "custom" && !d.DNSOK {
+		return api.Domain{}, fail.Conflict("%s does not point at this install yet. Add the DNS records first: a retry now would only fail again.", d.Domain.Domain)
 	}
 	if c.orch != nil {
 		if err := c.orch.RetryCertificate(ctx, d.Domain.Domain); err != nil {
@@ -279,32 +387,34 @@ func (c *Core) networkChanged(ctx context.Context, envID, sid string) {
 	}
 }
 
-// resolver queries public resolvers so a stale local cache does not decide.
-func publicResolver(addr string) *net.Resolver {
-	return &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-		var d net.Dialer
-		return d.DialContext(ctx, "udp", addr)
-	}}
-}
+// DomainResolver answers the DNS check: the IPv4 and IPv6 addresses a name
+// resolves to, CNAMEs followed.
+type DomainResolver func(ctx context.Context, name string) (a4, a6 []string)
 
-// cloudflareRanges are Cloudflare's published IPv4 ranges.
-var cloudflareRanges = []string{
-	"173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18",
-	"108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17",
-	"162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
-}
+// SetDomainResolver replaces the DNS lookup behind the domain check (tests).
+func (c *Core) SetDomainResolver(r DomainResolver) { c.resolve = r }
 
-func isCloudflare(ip string) bool {
-	a, err := netip.ParseAddr(ip)
-	if err != nil {
-		return false
-	}
-	for _, r := range cloudflareRanges {
-		if p, err := netip.ParsePrefix(r); err == nil && p.Contains(a) {
-			return true
+// publicLookup asks public resolvers so a stale local cache does not decide.
+func publicLookup(ctx context.Context, name string) (a4, a6 []string) {
+	for _, srv := range []string{"1.1.1.1:53", "8.8.8.8:53"} {
+		r := &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, "udp", srv)
+		}}
+		v4, err4 := r.LookupNetIP(ctx, "ip4", name)
+		v6, _ := r.LookupNetIP(ctx, "ip6", name)
+		if err4 != nil && len(v6) == 0 {
+			continue
 		}
+		for _, a := range v4 {
+			a4 = append(a4, a.String())
+		}
+		for _, a := range v6 {
+			a6 = append(a6, a.String())
+		}
+		return a4, a6
 	}
-	return false
+	return nil, nil
 }
 
 // checkDomain resolves a custom domain and records whether it points here.
@@ -314,30 +424,35 @@ func (c *Core) checkDomain(ctx context.Context, id string) {
 		return
 	}
 	in, _ := c.installRow(ctx, c.st.Reader)
+	ips := c.ingressIPs(ctx, in)
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	var addrs []string
-	for _, r := range []string{"1.1.1.1:53", "8.8.8.8:53"} {
-		if a, err := publicResolver(r).LookupHost(ctx, d.Domain.Domain); err == nil && len(a) > 0 {
-			addrs = a
-			break
-		}
-	}
+	a4, a6 := c.resolve(ctx, d.Domain.Domain)
 	ok, cf := false, false
-	msg := ""
-	for _, a := range addrs {
-		if a == in.PublicIP {
-			ok = true
+	for _, a := range a4 {
+		for _, ip := range ips {
+			if a == ip {
+				ok = true
+			}
 		}
-		if isCloudflare(a) {
+		if cfranges.Contains(a) {
 			cf, ok = true, true
 		}
 	}
+	msg := ""
 	switch {
-	case len(addrs) == 0:
+	case len(a4) == 0 && len(a6) == 0:
 		msg = "Waiting for DNS: the name does not resolve yet"
 	case !ok:
-		msg = fmt.Sprintf("Waiting for DNS: the name points at %s, not %s", strings.Join(addrs, ", "), in.PublicIP)
+		got := append(append([]string{}, a4...), a6...)
+		msg = fmt.Sprintf("Waiting for DNS: the name points at %s, not %s", strings.Join(got, ", "), strings.Join(ips, ", "))
+	default:
+		for _, a := range a6 {
+			if !cfranges.Contains(a) {
+				msg = fmt.Sprintf("Remove the AAAA record for %s: certificates are validated over IPv6 first.", d.Domain.Domain)
+				break
+			}
+		}
 	}
 	_ = c.st.Exec(context.WithoutCancel(ctx), `UPDATE domains SET dns_ok = ?, cloudflare = ?, message = ?, checked_at = ? WHERE id = ?`,
 		store.Bool(ok), store.Bool(cf), msg, c.Now(), id)

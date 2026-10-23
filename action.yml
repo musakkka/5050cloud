@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: MIT
+#
+# "Deploy with 5050": the GitHub Action for 5050cloud. It installs the 5050
+# CLI and runs `5050 up` with a token, the way Railway's CLI is used in CI
+# with RAILWAY_TOKEN. Create an environment token in the console under
+# Project Settings > Tokens and store it as a repository secret.
+#
+#   - uses: actions/checkout@v4.2.2
+#   - uses: musakkka/5050cloud@v0.1.0
+#     with:
+#       url: https://console.example.com
+#       token: ${{ secrets.FIFTY_TOKEN }}
+#       service: web
+name: Deploy with 5050
+description: Upload the repository to a 5050cloud service with `5050 up` and wait for the deployment.
+author: 5050cloud
+branding:
+  icon: upload-cloud
+  color: yellow
+
+inputs:
+  token:
+    description: Environment or account token (5050_...). Pass it from a secret.
+    required: true
+  url:
+    description: Console URL of your 5050cloud install, for example https://console.example.com.
+    required: true
+  project:
+    description: Project name or id. Not needed when the token can see one project.
+    required: false
+    default: ""
+  environment:
+    description: Environment name or id (default production).
+    required: false
+    default: ""
+  service:
+    description: Service name or id. Needed when the environment has more than one service.
+    required: false
+    default: ""
+  path:
+    description: Directory to upload, relative to the workspace (default the workspace).
+    required: false
+    default: ""
+  path-as-root:
+    description: Use path as the archive root instead of uploading it as a subdirectory.
+    required: false
+    default: "false"
+  message:
+    description: Deployment message (default the commit subject and short SHA).
+    required: false
+    default: ""
+  detach:
+    description: Start the deployment and return without waiting for it.
+    required: false
+    default: "false"
+  new-service:
+    description: Create a new service for this upload instead of deploying into an existing one.
+    required: false
+    default: "false"
+  service-name:
+    description: Name of the new service (with new-service).
+    required: false
+    default: ""
+  args:
+    description: Extra arguments passed to `5050 up`, split on spaces.
+    required: false
+    default: ""
+  cli-version:
+    description: CLI release to install (vX.Y.Z). Default is this action's version, or the latest release when the action is used from a branch.
+    required: false
+    default: ""
+  cli-repo:
+    description: GitHub repository the CLI release is downloaded from.
+    required: false
+    default: musakkka/5050cloud
+
+outputs:
+  url:
+    description: Public URL of the service after a successful deployment (empty when it has no domain or with detach).
+    value: ${{ steps.up.outputs.url }}
+  deployment-id:
+    description: Id of the deployment that was started (set with detach).
+    value: ${{ steps.up.outputs.deployment-id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install the 5050 CLI
+      shell: bash
+      env:
+        FIFTY_VERSION: ${{ inputs.cli-version }}
+        FIFTY_REPO: ${{ inputs.cli-repo }}
+        ACTION_REF: ${{ github.action_ref }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        if [ -z "$FIFTY_VERSION" ] && [[ "$ACTION_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+          export FIFTY_VERSION="$ACTION_REF"
+        fi
+        dir="$RUNNER_TEMP/5050-cli/bin"
+        sh "$ACTION_PATH/install/install-cli.sh" --dir "$dir" --quiet
+        echo "$dir" >> "$GITHUB_PATH"
+    - name: 5050 up
+      id: up
+      shell: bash
+      env:
+        FIFTY_URL: ${{ inputs.url }}
+        FIFTY_TOKEN: ${{ inputs.token }}
+        INPUT_PROJECT: ${{ inputs.project }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_SERVICE: ${{ inputs.service }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_PATH_AS_ROOT: ${{ inputs.path-as-root }}
+        INPUT_MESSAGE: ${{ inputs.message }}
+        INPUT_DETACH: ${{ inputs.detach }}
+        INPUT_NEW_SERVICE: ${{ inputs.new-service }}
+        INPUT_SERVICE_NAME: ${{ inputs.service-name }}
+        INPUT_ARGS: ${{ inputs.args }}
+      run: bash "${{ github.action_path }}/packaging/action/run.sh"

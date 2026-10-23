@@ -107,7 +107,7 @@ The installer waits up to 120 seconds for the console's certificate. When it doe
 
 Running the installer again is safe. Every step checks before it changes anything, and an existing `/etc/5050/config.json` is kept as it is.
 
-> **Not yet:** the installer does not check DNS before the first certificate request, so a typo in the domain shows up as a certificate timeout. Check the record with `dig` first. [What is not in this release](/docs/reference/honest-limits#not-yet).
+With `--domain`, the installer checks that the console name and a random name under the base domain resolve to the server's address before it asks for a certificate. If not, it prints the A records to add and stops. Pass `--skip-dns-check` to install anyway.
 
 ## Cloud-init
 

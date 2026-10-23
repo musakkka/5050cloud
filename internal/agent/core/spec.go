@@ -34,9 +34,17 @@ func JobContainerName(jobID string) string { return "5050-job-" + jobID }
 // SpecHash fingerprints the parts of a ReplicaSpec that shape the container.
 // A change under the same replica id means the container is recreated.
 // Health settings, the desired run state, the probe and the stop grace do
-// not change the container and are left out.
+// not change the container and are left out. Port only steers the health
+// probe: a worker without a port (Port 0) hashes with the port of its
+// 5050.port label, so the hash matches the one it had when Port was set and
+// adding a domain later does not recreate the container.
 func SpecHash(s proto.ReplicaSpec) string {
 	c := s
+	if c.Port == 0 {
+		if p, err := strconv.Atoi(c.Labels["5050.port"]); err == nil {
+			c.Port = p
+		}
+	}
 	c.Health = proto.HealthCheck{}
 	c.Desired = ""
 	c.Probe = nil

@@ -27,6 +27,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -173,11 +175,15 @@ func (e *itEnv) railpackNode(t *testing.T, ctx context.Context, id string) time.
 }
 
 func (e *itEnv) dockerfileWithArg(t *testing.T, ctx context.Context) string {
+	// The Dockerfile must not contain the secret itself: its text lands in the
+	// image history. It compares a hash of the mounted file instead.
+	sum := sha256.Sum256([]byte(itSecretVal))
+	secretHash := hex.EncodeToString(sum[:])
 	e.srv.add("/dockerfile", map[string]string{
 		"Dockerfile": "FROM " + itAlpineImage + "\n" +
 			"ARG GREETING\n" +
 			"RUN echo \"$GREETING\" > /greeting\n" +
-			"RUN --mount=type=secret,id=SECRET_TOKEN test \"$(cat /run/secrets/SECRET_TOKEN)\" = \"" + itSecretVal + "\" && echo secret-mounted\n" +
+			"RUN --mount=type=secret,id=SECRET_TOKEN test \"$(sha256sum < /run/secrets/SECRET_TOKEN | cut -d' ' -f1)\" = \"" + secretHash + "\" && echo secret-mounted\n" +
 			"CMD [\"cat\", \"/greeting\"]\n",
 	})
 	job := e.job("dep_it_df1", "/dockerfile")
@@ -293,13 +299,13 @@ func (e *itEnv) sandbox(t *testing.T, ctx context.Context) {
 	} else {
 		t.Logf("FIFTY_TEST_NETW is not set: the gateway, mesh and metadata probes need the agent's firewall on a real host and are skipped here")
 	}
+	// The probe addresses are literals in the Dockerfile, not variables: the
+	// build log masks every variable value, which would hide the addresses.
 	e.srv.add("/sandbox", map[string]string{
-		"Dockerfile": sandboxDockerfile,
+		"Dockerfile": sandboxDockerfile(probes, "1.1.1.1:443"),
 	})
 	job := e.job("dep_it_sb1", "/sandbox")
 	job.NoCache = true
-	job.Env["PROBES"] = strings.Join(probes, " ")
-	job.Env["INTERNET"] = "1.1.1.1:443"
 	log, lines := collectLog(t)
 	res := e.b.Build(ctx, job, e.reg, log)
 	out := strings.Join(lines(), "\n")
@@ -320,14 +326,16 @@ func (e *itEnv) sandbox(t *testing.T, ctx context.Context) {
 }
 
 // sandboxDockerfile is the E38 probe: it reports each address it tries
-// and fails only when a probe got through.
-const sandboxDockerfile = "FROM " + itAlpineImage + "\n" +
-	"ARG PROBES\n" +
-	"ARG INTERNET\n" +
-	`RUN reached=0; for t in $PROBES; do h="${t%:*}"; p="${t##*:}"; ` +
-	`if nc -z -w 3 "$h" "$p"; then echo "SANDBOX-REACHED $t"; reached=1; else echo "SANDBOX-BLOCKED $t"; fi; done; ` +
-	`h="${INTERNET%:*}"; p="${INTERNET##*:}"; if nc -z -w 5 "$h" "$p"; then echo "SANDBOX-INTERNET ok"; fi; ` +
-	`test "$reached" = 0` + "\n"
+// and fails only when a probe got through. The result words are split in the
+// command text ("RE""ACHED") so that the build log, which echoes the command,
+// only contains them when a step really printed them.
+func sandboxDockerfile(probes []string, internet string) string {
+	return "FROM " + itAlpineImage + "\n" +
+		`RUN reached=0; for t in ` + strings.Join(probes, " ") + `; do h="${t%:*}"; p="${t##*:}"; ` +
+		`if nc -z -w 3 "$h" "$p"; then echo "SANDBOX-RE""ACHED $t"; reached=1; else echo "SANDBOX-BLOCKED $t"; fi; done; ` +
+		`h="` + strings.Split(internet, ":")[0] + `"; p="` + strings.Split(internet, ":")[1] + `"; if nc -z -w 5 "$h" "$p"; then echo "SANDBOX-INTERNET ok"; fi; ` +
+		`test "$reached" = 0` + "\n"
+}
 
 func (e *itEnv) hostNetworkRefused(t *testing.T, ctx context.Context) {
 	e.srv.add("/hostnet", map[string]string{
@@ -387,10 +395,7 @@ func (e *itEnv) abort(t *testing.T, ctx context.Context) {
 	}
 	// The RUN step itself must be gone from BuildKit within the same budget.
 	deadline := t0.Add(5 * time.Second)
-	for {
-		if !e.buildkitRuns(ctx, "sleep 317") {
-			break
-		}
+	for e.buildkitRuns(ctx, "sleep 317") {
 		if time.Now().After(deadline) {
 			t.Errorf("the RUN step still runs in BuildKit 5 s after the abort")
 			break
@@ -523,7 +528,13 @@ func (e *itEnv) assertBuilderSandboxed(t *testing.T, ctx context.Context, netNam
 		t.Errorf("BuildKit is not on %s: %v", netName, ct.NetworkSettings.Networks)
 	}
 	args := strings.Join(append(ct.Config.Entrypoint, ct.Config.Cmd...), " ")
-	if !strings.Contains(args, "--oci-worker-net=bridge") || strings.Contains(args, "insecure-entitlement") {
+	// buildx 0.27 and newer append --allow-insecure-entitlement=network.host to
+	// every docker-container builder whatever flags are passed. That only lets
+	// a client ask for host networking; the agent never passes --allow, and
+	// HostNetworkRefused proves such a build is refused. Anything else would be
+	// ours and is an error.
+	rest := strings.ReplaceAll(args, "--allow-insecure-entitlement=network.host", "")
+	if !strings.Contains(args, "--oci-worker-net=bridge") || strings.Contains(rest, "insecure-entitlement") {
 		t.Errorf("buildkitd flags = %s", args)
 	}
 	if ct.HostConfig.Memory <= 0 || ct.HostConfig.CPUQuota <= 0 {

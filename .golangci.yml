@@ -6,6 +6,9 @@ version: "2"
 run:
   timeout: 5m
   tests: true
+  # The integration tests share helpers with the code under test.
+  build-tags:
+    - integration
 
 linters:
   default: standard # errcheck, govet, ineffassign, staticcheck, unused
@@ -25,6 +28,23 @@ linters:
       exclude-functions:
         - (io.Closer).Close
         - (*os.File).Close
+        # Best-effort cleanup: a failed close, remove or hang-up leaves nothing to retry.
+        - (net.Conn).Close
+        - (net.Listener).Close
+        - (net.PacketConn).Close
+        - (*database/sql.Rows).Close
+        - (*database/sql.DB).Close
+        - (*github.com/coder/websocket.Conn).CloseNow
+        - os.Remove
+        - os.RemoveAll
+        # Terminal and response writes: nothing useful to do on failure.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+    staticcheck:
+      # The standard set plus ST1005 off: CONTRIBUTING.md asks for error
+      # messages that are full sentences, which ST1005 flags by design.
+      checks: ["all", "-ST1000", "-ST1003", "-ST1005", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
   exclusions:
     generated: strict
     paths:

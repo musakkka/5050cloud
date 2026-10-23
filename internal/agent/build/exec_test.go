@@ -92,9 +92,27 @@ func TestExecRunnerCancelKillsGroup(t *testing.T) {
 	data, _ := os.ReadFile(pidFile)
 	pid := strings.TrimSpace(string(data))
 	time.Sleep(200 * time.Millisecond)
-	if _, err := os.Stat("/proc/" + pid); err == nil {
+	if processAlive(pid) {
 		t.Errorf("child %s survived the cancel", pid)
 	}
+}
+
+// processAlive reports whether a process runs. A killed child whose parent is
+// gone becomes a zombie until PID 1 reaps it, and PID 1 of a test container
+// often does not; a zombie is dead for this purpose.
+func processAlive(pid string) bool {
+	data, err := os.ReadFile("/proc/" + pid + "/stat")
+	if err != nil {
+		return false
+	}
+	// The state is the first field after the command name, which is in
+	// parentheses and may itself contain spaces.
+	stat := string(data)
+	i := strings.LastIndex(stat, ")")
+	if i < 0 || i+2 >= len(stat) {
+		return true
+	}
+	return stat[i+2] != 'Z' && stat[i+2] != 'X'
 }
 
 func TestExecRunnerPreCancelled(t *testing.T) {

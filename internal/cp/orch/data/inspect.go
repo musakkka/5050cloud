@@ -49,7 +49,7 @@ func (d *Data) runInspect(ctx context.Context, snap cpapi.ServiceSnapshot, what 
 		return errors.New(jobError(what, out))
 	}
 	if err := decodeOutput(out.Result.Output, v); err != nil {
-		return fmt.Errorf("%s returned output that could not be read: %v.", what, err)
+		return fmt.Errorf("%s returned output that could not be read: %w.", what, err)
 	}
 	return nil
 }
@@ -346,7 +346,7 @@ func (d *Data) RedisKeys(ctx context.Context, envID, serviceID, match, cursor st
 	// cjson encodes an empty table as {} rather than [].
 	if t := strings.TrimSpace(string(page.Keys)); t != "" && t != "{}" {
 		if err := json.Unmarshal(page.Keys, &out.Keys); err != nil {
-			return api.RedisKeysPage{}, fmt.Errorf("Listing the keys returned output that could not be read: %v.", err)
+			return api.RedisKeysPage{}, fmt.Errorf("Listing the keys returned output that could not be read: %w.", err)
 		}
 	}
 	for i := range out.Keys {

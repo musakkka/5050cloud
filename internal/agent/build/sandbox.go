@@ -170,8 +170,9 @@ func (b *builder) createArgv(image, netName, cfgPath string, cpus int, mem int64
 			"--driver-opt", "cpu-quota="+strconv.Itoa(max(1, cpus-1)*cpuPeriod),
 		)
 	}
-	// Explicit flags replace buildx's defaults, which would allow the
-	// network.host entitlement.
+	// Explicit flags replace buildx's older defaults. buildx 0.27 and newer
+	// still append --allow-insecure-entitlement=network.host; builds never
+	// pass --allow, so a RUN --network=host step is refused client side.
 	args = append(args, "--buildkitd-flags=--oci-worker-net=bridge")
 	if versionAtLeast(b.buildxVer, 0, 13) {
 		args = append(args, "--buildkitd-config", cfgPath)

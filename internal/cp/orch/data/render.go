@@ -152,7 +152,7 @@ func (d *Data) Render(ctx context.Context, snap cpapi.ServiceSnapshot, host prot
 			if err != nil {
 				return Rendered{}, err
 			}
-			for k, v := range backupEnv(b, keys, snap.ServiceID, false) {
+			for k, v := range walOnlyEnv(backupEnv(b, keys, snap.ServiceID, false)) {
 				out.Env[k] = v
 			}
 		}
@@ -270,7 +270,7 @@ func renderArgs(argv []string, data any) ([]string, error) {
 		}
 		b, err := execTemplate("arg", []byte(a), data, func(string) (string, error) { return "", nil })
 		if err != nil {
-			return nil, fmt.Errorf("The recipe argument %q cannot be rendered: %v.", a, err)
+			return nil, fmt.Errorf("The recipe argument %q cannot be rendered: %w.", a, err)
 		}
 		out[i] = string(b)
 	}

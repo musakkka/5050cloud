@@ -62,7 +62,7 @@ var Routes = []Route{
 	{Method: "POST", Path: "/auth/login/totp", Role: Public, Req: TOTPLoginRequest{}, Resp: Me{}, Audit: "auth.login_totp"},
 	{Method: "POST", Path: "/auth/logout", Role: Viewer, Audit: "auth.logout"},
 	{Method: "POST", Path: "/auth/forgot", Role: Public, Req: ForgotPasswordRequest{}, Audit: "auth.forgot"},
-	{Method: "POST", Path: "/auth/reset", Role: Public, Req: ResetPasswordRequest{}, Resp: Me{}, Audit: "auth.reset"},
+	{Method: "POST", Path: "/auth/reset", Role: Public, Req: ResetPasswordRequest{}, Resp: LoginResponse{}, Audit: "auth.reset"},
 	{Method: "POST", Path: "/auth/verify-email", Role: Public, Req: VerifyEmailRequest{}, Audit: "auth.verify_email"},
 	{Method: "GET", Path: "/me", Role: Viewer, Resp: Me{}},
 	{Method: "PATCH", Path: "/me", Role: Viewer, Req: UpdateMeRequest{}, Resp: User{}, Audit: "me.update"},

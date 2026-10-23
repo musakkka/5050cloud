@@ -242,7 +242,6 @@ func TestCronJobShapeAndResults(t *testing.T) {
 		{proto.JobResult{}, errors.New("the host is offline"), "failed", "The run could not start: the host is offline."},
 	}
 	for _, c := range cases {
-		c := c
 		e.run.OnJob = func(string, proto.Job) (proto.JobResult, error) { return c.res, c.err }
 		run, err := e.d.RunCronNow(ctx, e.envID, svc, "usr_1")
 		if err != nil {

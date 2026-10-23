@@ -1,0 +1,31 @@
+# Example workflow for an app repository: deploy to 5050cloud on every push
+# to main. Copy it to .github/workflows/deploy.yml in your app.
+#
+# Repository settings > Secrets and variables > Actions:
+#   secret   FIFTY_TOKEN  an environment token (Project Settings > Tokens)
+#   variable FIFTY_URL    the console URL of your install
+name: deploy
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - id: deploy
+        uses: musakkka/5050cloud@v0.1.0
+        with:
+          url: ${{ vars.FIFTY_URL }}
+          token: ${{ secrets.FIFTY_TOKEN }}
+          service: web
+      - run: echo "Live at $URL"
+        env:
+          URL: ${{ steps.deploy.outputs.url }}

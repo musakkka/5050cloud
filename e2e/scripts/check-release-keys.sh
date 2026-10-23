@@ -6,6 +6,11 @@ set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
 a=$(grep -v '^#' "$root/internal/upgrade/release-keys.txt" | sed '/^$/d' | tr '\n' ' ' | sed 's/ *$//')
 b=$(sed -n 's/^RELEASE_PUBKEYS="\(.*\)"$/\1/p' "$root/install/install.sh")
+c=$(sed -n 's/^RELEASE_PUBKEYS="\(.*\)"$/\1/p' "$root/install/install-cli.sh")
+if [ "$a" != "$c" ]; then
+	echo "release keys differ: release-keys.txt has '$a', install-cli.sh has '$c'." >&2
+	exit 1
+fi
 if [ "$a" != "$b" ]; then
 	echo "release keys differ: release-keys.txt has '$a', install.sh has '$b'." >&2
 	exit 1

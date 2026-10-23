@@ -6,6 +6,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"flag"
 	"io"
 	"os"
@@ -137,7 +138,7 @@ func TestArchiveRoot(t *testing.T) {
 
 func TestPackTooLarge(t *testing.T) {
 	cw := &countWriter{w: io.Discard, n: MaxUpload - 1}
-	if _, err := cw.Write([]byte("ab")); err != errTooLarge {
+	if _, err := cw.Write([]byte("ab")); !errors.Is(err, errTooLarge) {
 		t.Fatalf("got %v", err)
 	}
 }

@@ -621,7 +621,8 @@ func (c *Core) GitHubCloneToken(ctx context.Context, repo string) (string, error
 	owner := strings.SplitN(ref.FullName, "/", 2)[0]
 	for _, in := range insts {
 		if strings.EqualFold(in.Account, owner) {
-			return c.gh.InstallationToken(ctx, *app, in.ID)
+			// Limited to this one repository, read-only contents.
+			return c.gh.RepoToken(ctx, *app, in.ID, strings.SplitN(ref.FullName, "/", 2)[1])
 		}
 	}
 	return "", nil

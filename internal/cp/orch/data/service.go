@@ -280,17 +280,6 @@ func (d *Data) activity(ctx context.Context, envID, serviceID, text, actor, ref 
 	}
 }
 
-func (d *Data) audit(ctx context.Context, actor, action, target, detail string) {
-	if actor == "" {
-		actor = "system"
-	}
-	if err := d.cfg.Audit(ctx, api.AuditEntry{
-		ID: newID("aud"), TS: d.now().UnixMilli(), Actor: actor, Action: action, Target: target, Detail: detail,
-	}); err != nil {
-		d.log.Warn("write audit entry", "action", action, "err", err)
-	}
-}
-
 // notifyBackupFailed sends backup.failed by webhooks, email and the bell, and
 // writes the same sentence to the activity feed.
 func (d *Data) notifyBackupFailed(ctx context.Context, snap cpapi.ServiceSnapshot, ref, text string) {

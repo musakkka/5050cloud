@@ -23,7 +23,8 @@ The VM must accept SSH as a user with passwordless sudo, reach the internet,
 and have ports 80 and 443 open (the console certificate is checked).
 
 Automated today: E1 (fresh install through `--release-base`), E21 (idempotent
-re-run), E24 (uninstall and purge). The report lists every other E test as
+re-run), E25 (custom domain on a nip.io name, `E2E_CUSTOM_DOMAIN` to use a real
+one), E24 (uninstall and purge). The report lists every other E test as
 `not_run`.
 
 Later work, in order:

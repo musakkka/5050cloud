@@ -108,12 +108,6 @@ func (e *testEnv) newData(db *sql.DB) *Data {
 	return d
 }
 
-// usePlacingRunner swaps in a runner that implements VolumePlacer.
-func (e *testEnv) usePlacingRunner() {
-	e.runner = fakerunner.Placing{Runner: e.run}
-	e.d = e.newData(e.db)
-}
-
 func (e *testEnv) wait() { e.d.bgWG.Wait() }
 
 func (e *testEnv) ctx() context.Context { return context.Background() }

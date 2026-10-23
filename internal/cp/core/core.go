@@ -32,6 +32,7 @@ import (
 	"github.com/musakkka/5050cloud/internal/cp/cpapi"
 	"github.com/musakkka/5050cloud/internal/cp/secretbox"
 	"github.com/musakkka/5050cloud/pkg/api"
+	"github.com/musakkka/5050cloud/pkg/cfranges"
 	"github.com/musakkka/5050cloud/pkg/version"
 )
 
@@ -74,6 +75,8 @@ type Core struct {
 	httpc     func() *http.Client
 	now       func() time.Time
 	log       *slog.Logger
+	// resolve answers the DNS check; tests replace it (SetDomainResolver).
+	resolve DomainResolver
 
 	orch     cpapi.Orchestrator
 	broker   *events.Broker
@@ -105,6 +108,9 @@ func New(o Options) *Core {
 	}
 	if c.log == nil {
 		c.log = slog.Default()
+	}
+	if c.resolve == nil {
+		c.resolve = publicLookup
 	}
 	if c.httpc == nil {
 		allow := c.file.AllowPrivateDestinations
@@ -348,7 +354,10 @@ func (c *Core) Install(ctx context.Context) (api.Install, error) {
 		PublicIP: s.PublicIP, ACMEEmail: s.ACMEEmail, TrustedProxies: s.TrustedProxies,
 		RegistryCapPct: s.RegistryCapPct, BuildTimeoutMin: s.BuildTimeoutMin,
 		RailwayAliases: c.railwayAliases(ctx, c.st.Reader), RequireTOTP: s.RequireTOTP,
-		ReadOnly: c.st.ReadOnly(),
+		ReadOnly: c.st.ReadOnly(), CloudflareRanges: cfranges.All(),
+	}
+	if s.OldConsoleDomain != "" && s.OldConsoleUntil > c.Now() {
+		in.OldConsoleDomain, in.OldConsoleUntil = s.OldConsoleDomain, s.OldConsoleUntil
 	}
 	c.mu.Lock()
 	if c.latest != "" && newerVersion(c.latest, version.Version) {
@@ -397,6 +406,10 @@ func (c *Core) UpdateInstall(ctx context.Context, a Actor, req api.UpdateInstall
 				return fail.Validation("consoleDomain", "The console domain %q is not a valid domain name.", d)
 			}
 			if d != s.ConsoleDomain {
+				var used int
+				if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM domains WHERE domain = ?`, d).Scan(&used); err == nil && used > 0 {
+					return fail.Validation("consoleDomain", "A service already uses %s. Remove that domain first.", d)
+				}
 				s.OldConsoleDomain, s.OldConsoleUntil = s.ConsoleDomain, c.Now()+day
 				s.ConsoleDomain = d
 				consoleChanged = true

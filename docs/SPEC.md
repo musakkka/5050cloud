@@ -1896,7 +1896,7 @@ newest first.
 | POST | `/auth/login/totp` | `{ticket, code}` -> `Me` | - |
 | POST | `/auth/logout` | -> 204 | V |
 | POST | `/auth/forgot` | `{email}` -> 204 (always) | - |
-| POST | `/auth/reset` | `{token, password}` -> `Me` | - |
+| POST | `/auth/reset` | `{token, password}` -> `LoginResponse` (a TOTP ticket instead of a session when 2FA is on) | - |
 | POST | `/auth/verify-email` | `{token}` -> 204 | - |
 | GET | `/me` | `Me` | V |
 | PATCH | `/me` | `{name?, password?, currentPassword?}` -> `User` | V |

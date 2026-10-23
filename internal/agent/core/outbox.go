@@ -57,9 +57,3 @@ func (o *outbox) drain() [][]byte {
 	o.items = nil
 	return out
 }
-
-func (o *outbox) len() int {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	return len(o.items)
-}

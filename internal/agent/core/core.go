@@ -287,7 +287,7 @@ func (a *Agent) connectedOnce() bool {
 
 func (a *Agent) run(ctx context.Context) error {
 	a.ctx = ctx
-	defer a.logs.Close()
+	defer func() { _ = a.logs.Close() }()
 	if err := upgrade.CheckPendingAgentUpgrade(a.o.Upgrade, a.connectedOnce); err != nil {
 		a.log.Warn("pending agent upgrade check failed", "err", err)
 	}
@@ -299,7 +299,7 @@ func (a *Agent) run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	loops := []func(context.Context){
 		a.reconcileLoop, a.eventLoop, a.metricsLoop, a.tailLoop, a.janitorLoop,
-		a.retentionLoop, a.probeLoop, a.volumeLoop, a.accessLogLoop, a.certLoop,
+		a.retentionLoop, a.probeLoop, a.volumeLoop, a.accessLogLoop, a.certLoop, a.certStatusLoop,
 	}
 	for _, l := range loops {
 		wg.Add(1)

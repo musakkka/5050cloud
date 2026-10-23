@@ -52,7 +52,7 @@ func TestBackupRecipesPerTemplate(t *testing.T) {
 			if j.Cmd[0] != c.cmd {
 				t.Fatalf("cmd = %v", j.Cmd)
 			}
-			if j.Env["AWS_ACCESS_KEY_ID"] != "writer" || j.Env["BACKUP_S3_PREFIX"] != "install-1/"+svc || j.Env["RESTIC_PASSWORD"] == "" {
+			if j.Env["AWS_ACCESS_KEY_ID"] != "writer" || j.Env["BACKUP_S3_PREFIX"] != "install-1/"+svc || (j.Env["RESTIC_PASSWORD"] == "") != (c.kind == "postgres_wal") {
 				t.Fatalf("backup env = %v", j.Env)
 			}
 			if c.kind == "postgres_wal" && (j.User != "postgres" || j.Env["WALG_S3_PREFIX"] != "s3://backups/install-1/"+svc+"/wal-g" || len(j.Env["WALG_LIBSODIUM_KEY"]) != 64) {

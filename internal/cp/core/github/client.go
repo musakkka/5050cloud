@@ -54,6 +54,8 @@ type Client struct {
 
 	mu     sync.Mutex
 	tokens map[int64]cachedToken
+	// repoTokens caches single-repository clone tokens by "<installation>/<repo>".
+	repoTokens map[string]cachedToken
 }
 
 type cachedToken struct {
@@ -210,6 +212,38 @@ func (c *Client) InstallationToken(ctx context.Context, app App, installationID 
 	}
 	c.mu.Lock()
 	c.tokens[installationID] = cachedToken{out.Token, out.ExpiresAt}
+	c.mu.Unlock()
+	return out.Token, nil
+}
+
+// RepoToken returns an installation access token limited to one repository
+// and to read access on its contents, for cloning. The installation-wide token
+// stays inside the control plane. repo is the bare repository name.
+func (c *Client) RepoToken(ctx context.Context, app App, installationID int64, repo string) (string, error) {
+	key := fmt.Sprintf("%d/%s", installationID, strings.ToLower(repo))
+	c.mu.Lock()
+	if t, ok := c.repoTokens[key]; ok && c.Now().Before(t.expires.Add(-5*time.Minute)) {
+		c.mu.Unlock()
+		return t.token, nil
+	}
+	c.mu.Unlock()
+	jwt, err := AppJWT(app, c.Now())
+	if err != nil {
+		return "", err
+	}
+	var out struct {
+		Token     string    `json:"token"`
+		ExpiresAt time.Time `json:"expires_at"`
+	}
+	body := map[string]any{"repositories": []string{repo}, "permissions": map[string]string{"contents": "read"}}
+	if err := c.do(ctx, http.MethodPost, fmt.Sprintf("/app/installations/%d/access_tokens", installationID), "Bearer "+jwt, body, "", &out); err != nil {
+		return "", err
+	}
+	c.mu.Lock()
+	if c.repoTokens == nil {
+		c.repoTokens = map[string]cachedToken{}
+	}
+	c.repoTokens[key] = cachedToken{out.Token, out.ExpiresAt}
 	c.mu.Unlock()
 	return out.Token, nil
 }

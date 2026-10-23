@@ -126,6 +126,21 @@ func targetPort(cfg api.ServiceConfig, env map[string]string) int {
 	return defaultPort
 }
 
+// probePort is the port the agent health-checks. A worker (no target port,
+// no domain) whose PORT is still the default has no port: nothing is
+// expected to listen, so it is healthy once running 10 s (7.4) instead of
+// waiting for a TCP answer that never comes. A health check path, a PORT the
+// user set or one detected from the image keeps the probe.
+func probePort(cfg api.ServiceConfig, env map[string]string, hasDomains bool, port int) int {
+	if sched.Kind(cfg, hasDomains) != api.KindWorker || cfg.Deploy.HealthcheckPath != "" {
+		return port
+	}
+	if p := env["PORT"]; p != "" && p != strconv.Itoa(defaultPort) {
+		return port
+	}
+	return 0
+}
+
 func (o *Orchestrator) registryAddr(h hub.HostRow) string {
 	if h.MeshIndex == 1 {
 		return "127.0.0.1:" + registryPort
@@ -386,6 +401,10 @@ func (o *Orchestrator) ingressFor(ctx context.Context, host hub.HostRow, members
 	}
 	if d := consoleHost(inst, o.o.PublicURL); d != "" {
 		ing.Console = &proto.Route{Domain: d, UpstreamName: consoleUpstream, Port: consolePort(o.o.LocalURL), TLS: routes.TLSMode(d)}
+		// The previous console name keeps working for 24 hours after a change.
+		if old := strings.ToLower(inst.OldConsoleDomain); old != "" && old != d && inst.OldConsoleUntil > o.now().UnixMilli() {
+			ing.Routes = append(ing.Routes, proto.Route{Domain: old, UpstreamName: consoleUpstream, Port: consolePort(o.o.LocalURL), TLS: routes.TLSMode(old)})
+		}
 		ip := "127.0.0.1"
 		if host.MeshIndex != 1 {
 			ip = o.plan.MeshAddr(1).String()
@@ -433,7 +452,7 @@ func (o *Orchestrator) replicaSpec(ctx context.Context, host hub.HostRow, r repR
 	}
 	spec := proto.ReplicaSpec{
 		ID: r.ID, DeploymentID: d.ID, ServiceID: r.ServiceID, EnvironmentID: r.EnvID, ProjectID: d.ProjectID,
-		ServiceName: cfg.Name, Image: o.imageRef(host, d), Cmd: argv, Env: merged, Port: port, IP: r.IP,
+		ServiceName: cfg.Name, Image: o.imageRef(host, d), Cmd: argv, Env: merged, Port: probePort(cfg, env, len(snap.Domains) > 0, port), IP: r.IP,
 		Network: "5050-" + r.EnvID,
 		Health: proto.HealthCheck{Path: cfg.Deploy.HealthcheckPath, Host: healthHost(snap), IntervalSec: 3, TimeoutSec: 10,
 			DeadlineSec: healthDeadline(cfg), GraceSec: 5, Exec: rend.Health},

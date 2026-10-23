@@ -163,7 +163,7 @@ func (a *Agent) runJob(ctx context.Context, j proto.Job) proto.JobResult {
 	emit := func(line string) {
 		line = mask.Apply(logstore.CapLine(string(logstore.StripANSI([]byte(line)))))
 		batch.add(line)
-		out.Write([]byte(line + "\n"))
+		_, _ = out.Write([]byte(line + "\n"))
 	}
 	var code int
 	var err error
@@ -202,7 +202,7 @@ func (a *Agent) execRun(ctx context.Context, cid string, cmd []string, stdin []b
 	if err != nil {
 		return -1, nil, err
 	}
-	defer ex.Close()
+	defer func() { _ = ex.Close() }()
 	if stdin != nil {
 		go func() {
 			_, _ = ex.Input().Write(stdin)
@@ -221,7 +221,7 @@ func (a *Agent) runExecJob(ctx context.Context, j proto.Job, emit func(string)) 
 	if err != nil {
 		return -1, fmt.Errorf("could not run the command in replica %s: %w", j.ReplicaID, err)
 	}
-	defer ex.Close()
+	defer func() { _ = ex.Close() }()
 	if len(j.Stdin) > 0 {
 		go func() {
 			_, _ = ex.Input().Write(j.Stdin)
@@ -240,7 +240,7 @@ func (a *Agent) runExecJob(ctx context.Context, j proto.Job, emit func(string)) 
 	select {
 	case <-done:
 	case <-ctx.Done():
-		ex.Close()
+		_ = ex.Close()
 		<-done
 		return -1, ctx.Err()
 	}

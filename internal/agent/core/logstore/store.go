@@ -298,7 +298,7 @@ func readFile(fr fileRef, fn func(proto.LogRecord) bool) error {
 		if err != nil {
 			return fmt.Errorf("the log file %s is damaged: %w", fr.path, err)
 		}
-		defer gz.Close()
+		defer func() { _ = gz.Close() }()
 		r = gz
 	}
 	sc := bufio.NewScanner(r)

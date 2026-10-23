@@ -27,7 +27,6 @@ type catalog struct {
 	mu        sync.Mutex
 	templates map[string]*manifest.Template
 	images    *imagesFile
-	tools     *toolsFile
 }
 
 func newCatalog(fsys fs.FS) *catalog {
@@ -41,7 +40,7 @@ func validTemplateID(id string) bool {
 		return false
 	}
 	for _, r := range id {
-		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' {
 			return false
 		}
 	}
@@ -67,7 +66,7 @@ func (c *catalog) Template(id string) (*manifest.Template, error) {
 	}
 	var t manifest.Template
 	if err := yaml.UnmarshalStrict(b, &t); err != nil {
-		return nil, fmt.Errorf("The template %q cannot be read: %v.", id, err)
+		return nil, fmt.Errorf("The template %q cannot be read: %w.", id, err)
 	}
 	if t.ID != id {
 		return nil, fmt.Errorf("The template in templates/%s says its id is %q.", id, t.ID)
@@ -193,7 +192,7 @@ func (c *catalog) imagesFile() (*imagesFile, error) {
 	}
 	var f imagesFile
 	if err := json.Unmarshal(b, &f); err != nil {
-		return nil, fmt.Errorf("templates/images.json cannot be read: %v.", err)
+		return nil, fmt.Errorf("templates/images.json cannot be read: %w.", err)
 	}
 	c.images = &f
 	return &f, nil
@@ -254,7 +253,7 @@ func Tools(fsys fs.FS, arch string) ([]proto.Tool, error) {
 	}
 	var f toolsFile
 	if err := json.Unmarshal(b, &f); err != nil {
-		return nil, fmt.Errorf("templates/tools.json cannot be read: %v.", err)
+		return nil, fmt.Errorf("templates/tools.json cannot be read: %w.", err)
 	}
 	out := make([]proto.Tool, 0, len(f.Tools))
 	for _, t := range f.Tools {

@@ -23,6 +23,12 @@ export default function GeneralSettings() {
   return <><InstallForm /><SmtpForm /><AlertsForm /></>;
 }
 
+// mergeLines appends the wanted lines the text does not have yet.
+function mergeLines(text: string, add: string[]): string {
+  const have = splitList(text);
+  return [...have, ...add.filter((x) => !have.includes(x))].join("\n");
+}
+
 function InstallForm() {
   const { data, error } = useLoad(v1.install, []);
   const [f, setF] = useState<GeneralForm | null>(null);
@@ -49,7 +55,8 @@ function InstallForm() {
         <Field label="Base domain" error={err("baseDomain")} hint="New services get a domain under this one."><Input value={f.baseDomain} onChange={set("baseDomain")} /></Field>
         <Field label="Console domain" error={err("consoleDomain")} hint="The old domain keeps working for 24 hours after a change."><Input value={f.consoleDomain} onChange={set("consoleDomain")} /></Field>
         <Field label="ACME email" error={err("acmeEmail")} hint="Certificate authorities send expiry notices here."><Input type="email" value={f.acmeEmail} onChange={set("acmeEmail")} /></Field>
-        <Field label="Trusted proxies" error={err("trustedProxies")} hint="IP ranges whose X-Forwarded-For header is trusted, one per line."><TextArea value={f.trustedProxies} onChange={set("trustedProxies")} /></Field>
+        <Field label="Trusted proxies" error={err("trustedProxies")} hint="IP ranges whose X-Forwarded-For header is trusted, one per line."><TextArea value={f.trustedProxies} onChange={set("trustedProxies")} />
+          <Button type="button" variant="ghost" onClick={() => setF({ ...f, trustedProxies: mergeLines(f.trustedProxies, data.cloudflareRanges || []) })}>Use Cloudflare ranges</Button></Field>
         <SaveRow {...a} />
       </form>
     </Section>

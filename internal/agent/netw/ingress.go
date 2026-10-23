@@ -229,7 +229,7 @@ func (g *Ingress) waitAdmin(ctx context.Context) error {
 		case <-time.After(200 * time.Millisecond):
 		}
 	}
-	return fmt.Errorf("Caddy started but its admin API on %s did not answer within 30 seconds (%v); see docker logs %s", g.o.AdminSocket, last, CaddyContainer) //nolint:staticcheck // product name first
+	return fmt.Errorf("Caddy started but its admin API on %s did not answer within 30 seconds (%w); see docker logs %s", g.o.AdminSocket, last, CaddyContainer) //nolint:staticcheck // product name first
 }
 
 func ensureImage(ctx context.Context, d dockerAPI, img string) error {
@@ -295,7 +295,7 @@ func (g *Ingress) Apply(ctx context.Context, in proto.Ingress, tcp []proto.TCPPr
 		if r.ServiceID != "" {
 			hosts[r.Domain] = r.ServiceID
 		}
-		if r.tls != "off" {
+		if r.tls != "off" && r.tls != "pending" {
 			tlsDomains[r.Domain] = r.tls
 		}
 	}

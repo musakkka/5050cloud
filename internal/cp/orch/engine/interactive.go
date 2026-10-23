@@ -45,7 +45,7 @@ func (o *Orchestrator) Shell(ctx context.Context, envID, serviceID, replicaID, s
 	if err != nil {
 		return -1, err
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	sctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go func() {
@@ -106,7 +106,7 @@ func (o *Orchestrator) Tunnel(ctx context.Context, envID, serviceID string, port
 	if err != nil {
 		return err
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	return pipe(ctx, s, rw)
 }
 

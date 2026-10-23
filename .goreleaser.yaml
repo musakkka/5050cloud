@@ -83,6 +83,7 @@ checksum:
   algorithm: sha256
   extra_files:
     - glob: ./install/install.sh
+    - glob: ./install/install-cli.sh
 
 signs:
   - id: minisign
@@ -100,6 +101,7 @@ release:
   extra_files:
     - glob: ./.release/latest.txt
     - glob: ./install/install.sh
+    - glob: ./install/install-cli.sh
 
 changelog:
   use: github

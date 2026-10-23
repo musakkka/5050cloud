@@ -317,6 +317,8 @@ export function build(out = OUT) {
   const installer = join(ROOT, 'install/install.sh');
   if (existsSync(installer)) copyFileSync(installer, join(out, 'install.sh'));
   else throw new Error('install/install.sh is missing; the site must serve /install.sh');
+  const cliInstaller = join(ROOT, 'install/install-cli.sh');
+  if (existsSync(cliInstaller)) copyFileSync(cliInstaller, join(out, 'install-cli.sh'));
 
   for (const p of pages) {
     write(join(out, p.slug, 'index.html'), docPage(p, pages));

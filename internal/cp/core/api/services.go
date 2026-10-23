@@ -489,6 +489,17 @@ func (s *Server) logsQuery(x *Ctx) (cpapi.LogsQuery, error) {
 	if q.EnvID == "" && q.DeploymentID == "" {
 		return q, fail.Validation("environment", "Pass environment= or deployment=.")
 	}
+	if q.EnvID != "" && q.DeploymentID != "" {
+		// A deployment id from another environment must not widen the query.
+		o, err := x.orch()
+		if err != nil {
+			return q, err
+		}
+		d, err := o.Deployment(x.R.Context(), q.DeploymentID)
+		if err != nil || d.EnvironmentID != q.EnvID {
+			return q, fail.NotFound("The deployment does not exist.")
+		}
+	}
 	if q.EnvID == "" {
 		o, err := x.orch()
 		if err != nil {
@@ -503,6 +514,24 @@ func (s *Server) logsQuery(x *Ctx) (cpapi.LogsQuery, error) {
 		lvl, err := s.C.ProjectLevel(x.R.Context(), x.A, pid)
 		if err != nil || lvl < 1 {
 			return q, fail.NotFound("The deployment does not exist.")
+		}
+	}
+	if len(q.ServiceIDs) > 0 {
+		// Every requested service must belong to the authorized environment:
+		// agents filter by service id only, so a foreign id would return
+		// another tenant's lines from a shared host.
+		snaps, err := s.C.ServiceInstances(x.R.Context(), q.EnvID)
+		if err != nil {
+			return q, err
+		}
+		own := make(map[string]bool, len(snaps))
+		for _, sn := range snaps {
+			own[sn.ServiceID] = true
+		}
+		for _, id := range q.ServiceIDs {
+			if !own[id] {
+				return q, fail.NotFound("The service %s does not exist in this environment.", id)
+			}
 		}
 	}
 	if q.Limit < 1 || q.Limit > 5000 {

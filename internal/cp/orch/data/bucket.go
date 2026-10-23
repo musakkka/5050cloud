@@ -131,6 +131,15 @@ func validateBucket(b api.BackupSettings) error {
 	return nil
 }
 
+// walOnlyEnv drops the restic password from an environment that is handed to a
+// Postgres container. Postgres archives and backs up with WAL-G only, so the
+// restic repositories of every other service stay unreadable from a tenant's
+// own database (the container env is visible to anyone who can run code in it).
+func walOnlyEnv(env map[string]string) map[string]string {
+	delete(env, "RESTIC_PASSWORD")
+	return env
+}
+
 // backupEnv is what every backup, restore and retention command gets
 // (manifest.BackupRecipe): the bucket, the prefix of one service, a key and
 // the encryption settings. retention selects the retention key (delete

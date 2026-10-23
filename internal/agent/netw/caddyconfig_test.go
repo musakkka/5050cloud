@@ -189,3 +189,85 @@ func TestBootstrapConfig(t *testing.T) {
 		t.Error("bootstrap config must not serve anything")
 	}
 }
+
+func TestCaddyPendingRouteIsServedButNotIssued(t *testing.T) {
+	in := proto.Ingress{ACMEPrimary: true, Routes: []proto.Route{
+		{Domain: "waiting.example.com", UpstreamName: "svc-a", Port: 80, TLS: "pending", ServiceID: "svc_a"},
+		{Domain: "ready.example.com", UpstreamName: "svc-b", Port: 80, TLS: "acme", ServiceID: "svc_b"},
+	}}
+	b, errs := renderCaddy(testParams, in)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	var cfg struct {
+		Apps struct {
+			HTTP struct {
+				Servers map[string]struct {
+					Routes []struct {
+						Match []struct {
+							Host []string `json:"host"`
+						} `json:"match"`
+					} `json:"routes"`
+				} `json:"servers"`
+			} `json:"http"`
+			TLS struct {
+				Automation struct {
+					Policies []struct {
+						Subjects []string `json:"subjects"`
+					} `json:"policies"`
+				} `json:"automation"`
+				Certificates struct {
+					Automate []string `json:"automate"`
+				} `json:"certificates"`
+			} `json:"tls"`
+		} `json:"apps"`
+	}
+	if err := json.Unmarshal(b, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	hostsOf := func(server string) (hosts []string) {
+		for _, r := range cfg.Apps.HTTP.Servers[server].Routes {
+			for _, m := range r.Match {
+				hosts = append(hosts, m.Host...)
+			}
+		}
+		return hosts
+	}
+	has := func(list []string, s string) bool {
+		for _, x := range list {
+			if x == s {
+				return true
+			}
+		}
+		return false
+	}
+	if !has(hostsOf("http"), "waiting.example.com") || has(hostsOf("https"), "waiting.example.com") {
+		t.Errorf("pending route must be on :80 only: http %v https %v", hostsOf("http"), hostsOf("https"))
+	}
+	if !has(hostsOf("https"), "ready.example.com") {
+		t.Errorf("acme route missing from https: %v", hostsOf("https"))
+	}
+	var subjects []string
+	for _, p := range cfg.Apps.TLS.Automation.Policies {
+		subjects = append(subjects, p.Subjects...)
+	}
+	if has(subjects, "waiting.example.com") || has(cfg.Apps.TLS.Certificates.Automate, "waiting.example.com") {
+		t.Errorf("pending domain is handed to ACME: %v", subjects)
+	}
+	if !has(subjects, "ready.example.com") {
+		t.Errorf("acme domain is not handed to ACME: %v", subjects)
+	}
+}
+
+func TestCaddyConsoleBeatsDuplicateServiceRoute(t *testing.T) {
+	in := proto.Ingress{ACMEPrimary: true,
+		Console: &proto.Route{Domain: "console.example.com", Port: 5050, TLS: "acme"},
+		Routes:  []proto.Route{{Domain: "console.example.com", UpstreamName: "svc-evil", Port: 80, TLS: "acme", ServiceID: "svc_evil"}}}
+	b, errs := renderCaddy(testParams, in)
+	if len(errs) != 1 || !strings.Contains(errs[0].Error(), "more than one route") {
+		t.Fatalf("errors %v", errs)
+	}
+	if strings.Contains(string(b), "svc-evil") || !strings.Contains(string(b), "127.0.0.1:5050") {
+		t.Error("the service route took the console name")
+	}
+}

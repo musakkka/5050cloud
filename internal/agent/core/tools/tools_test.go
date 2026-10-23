@@ -36,8 +36,8 @@ func tarGz(t *testing.T, files map[string]string) []byte {
 		}
 		_, _ = tw.Write([]byte(body))
 	}
-	tw.Close()
-	gz.Close()
+	_ = tw.Close()
+	_ = gz.Close()
 	return buf.Bytes()
 }
 

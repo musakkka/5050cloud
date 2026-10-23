@@ -162,10 +162,10 @@ func TestHealthGraceRequiresSecondPass(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Pass once, then fail: the probe after the grace must catch it.
 		if hits.Add(1) == 1 {
-			w.WriteHeader(200)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
 	host, port, _ := net.SplitHostPort(strings.TrimPrefix(srv.URL, "http://"))

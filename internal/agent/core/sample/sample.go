@@ -314,7 +314,7 @@ func DirSize(dir string, budget time.Duration) (size int64, complete bool, err e
 	stop := errors.New("budget")
 	err = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, werr error) error {
 		if werr != nil {
-			return nil // unreadable entries are skipped
+			return nil //nolint:nilerr // unreadable entries are skipped
 		}
 		if time.Now().After(deadline) {
 			return stop

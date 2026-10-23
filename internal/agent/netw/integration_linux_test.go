@@ -111,7 +111,7 @@ func nsHandle(t *testing.T, name string) netns.NsHandle {
 	if err != nil {
 		t.Fatalf("netns %s: %v", name, err)
 	}
-	t.Cleanup(func() { h.Close() })
+	t.Cleanup(func() { _ = h.Close() })
 	return h
 }
 
@@ -614,7 +614,7 @@ func backend(t *testing.T, ip, name string, port int) {
 	})
 	srv := &http.Server{Handler: mux}
 	go func() { _ = srv.Serve(l) }()
-	t.Cleanup(func() { srv.Close() })
+	t.Cleanup(func() { _ = srv.Close() })
 }
 
 func TestIntegrationCaddyUpstreamSwapAndReload(t *testing.T) {
@@ -700,14 +700,17 @@ func TestIntegrationCaddyUpstreamSwapAndReload(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("http://127.0.0.1:%d/x?y=1", httpPort), nil)
 	req.Host = "secure.test"
 	noRedirect := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	if resp, err := noRedirect.Do(req); err != nil || resp.StatusCode != 308 || resp.Header.Get("Location") != "https://secure.test/x?y=1" {
-		t.Errorf("redirect = %v %v", resp, err)
+	if resp, err := noRedirect.Do(req); err != nil {
+		t.Errorf("redirect: %v", err)
 	} else {
-		resp.Body.Close()
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusPermanentRedirect || resp.Header.Get("Location") != "https://secure.test/x?y=1" {
+			t.Errorf("redirect = %v", resp)
+		}
 	}
 
 	// Open a websocket before the swap and the reload.
-	ws, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", httpPort), &websocket.DialOptions{Host: "app.test"})
+	ws, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://127.0.0.1:%d/ws", httpPort), &websocket.DialOptions{Host: "app.test"}) //nolint:bodyclose // the websocket library owns the response body
 	if err != nil {
 		t.Fatalf("websocket: %v", err)
 	}
@@ -806,7 +809,7 @@ func TestIntegrationCaddyUpstreamSwapAndReload(t *testing.T) {
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	if err != nil || resp.StatusCode != 200 {
+	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Errorf("internal TLS: %v %v", resp, err)
 	} else {
 		resp.Body.Close()
