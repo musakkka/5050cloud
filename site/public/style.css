@@ -629,3 +629,9 @@ details:not([open]) > :not(summary) { display: none; }
 .logo-a { fill: var(--accent); }
 .logo-b { fill: currentColor; }
 .foot .logo { height: 36px; }
+/* The hero recording always fits in one screen: its height is capped by the
+   viewport, and the frame narrows to keep 16:9. */
+@media (min-width: 721px) {
+  .hero-screen { max-width: min(100%, calc((100svh - 150px) * 16 / 9)); margin-inline: auto; }
+  .hero-cap { max-width: min(100%, calc((100svh - 150px) * 16 / 9)); margin-inline: auto; }
+}

@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="site/public/brand/lockup-on-dark.svg">
-    <img src="site/public/brand/lockup.svg" alt="5050cloud" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="site/public/logo-dark.svg">
+    <img src="site/public/logo.svg" alt="5050cloud" width="200">
   </picture>
 </p>
 
@@ -10,6 +10,12 @@
 Railway's developer experience on servers you own.
 
 One command turns any Linux VM into a canvas of services with git deploys, databases, logs and rollbacks. Open source. No per-seat, per-minute or per-server fees.
+
+<p align="center">
+  <a href="https://5050cloud.com/#demo"><img src="docs/media/5050cloud-preview.gif" alt="The 5050cloud console: deploy a Docker image, add Postgres, wire DATABASE_URL and open the HTTPS URL" width="720"></a>
+  <br>
+  <a href="https://5050cloud.com/#demo">Watch the 90 second demo</a> or <a href="https://github.com/musakkka/5050cloud/releases/download/v0.1.1/5050cloud-demo.mp4">download the MP4</a>.
+</p>
 
 ```sh
 curl -fsSL https://5050cloud.com/install.sh | sudo sh
