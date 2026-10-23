@@ -17,6 +17,8 @@ Names match `[A-Za-z_][A-Za-z0-9_]*` (up to 256 characters). Values are UTF-8, u
 
 ## References
 
+![The Variables tab of the api service: DATABASE_URL set to ${{Postgres.DATABASE_URL}} and REDIS_URL set to ${{Redis.REDIS_URL}}](shot:variables "References show in colour; select a value to see what it resolves to.")
+
 | Syntax | Resolves to |
 |---|---|
 | `${{NAME}}` | Another variable of the same service |

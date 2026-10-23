@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="5050cloud">
+  <!-- For dark grounds: the lower half keeps a yellow edge so it does not sink into the page. -->
+  <rect width="64" height="32" fill="#f5c400"/>
+  <rect x="1" y="33" width="62" height="30" fill="#141414" stroke="#f5c400" stroke-width="2"/>
+  <g fill="none" stroke-width="4" stroke-linejoin="miter" stroke-linecap="butt">
+    <g stroke="#141414">
+      <path d="M28 8H14V15H21.5A4.5 4.5 0 0 1 21.5 24H12"/>
+      <rect x="38" y="8" width="12" height="16" rx="6"/>
+    </g>
+    <g stroke="#f5c400" transform="translate(0 32)">
+      <path d="M28 8H14V15H21.5A4.5 4.5 0 0 1 21.5 24H12"/>
+      <rect x="38" y="8" width="12" height="16" rx="6"/>
+    </g>
+  </g>
+</svg>

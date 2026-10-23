@@ -318,7 +318,7 @@ export function templatePages(root) {
       out.push('None.');
     }
     out.push('');
-    out.push(`The manifest is [templates/${id}/template.yaml](https://github.com/musakkka/5050cloud/blob/main/templates/${id}/template.yaml).`);
+    out.push(`The manifest is [templates/${id}/template.yaml]({{REPO}}/blob/main/templates/${id}/template.yaml).`);
     out.push('');
     out.push('## Next steps');
     out.push('');

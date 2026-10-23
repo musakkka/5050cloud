@@ -50,6 +50,6 @@ The schema is `Template` in `pkg/manifest/manifest.go`; field names are camelCas
 - Make provisioning re-runnable: create users and databases only if missing.
 - Add a golden render test (the existing templates show how) and run `make test`.
 
-## Submit
+## Open a pull request
 
-Open a pull request with the template, its icon and a line in the template list of the docs. See [CONTRIBUTING.md](https://github.com/musakkka/5050cloud/blob/main/CONTRIBUTING.md).
+Open a pull request with the template, its icon and a line in the template list of the docs. See [CONTRIBUTING.md]({{REPO}}/blob/main/CONTRIBUTING.md).

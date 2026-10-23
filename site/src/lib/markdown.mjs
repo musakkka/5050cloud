@@ -54,6 +54,8 @@ export function inline(text, linkFn = (h) => h) {
     });
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/(^|[\s(])_([^_]+)_(?=[\s.,;:)!?]|$)/g, '$1<em>$2</em>');
+    // Release promises do not go inline: pages link to the one "Not yet" list.
+    if (/\[\[0\.1\.1\]\]/.test(s)) throw new Error('[[0.1.1]] notes are retired: link to /docs/reference/honest-limits#not-yet');
     out.push(s);
     i++;
   }
@@ -100,7 +102,13 @@ export function render(body, linkFn) {
       while (i < lines.length && !lines[i].startsWith('```')) buf.push(lines[i++]);
       i++;
       const cls = lang ? ` class="lang-${escapeHtml(lang)}"` : '';
-      html.push(`<div class="code"><pre${cls}><code>${escapeHtml(buf.join('\n'))}</code></pre><button class="copy" type="button" aria-label="Copy code">Copy</button></div>`);
+      // Output blocks (```text) are shown as output with no copy button.
+      if (lang === 'text' || lang === 'output') {
+        html.push(`<div class="code out"><p class="code-label">Output</p><pre${cls}><code>${escapeHtml(buf.join('\n'))}</code></pre></div>`);
+      } else {
+        const label = /^(sh|bash|shell|console)$/.test(lang) ? 'Copy command' : 'Copy code';
+        html.push(`<div class="code"><pre${cls}><code>${escapeHtml(buf.join('\n'))}</code></pre><button class="copy" type="button" aria-label="${label}">Copy</button></div>`);
+      }
       continue;
     }
 
@@ -123,11 +131,15 @@ export function render(body, linkFn) {
       while (i < lines.length && lines[i].startsWith('|')) rows.push(lines[i++]);
       const head = splitRow(rows[0]);
       const bodyRows = rows.slice(rows[1] && /^\|?\s*:?-+/.test(rows[1]) ? 2 : 1);
-      const th = head.map((c) => `<th>${inline(c, linkFn)}</th>`).join('');
+      const th = head.map((c) => `<th scope="col">${inline(c, linkFn)}</th>`).join('');
+      // Each cell carries its column name, so the table can stack into
+      // labelled rows on a phone; short code (flags, names) never breaks.
+      const label = head.map((c) => escapeHtml(c.replace(/[`*_]/g, '')));
+      const cell = (c) => inline(c, linkFn).replace(/<code>([^<]{1,28})<\/code>/g, '<code class="nw">$1</code>');
       const trs = bodyRows
-        .map((r) => `<tr>${splitRow(r).map((c) => `<td>${inline(c, linkFn)}</td>`).join('')}</tr>`)
+        .map((r) => `<tr>${splitRow(r).map((c, k) => `<td data-label="${label[k] || ''}">${cell(c)}</td>`).join('')}</tr>`)
         .join('');
-      html.push(`<div class="table"><table><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>`);
+      html.push(`<div class="table stack-table"><table><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table></div>`);
       continue;
     }
 
@@ -135,8 +147,8 @@ export function render(body, linkFn) {
       const buf = [];
       while (i < lines.length && lines[i].startsWith('>')) buf.push(lines[i++].replace(/^> ?/, ''));
       let kind = 'note';
-      const first = buf[0].match(/^\*\*(Note|Tip|Warning|Caution):?\*\*:?\s*/i);
-      if (first) kind = first[1].toLowerCase();
+      const first = buf[0].match(/^\*\*(Note|Tip|Warning|Caution|Railway difference|Not yet|Beta):?\*\*:?\s*/i);
+      if (first) kind = first[1].toLowerCase().replace(/[^a-z0-9]+/g, '-');
       html.push(`<aside class="callout ${kind}">${render(buf.join('\n'), linkFn).html}</aside>`);
       continue;
     }
@@ -166,6 +178,8 @@ export function render(body, linkFn) {
         break;
       }
       const tag = ordered ? 'ol' : 'ul';
+      const startNum = ordered ? parseInt(li[2], 10) : 1;
+      const startAttr = ordered && startNum > 1 ? ` start="${startNum}"` : '';
       const inner = items
         .map((it) => {
           let sub = '';
@@ -176,7 +190,7 @@ export function render(body, linkFn) {
           return `<li>${inline(it.text, linkFn)}${sub}</li>`;
         })
         .join('');
-      html.push(`<${tag}>${inner}</${tag}>`);
+      html.push(`<${tag}${startAttr}>${inner}</${tag}>`);
       continue;
     }
 

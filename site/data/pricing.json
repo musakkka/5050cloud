@@ -1,0 +1,1115 @@
+{
+ "generated": "2026-10-22",
+ "currency": "USD unless stated; excludes VAT and sales tax",
+ "hoursPerMonth": 730,
+ "fx": {
+  "usdPerEur": 1.1234,
+  "rateDate": "2026-10-21",
+  "source": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml",
+  "read": "2026-10-22"
+ },
+ "prices": {
+  "railway": [
+   {
+    "item": "Hobby plan fee",
+    "value": 5,
+    "unit": "per month, includes $5 of usage",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Pro plan fee",
+    "value": 20,
+    "unit": "per month minimum usage per workspace, includes $20 of usage",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22",
+    "note": "Pricing page: 'Pro $20 minimum usage', 'Unlimited workspace seats included'."
+   },
+   {
+    "item": "Seats on Pro",
+    "value": 0,
+    "unit": "per seat",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22",
+    "note": "Unlimited workspace seats included. Hobby is a single developer workspace (3 members per project)."
+   },
+   {
+    "item": "CPU",
+    "value": 7.72e-06,
+    "unit": "per vCPU-second",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "CPU",
+    "value": 0.000463,
+    "unit": "per vCPU-minute",
+    "currency": "USD",
+    "source": "https://docs.railway.com/reference/pricing/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "CPU",
+    "value": 20,
+    "unit": "per vCPU-month",
+    "currency": "USD",
+    "source": "https://docs.railway.com/reference/pricing/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Memory",
+    "value": 3.86e-06,
+    "unit": "per GB-second",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Memory",
+    "value": 0.000231,
+    "unit": "per GB-minute",
+    "currency": "USD",
+    "source": "https://docs.railway.com/reference/pricing/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Memory",
+    "value": 10,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://docs.railway.com/reference/pricing/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Volume storage",
+    "value": 0.15,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://docs.railway.com/reference/pricing/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Egress (services)",
+    "value": 0.05,
+    "unit": "per GB",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Object storage",
+    "value": 0.015,
+    "unit": "per GB-month, free bucket egress",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Sandbox/VM CPU",
+    "value": 50,
+    "unit": "per vCPU-month, active use",
+    "currency": "USD",
+    "source": "https://docs.railway.com/reference/pricing/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Sandbox/VM memory",
+    "value": 50,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://docs.railway.com/reference/pricing/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Hobby limits",
+    "value": null,
+    "unit": "48 vCPU / 48 GB per service; 5 GB volume; 99.9% availability target; community support",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22",
+    "note": "Replica count differs: pricing page says 5 replicas at 8 vCPU / 8 GB each, plans doc says 6."
+   },
+   {
+    "item": "Pro limits",
+    "value": null,
+    "unit": "1,000 vCPU / 1 TB per service; 42 replicas at 24 vCPU / 24 GB each; 1 TB volume; 99.99% availability target; 30-day logs",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Business Class Support",
+    "value": null,
+    "unit": "add-on for Pro, price not published",
+    "currency": "USD",
+    "source": "https://docs.railway.com/reference/pricing/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "SSO, RBAC, extended audit logs",
+    "value": null,
+    "unit": "unlocked by annual committed spend, price not published",
+    "currency": "USD",
+    "source": "https://railway.com/pricing",
+    "read": "2026-10-22"
+   }
+  ],
+  "render": [
+   {
+    "item": "Hobby workspace",
+    "value": 0,
+    "unit": "per month + compute, 1 seat, 5 GB bandwidth",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Pro workspace",
+    "value": 25,
+    "unit": "per month + compute, unlimited seats, 25 GB bandwidth",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Scale workspace",
+    "value": 499,
+    "unit": "per month + compute, 1 TB bandwidth",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Bandwidth overage",
+    "value": 0.15,
+    "unit": "per GB",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Web service Starter 0.5 CPU / 512 MB",
+    "value": 7,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Web service 1 CPU / 2 GB",
+    "value": 25,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Web service 2 CPU / 4 GB",
+    "value": 85,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Web service 2 CPU / 8 GB",
+    "value": 135,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Web service 4 CPU / 8 GB",
+    "value": 175,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Web service 4 CPU / 16 GB",
+    "value": 225,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Postgres 0.5 CPU / 1 GB",
+    "value": 19,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Postgres 1 CPU / 2 GB",
+    "value": 40,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Postgres 2 CPU / 8 GB",
+    "value": 100,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Postgres storage",
+    "value": 0.3,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Key Value 256 MB",
+    "value": 10,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Key Value 1 GB",
+    "value": 20,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Persistent disk",
+    "value": 0.25,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Build minutes",
+    "value": 5,
+    "unit": "per 1,000 minutes after 500 (Hobby) / 1,000 (Pro) included",
+    "currency": "USD",
+    "source": "https://render.com/pricing",
+    "read": "2026-10-22"
+   }
+  ],
+  "fly": [
+   {
+    "item": "shared-cpu-1x 256 MB",
+    "value": 2.19,
+    "unit": "per month (iad/ewr)",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "shared-cpu-1x 1 GB",
+    "value": 6.7,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "shared-cpu-2x 2 GB",
+    "value": 13.39,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "performance-1x 2 GB",
+    "value": 33.0,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "performance-2x 4 GB",
+    "value": 66.0,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Additional RAM",
+    "value": 6.0,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Volumes",
+    "value": 0.15,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Egress North America and Europe",
+    "value": 0.02,
+    "unit": "per GB",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Egress Asia Pacific, Oceania, South America",
+    "value": 0.04,
+    "unit": "per GB",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Egress Africa and India",
+    "value": 0.12,
+    "unit": "per GB",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Dedicated IPv4",
+    "value": 2,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Managed Postgres",
+    "value": 38,
+    "unit": "per month, Basic (lowest plan)",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22",
+    "note": "Plans run $38 to $1,922 per month."
+   },
+   {
+    "item": "Managed Postgres storage",
+    "value": 0.28,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Support Standard",
+    "value": 29,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://docs.fly.io/about/pricing",
+    "read": "2026-10-22"
+   }
+  ],
+  "heroku": [
+   {
+    "item": "Basic dyno 0.5 GB",
+    "value": 7,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Standard-1X 0.5 GB",
+    "value": 25,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Standard-2X 1 GB",
+    "value": 50,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Performance-M 2.5 GB",
+    "value": 250,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Performance-L 14 GB",
+    "value": 500,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Postgres Essential-0",
+    "value": 5,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Postgres Essential-1",
+    "value": 9,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Postgres Standard-0 4 GB",
+    "value": 50,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Postgres Standard-2 8 GB",
+    "value": 200,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Key-Value Store Mini 25 MB",
+    "value": 3,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Key-Value Store Premium 3 500 MB",
+    "value": 120,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Key-Value Store Premium 5 1 GB",
+    "value": 200,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Seats",
+    "value": null,
+    "unit": "no seat fee listed",
+    "currency": "USD",
+    "source": "https://www.heroku.com/pricing",
+    "read": "2026-10-22"
+   }
+  ],
+  "vercel": [
+   {
+    "item": "Pro plan",
+    "value": 20,
+    "unit": "per month, $20 included credit",
+    "currency": "USD",
+    "source": "https://vercel.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Developer seat (Pro)",
+    "value": 20,
+    "unit": "per seat per month",
+    "currency": "USD",
+    "source": "https://vercel.com/pricing",
+    "read": "2026-10-22",
+    "note": "Viewer seats unlimited. Vercel is a functions platform; it is not a like-for-like host for a long-running container plus Postgres."
+   },
+   {
+    "item": "Active CPU (Pro)",
+    "value": 0.128,
+    "unit": "per hour, starting price",
+    "currency": "USD",
+    "source": "https://vercel.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Provisioned memory (Pro)",
+    "value": 0.0106,
+    "unit": "per GB-hour, starting price",
+    "currency": "USD",
+    "source": "https://vercel.com/pricing",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Fast Data Transfer (Pro)",
+    "value": 0.15,
+    "unit": "per GB after 1 TB included",
+    "currency": "USD",
+    "source": "https://vercel.com/pricing",
+    "read": "2026-10-22"
+   }
+  ],
+  "hetzner": [
+   {
+    "item": "CX23 2 vCPU shared / 4 GB / 40 GB, 20 TB (EU)",
+    "value": 5.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/cost-optimized",
+    "read": "2026-10-22",
+    "note": "Cost-Optimized; page shows 'currently not available' on the Create button.",
+    "usd": 6.73
+   },
+   {
+    "item": "CX33 4 vCPU shared / 8 GB / 80 GB, 20 TB (EU)",
+    "value": 8.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/cost-optimized",
+    "read": "2026-10-22",
+    "note": "Same availability note.",
+    "usd": 10.1
+   },
+   {
+    "item": "CX43 8 vCPU shared / 16 GB / 160 GB, 20 TB (EU)",
+    "value": 16.49,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/cost-optimized",
+    "read": "2026-10-22",
+    "note": "Same availability note.",
+    "usd": 18.52
+   },
+   {
+    "item": "CPX12 1 vCPU AMD shared / 2 GB / 40 GB, 20 TB (EU)",
+    "value": 11.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/regular-performance",
+    "read": "2026-10-22",
+    "usd": 13.47
+   },
+   {
+    "item": "CPX22 2 vCPU / 4 GB / 80 GB, 20 TB (EU)",
+    "value": 19.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/regular-performance",
+    "read": "2026-10-22",
+    "usd": 22.46
+   },
+   {
+    "item": "CPX32 4 vCPU / 8 GB / 160 GB, 20 TB (EU)",
+    "value": 35.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/regular-performance",
+    "read": "2026-10-22",
+    "usd": 40.43
+   },
+   {
+    "item": "CPX42 8 vCPU / 16 GB / 320 GB, 20 TB (EU)",
+    "value": 69.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/regular-performance",
+    "read": "2026-10-22",
+    "usd": 78.63
+   },
+   {
+    "item": "CPX41 8 vCPU / 16 GB / 240 GB, 4 TB (US)",
+    "value": 120.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/regular-performance",
+    "read": "2026-10-22",
+    "usd": 135.92
+   },
+   {
+    "item": "CCX13 2 dedicated vCPU / 8 GB / 80 GB, 20 TB (EU)",
+    "value": 43.49,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/general-purpose",
+    "read": "2026-10-22",
+    "usd": 48.86
+   },
+   {
+    "item": "CCX23 4 dedicated vCPU / 16 GB / 160 GB, 20 TB (EU)",
+    "value": 86.49,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/general-purpose",
+    "read": "2026-10-22",
+    "usd": 97.16
+   },
+   {
+    "item": "CCX23 (US), 2 TB",
+    "value": 87.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/general-purpose",
+    "read": "2026-10-22",
+    "usd": 98.85
+   },
+   {
+    "item": "CCX33 8 dedicated vCPU / 32 GB / 240 GB, 30 TB (EU)",
+    "value": 138.99,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/general-purpose",
+    "read": "2026-10-22",
+    "usd": 156.14
+   },
+   {
+    "item": "Primary IPv4",
+    "value": 0.5,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://docs.hetzner.com/general/infrastructure-and-availability/ipv4-pricing/",
+    "read": "2026-10-22",
+    "note": "Docs list EUR 0.50 (USD 0.60) per month. The product pages label prices 'incl. IPv4'; we add nothing extra and note the possible EUR 0.50.",
+    "usd": 0.56
+   },
+   {
+    "item": "Traffic overage EU and US",
+    "value": 1.0,
+    "unit": "EUR per month, excl. VAT",
+    "currency": "EUR",
+    "source": "https://www.hetzner.com/cloud/general-purpose",
+    "read": "2026-10-22",
+    "note": "Per additional TB (the page text says 'per hour', which reads as a typo).",
+    "usd": 1.12
+   }
+  ],
+  "digitalocean": [
+   {
+    "item": "Basic Regular 1 vCPU / 1 GB / 25 GB, 1,000 GiB",
+    "value": 6,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.digitalocean.com/pricing/droplets",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Basic Regular 1 vCPU / 2 GB / 50 GB, 2,000 GiB",
+    "value": 12,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.digitalocean.com/pricing/droplets",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Basic Regular 2 vCPU / 4 GB / 80 GB, 4,000 GiB",
+    "value": 24,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.digitalocean.com/pricing/droplets",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Basic Regular 4 vCPU / 8 GB / 160 GB, 5,000 GiB",
+    "value": 48,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.digitalocean.com/pricing/droplets",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Basic Regular 8 vCPU / 16 GB / 320 GB, 6,000 GiB",
+    "value": 96,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.digitalocean.com/pricing/droplets",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "CPU-Optimized 4 dedicated vCPU / 8 GB, 5,000 GiB",
+    "value": 84,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.digitalocean.com/pricing/droplets",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "CPU-Optimized 8 dedicated vCPU / 16 GB, 6,000 GiB",
+    "value": 168,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://www.digitalocean.com/pricing/droplets",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Bandwidth overage",
+    "value": 0.01,
+    "unit": "per GiB, allowance pooled per team",
+    "currency": "USD",
+    "source": "https://docs.digitalocean.com/products/billing/bandwidth/",
+    "read": "2026-10-22",
+    "note": "Read via search result summary of the official docs; the docs page itself did not load."
+   }
+  ],
+  "vultr": [
+   {
+    "item": "Regular vc2 1 vCPU / 2 GB / 55 GB, 2 TB",
+    "value": 10,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://api.vultr.com/v2/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Regular vc2 2 vCPU / 4 GB / 80 GB, 3 TB",
+    "value": 20,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://api.vultr.com/v2/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Regular vc2 4 vCPU / 8 GB / 160 GB, 4 TB",
+    "value": 40,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://api.vultr.com/v2/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Regular vc2 6 vCPU / 16 GB / 320 GB, 5 TB",
+    "value": 80,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://api.vultr.com/v2/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "High Performance 8 vCPU / 16 GB / 350 GB, 8 TB",
+    "value": 96,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://api.vultr.com/v2/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Optimized General Purpose 4 dedicated vCPU / 16 GB / 80 GB, 6 TB",
+    "value": 120,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://api.vultr.com/v2/plans",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Bandwidth overage",
+    "value": null,
+    "unit": "not captured; vultr.com/pricing blocked automated reads",
+    "currency": "USD",
+    "source": "https://api.vultr.com/v2/plans",
+    "read": "2026-10-22"
+   }
+  ],
+  "lightsail": [
+   {
+    "item": "2 vCPU / 2 GB / 60 GB, 3 TB (with IPv4)",
+    "value": 12,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://aws.amazon.com/lightsail/pricing/",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "2 vCPU / 4 GB / 80 GB, 4 TB",
+    "value": 24,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://aws.amazon.com/lightsail/pricing/",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "2 vCPU / 8 GB / 160 GB, 5 TB",
+    "value": 44,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://aws.amazon.com/lightsail/pricing/",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "4 vCPU / 16 GB / 320 GB, 6 TB",
+    "value": 84,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://aws.amazon.com/lightsail/pricing/",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "8 vCPU / 32 GB / 640 GB, 7 TB",
+    "value": 164,
+    "unit": "per month",
+    "currency": "USD",
+    "source": "https://aws.amazon.com/lightsail/pricing/",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Managed database 2 GB standard / HA",
+    "value": 30,
+    "unit": "per month (HA $60)",
+    "currency": "USD",
+    "source": "https://aws.amazon.com/lightsail/pricing/",
+    "read": "2026-10-22"
+   },
+   {
+    "item": "Block storage",
+    "value": 0.1,
+    "unit": "per GB-month",
+    "currency": "USD",
+    "source": "https://aws.amazon.com/lightsail/pricing/",
+    "read": "2026-10-22"
+   }
+  ],
+  "ovh": [
+   {
+    "item": "VPS-1 2 vCores / 4 GB / 40 GB, unlimited traffic",
+    "value": 4.54,
+    "unit": "per month, 'from' price",
+    "currency": "USD",
+    "source": "https://www.ovhcloud.com/en/vps/",
+    "read": "2026-10-22",
+    "note": "Configure links use pricing=upfront12, so this looks like a 12-month upfront price. No-commitment price not captured."
+   },
+   {
+    "item": "VPS-2 4 vCores / 8 GB / 75 GB",
+    "value": 8.5,
+    "unit": "per month, 'from' price",
+    "currency": "USD",
+    "source": "https://www.ovhcloud.com/en/vps/",
+    "read": "2026-10-22",
+    "note": "Same commitment note."
+   },
+   {
+    "item": "VPS-3 6 vCores / 12 GB / 100 GB",
+    "value": 12.32,
+    "unit": "per month, 'from' price",
+    "currency": "USD",
+    "source": "https://www.ovhcloud.com/en/vps/",
+    "read": "2026-10-22",
+    "note": "Same commitment note."
+   },
+   {
+    "item": "VPS-4 8 vCores / 24 GB / 200 GB",
+    "value": 23.37,
+    "unit": "per month, 'from' price",
+    "currency": "USD",
+    "source": "https://www.ovhcloud.com/en/vps/",
+    "read": "2026-10-22",
+    "note": "Same commitment note."
+   }
+  ]
+ },
+ "examples": [
+  {
+   "id": "small-app",
+   "title": "Small app with Postgres",
+   "assumptions": [
+    "One web service and one Postgres, one environment",
+    "Average use: web 0.02 vCPU and 0.25 GB, Postgres 0.02 vCPU and 0.25 GB (idle case); light case 0.1 vCPU and 0.5 GB each",
+    "1 GB volume; 5 GB egress (idle) or 10 GB (light)",
+    "5050cloud needs one VM with at least 2 GB RAM (our assumption; the control plane footprint is not measured yet)"
+   ],
+   "railway": [
+    {
+     "case": "idle, Hobby",
+     "usage": 6.2,
+     "monthly": 6.2
+    },
+    {
+     "case": "light, Hobby",
+     "usage": 14.65,
+     "monthly": 14.65
+    },
+    {
+     "case": "light, Pro",
+     "usage": 14.65,
+     "monthly": 20.0
+    }
+   ],
+   "selfhost": [
+    {
+     "option": "Hetzner CX23 (EU, if in stock)",
+     "monthly": 6.73
+    },
+    {
+     "option": "OVH VPS-1 (12-month upfront)",
+     "monthly": 4.54
+    },
+    {
+     "option": "Vultr Regular 1 vCPU / 2 GB",
+     "monthly": 10
+    },
+    {
+     "option": "DigitalOcean Basic 1 vCPU / 2 GB",
+     "monthly": 12
+    },
+    {
+     "option": "Lightsail 2 GB",
+     "monthly": 12
+    },
+    {
+     "option": "Hetzner CPX12 (EU)",
+     "monthly": 13.47
+    }
+   ],
+   "verdict": "About the same. An idle app on Railway Hobby costs $6 to $15; a VM that fits it costs $5 to $13. Self-hosting only pulls ahead when several small apps share one VM."
+  },
+  {
+   "id": "api-steady",
+   "title": "4 vCPU / 8 GB API with Postgres and Redis, all month",
+   "assumptions": [
+    "API sized 4 vCPU / 8 GB; Postgres 1 vCPU / 2 GB; Redis 0.1 vCPU / 0.5 GB",
+    "Steady case: all of that in use 730 hours. Typical case: API averages 1.6 vCPU / 6 GB, Postgres 0.5 / 1.5, Redis 0.05 / 0.3",
+    "21 GB volumes, 200 GB egress",
+    "Railway Pro (the $20 minimum is covered by usage)"
+   ],
+   "railway": [
+    {
+     "case": "steady",
+     "usage": 220.15,
+     "monthly": 220.15
+    },
+    {
+     "case": "typical",
+     "usage": 134.15,
+     "monthly": 134.15
+    }
+   ],
+   "selfhost": [
+    {
+     "option": "Hetzner CPX42, 8 shared vCPU / 16 GB (EU)",
+     "monthly": 78.63
+    },
+    {
+     "option": "Vultr Regular 6 vCPU / 16 GB",
+     "monthly": 80
+    },
+    {
+     "option": "DigitalOcean Basic 8 vCPU / 16 GB",
+     "monthly": 96
+    },
+    {
+     "option": "Vultr High Performance 8 vCPU / 16 GB",
+     "monthly": 96
+    },
+    {
+     "option": "Hetzner CPX41 (US), 8 vCPU / 16 GB",
+     "monthly": 135.92
+    },
+    {
+     "option": "Hetzner CCX33, 8 dedicated vCPU / 32 GB (EU)",
+     "monthly": 156.14
+    },
+    {
+     "option": "DigitalOcean CPU-Optimized 8 dedicated vCPU / 16 GB",
+     "monthly": 168
+    },
+    {
+     "option": "Lightsail 8 vCPU / 32 GB",
+     "monthly": 164
+    },
+    {
+     "option": "Two Hetzner CPX42 (EU), app on both, Postgres on one",
+     "monthly": 157.26
+    },
+    {
+     "option": "Two Hetzner CCX33 (EU), dedicated",
+     "monthly": 312.28
+    }
+   ],
+   "addToEachSelfhost": {
+    "backups": 0.75,
+    "basis": "50 GB in an S3-compatible bucket at $0.015/GB-month (Railway's own published bucket price, used as a typical list price)"
+   },
+   "verdict": "Self-hosting is cheaper on one VM: $79 to $168 against $134 to $220. Two dedicated EU VMs ($312) cost more than Railway steady. Shared vCPUs under constant full load may be throttled; dedicated rows are the fair comparison for the steady case."
+  },
+  {
+   "id": "team-of-5",
+   "title": "Team of 5",
+   "assumptions": [
+    "5 people deploying",
+    "Production: 3 services, Postgres, Redis averaging 2 vCPU / 6 GB; one staging environment averaging 0.3 vCPU / 2 GB",
+    "40 GB volumes, 300 GB egress",
+    "No PR preview environments, because 5050cloud v0.1 does not have them; Railway with two previews running on average adds about $24"
+   ],
+   "railway": [
+    {
+     "case": "Pro, 5 seats",
+     "usage": 147.0,
+     "monthly": 147.0,
+     "seats": 0
+    }
+   ],
+   "others": [
+    {
+     "option": "Render Pro workspace fee (unlimited seats)",
+     "monthly": 25,
+     "plusCompute": true
+    },
+    {
+     "option": "Vercel Pro developer seats, 5 x $20",
+     "monthly": 100,
+     "plusCompute": true,
+     "note": "not like-for-like"
+    }
+   ],
+   "selfhost": [
+    {
+     "option": "One Hetzner CPX42 (EU) for prod and staging",
+     "monthly": 78.63
+    },
+    {
+     "option": "Hetzner CPX42 prod + CPX22 staging (EU)",
+     "monthly": 101.09
+    },
+    {
+     "option": "DigitalOcean Basic 8 vCPU / 16 GB + 2 vCPU / 4 GB",
+     "monthly": 120
+    },
+    {
+     "option": "Lightsail 4 vCPU / 16 GB + 2 vCPU / 4 GB",
+     "monthly": 108
+    }
+   ],
+   "verdict": "Seats are not the difference: Railway Pro and 5050cloud both charge $0 per seat. The gap is compute ($147 vs $79 to $120) and what the team gives up: PR environments, SSO and managed ops."
+  }
+ ],
+ "railwayIncludes": [
+  "Managed operations: host patching, hardware failure handling, build infrastructure, on-call",
+  "Edge network and concurrent global regions (Pro)",
+  "99.9% (Hobby) and 99.99% (Pro) availability targets",
+  "PR environments, buckets, serverless sleeping",
+  "Support (community on Hobby, Railway support on Pro)"
+ ],
+ "open": [
+  "Vultr bandwidth overage and Hetzner live stock could not be confirmed",
+  "OVH no-commitment prices not captured",
+  "DigitalOcean General Purpose prices not in the static page",
+  "5050cloud control-plane overhead not measured",
+  "No CPU benchmark comparing a Railway vCPU to a shared or dedicated VM vCPU"
+ ]
+}

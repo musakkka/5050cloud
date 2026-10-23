@@ -5,14 +5,16 @@ description: Back up databases and volumes to any S3-compatible bucket, and rest
 
 Back up databases and volumes to any S3-compatible bucket, and restore to a new copy at a point in time without touching the original.
 
+> **Beta:** Database backups and restore work in 0.1.0 but are not yet covered by the end-to-end tests. See [Honest limits](/docs/reference/honest-limits#beta).
+
 ## Set up a bucket
 
-1. Create a bucket at any S3-compatible provider (AWS S3, Cloudflare R2, Backblaze B2, Wasabi, MinIO).
-2. Create two keys: a **write key** (put and get only) and a **retention key** (delete rights).
-3. Go to **Settings > Backups**, enter the endpoint, bucket, region, prefix and both keys, and select **Test connection**.
+1. Create a bucket at any S3-compatible provider, or a MinIO server on another machine.
+2. Create two keys: a **write key** (put, get and list) and a **retention key** (delete rights as well).
+3. Go to **Settings**, **Backups**, enter the endpoint, bucket, region, prefix and both keys, select **Save**, then **Test bucket**.
 4. Turn on bucket versioning or object lock. Then a compromised database or a member with shell access cannot destroy history: data containers only hold the write key, and only the control host uses the retention key.
 
-Until a bucket is set, every database shows a "Backups off" badge.
+Until a bucket is set, each database's **Backups** tab says "No backup bucket is set." [Backups bucket](/docs/guides/backups-bucket) walks through every field, with a key policy example.
 
 ## What is backed up
 
@@ -53,4 +55,5 @@ Create a cron service from the `mysql:8.4` image with schedule `0 3 * * *`, `MYS
 
 ## Next steps
 
-- [Backing up the control plane](/docs/guides/control-plane-backup)
+- [Control plane backup](/docs/guides/control-plane-backup)
+- [Restore](/docs/guides/restore)

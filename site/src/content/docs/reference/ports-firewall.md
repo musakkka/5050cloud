@@ -11,7 +11,7 @@ The ports 5050cloud needs open, and the firewall rules it manages on each host.
 |---|---|---|---|
 | TCP 80, 443 | Ingress hosts | The internet | HTTPS (80 redirects and serves ACME challenges) |
 | UDP 51820 | Every host, with 2 or more hosts | Your other hosts | WireGuard mesh |
-| TCP 20000 to 29999 | Ingress hosts | The internet | Only the TCP proxy ports you allocate |
+| TCP 20000 to 29999 | Ingress hosts | The internet | TCP proxies; each proxy gets one port in this range |
 | TCP 22 | Every host | You | SSH (yours; 5050cloud does not use it) |
 
 No management port is ever opened. Agents connect out to the console on 443.
@@ -22,7 +22,7 @@ Hosts need HTTPS to GitHub (releases and repos), Docker registries, Let's Encryp
 
 ## `--firewall`
 
-The installer's `--firewall` flag adds nftables rules that drop inbound traffic except SSH, 80, 443 and WireGuard from peers. Allocated TCP proxy ports must be opened too if you use them. Without it, use your cloud provider's firewall with the table above.
+The installer's `--firewall` flag writes nftables rules to `/etc/nftables-5050.conf`, loaded at boot by `5050-firewall.service`. They drop inbound traffic except TCP 22, 80 and 443, the whole TCP proxy range 20000 to 29999 and UDP 51820, all from anywhere, plus the loopback, `wg5050` and the Docker bridges. WireGuard drops packets without a known key, so UDP 51820 open to everyone is safe. The flag refuses to run next to an active ufw or firewalld. Without it, use your cloud provider's firewall with the table above. The [Firewall guide](/docs/guides/firewall) walks through each option.
 
 ## Rules 5050cloud manages
 

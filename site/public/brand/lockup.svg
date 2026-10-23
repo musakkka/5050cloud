@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 206 32" width="412" height="64" role="img" aria-label="5050cloud">
+  <!-- Mark at half size (each half 16 tall) beside the wordmark, centred on the split. -->
+  <g transform="scale(0.5)">
+    <rect width="64" height="32" fill="#f5c400"/>
+    <rect y="32" width="64" height="32" fill="#141414"/>
+    <g fill="none" stroke-width="4">
+      <g stroke="#141414"><path d="M28 8H14V15H21.5A4.5 4.5 0 0 1 21.5 24H12"/><rect x="38" y="8" width="12" height="16" rx="6"/></g>
+      <g stroke="#f5c400" transform="translate(0 32)"><path d="M28 8H14V15H21.5A4.5 4.5 0 0 1 21.5 24H12"/><rect x="38" y="8" width="12" height="16" rx="6"/></g>
+    </g>
+  </g>
+  <g transform="translate(42 0)" fill="none" stroke="#141414" stroke-width="4" stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M16 8H2V15H9.5A4.5 4.5 0 0 1 9.5 24H0"/>
+    <rect x="23" y="8" width="12" height="16" rx="6"/>
+    <path d="M58 8H44V15H51.5A4.5 4.5 0 0 1 51.5 24H42"/>
+    <rect x="65" y="8" width="12" height="16" rx="6"/>
+    <path d="M98 13H91.5A5.5 5.5 0 0 0 91.5 24H98"/>
+    <path d="M105 6V26"/>
+    <rect x="114" y="13" width="10" height="11" rx="5"/>
+    <path d="M133 11V19A5 5 0 0 0 143 19M143 11V26"/>
+    <path d="M162 13H157.5A5.5 5.5 0 0 0 157.5 24H162M162 6V26"/>
+  </g>
+</svg>

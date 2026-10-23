@@ -7,11 +7,7 @@ Send password resets, invites and alerts by email, choose which events reach you
 
 ## SMTP
 
-1. Go to **Settings > General > Email**.
-2. Enter host, port, TLS mode (`starttls`, `tls` or `none`), user, password and from address.
-3. Select **Send test email**.
-
-Without SMTP, email features are hidden and invites give you a link to copy.
+Email needs an SMTP server, set in **Settings**, **General**, **Email**. [Email (SMTP)](/docs/guides/smtp) walks through it, with a test and troubleshooting. Without SMTP, email features are hidden and invites give you a link to copy.
 
 ## Your notifications
 

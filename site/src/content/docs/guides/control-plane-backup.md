@@ -1,41 +1,55 @@
 ---
-title: Backing up the control plane
-description: The control plane keeps all projects, settings and encrypted variables in one database that is snapshotted hourly and, with a bucket, streamed continuously.
+title: Control plane backup
+description: The control plane snapshots its database every hour to the host's disk; copy those snapshots off the host so you can restore after a disk loss.
 ---
 
-The control plane keeps all projects, settings and encrypted variables in one database that is snapshotted hourly and, with a bucket, streamed continuously.
+The control plane snapshots its database every hour to the host's disk; copy those snapshots off the host so you can restore after a disk loss.
 
 ## What is protected
 
-`state.db` holds users, projects, settings, variables (encrypted) and deployment history. Your apps' data is in their volumes and database backups, not here.
+`state.db` holds users, projects, settings, variables (encrypted) and deployment history. Your apps' data lives in their volumes and database backups, not here: see [Backups bucket](/docs/guides/backups-bucket).
 
-## Layers
+## What ships in 0.1.0
 
-| Layer | When | Where | Recovery point |
-|---|---|---|---|
-| Continuous replication (Litestream) | With a bucket set | `<bucket>/<prefix>/_state/litestream/` | About 1 second |
-| Hourly snapshot | Always | `/var/lib/5050/backups/`, and the bucket when set | 1 hour |
+- Every hour, `5050d` writes an encrypted snapshot to `/var/lib/5050/backups/state-<time>.db.age`.
+- It keeps 24 hourly and 7 daily snapshots and deletes older ones.
+- Snapshots are encrypted with your recovery key. Without the key they cannot be read.
+- **Settings**, **Backups**, **Control plane state** shows **Last snapshot**.
 
-Snapshots are encrypted with your recovery key. 24 hourly and 7 daily snapshots are kept on disk; the bucket keeps them 30 days. **Settings > Backups** shows the replication position and lag.
+There is no streaming and no automatic upload to the bucket in 0.1.0. The **Litestream** and **Position** fields on that page stay at "Not streaming" and "None", and the switch that mentions Litestream has no effect yet.
 
-Without a bucket, snapshots sit on the same disk as the database. Set a bucket.
-
-## On-demand snapshot
+## Take a snapshot now
 
 ```sh
 sudo 5050d backup-state --out /root/state.db.age
 ```
 
-## Restore on the same host
+## Copy snapshots off the host
+
+A snapshot on the same disk is lost with the disk. Copy the newest one to your bucket every hour with any S3 tool. For example, with the AWS CLI installed on the control host and its own credentials in `/root/.aws/credentials`:
 
 ```sh
-sudo 5050d restore-state --from litestream --recovery-key 5050R-...
+sudo tee /etc/cron.hourly/5050-state-offsite >/dev/null <<'SCRIPT'
+#!/bin/sh
+set -eu
+f=$(ls -1t /var/lib/5050/backups/state-*.db.age | head -n 1)
+aws s3 cp "$f" "s3://my-5050-backups/5050/_state/" --endpoint-url https://s3.example.com
+SCRIPT
+sudo chmod 0755 /etc/cron.hourly/5050-state-offsite
 ```
 
-`--from` also takes a file or `s3://bucket/key`, with `--s3-endpoint`, `--s3-region`, `--s3-access-key` and `--s3-secret-key` (the bucket keys are inside the encrypted state, so you pass them again).
+Use a key for this that is separate from the backup write key, with put rights on `_state/` only. The files stay encrypted on the way and in the bucket.
 
-After a restore the control plane starts in adopt mode: it removes nothing. Containers deployed after the snapshot keep running and are listed for you to **Adopt** or **Remove**; hosts that joined after the snapshot are listed for **Re-adopt**. Select **Finish restore** when the list is clean.
+## Recovery point
+
+Up to one hour on the host, plus however often you copy snapshots off it. With the hourly copy above, a lost disk costs at most the last hour or two of console changes. Running apps and their data are not affected by it.
+
+## What success looks like
+
+- `sudo ls -lt /var/lib/5050/backups/` shows a new `state-*.db.age` file every hour.
+- The copies appear under `_state/` in your bucket.
 
 ## Next steps
 
+- [Restore](/docs/guides/restore)
 - [Rebuild the control host](/docs/guides/rebuild-control-host)

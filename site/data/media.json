@@ -1,0 +1,422 @@
+{
+ "captured": "2026-10-22",
+ "stills": {
+  "canvas-light": {
+   "widths": [
+    800,
+    1600,
+    2400
+   ],
+   "ratio": [
+    2400,
+    1500
+   ]
+  },
+  "canvas-light-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "canvas-dark": {
+   "widths": [
+    800,
+    1600,
+    2400
+   ],
+   "ratio": [
+    2400,
+    1500
+   ]
+  },
+  "canvas-dark-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "palette-light": {
+   "widths": [
+    800,
+    1600,
+    2400
+   ],
+   "ratio": [
+    2400,
+    1500
+   ]
+  },
+  "palette-light-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "palette-dark": {
+   "widths": [
+    800,
+    1600,
+    2400
+   ],
+   "ratio": [
+    2400,
+    1500
+   ]
+  },
+  "palette-dark-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "metrics-light": {
+   "widths": [
+    800,
+    1600,
+    2400
+   ],
+   "ratio": [
+    2400,
+    1500
+   ]
+  },
+  "metrics-light-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "metrics-dark": {
+   "widths": [
+    800,
+    1600,
+    2400
+   ],
+   "ratio": [
+    2400,
+    1500
+   ]
+  },
+  "metrics-dark-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "logs-light": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    1000
+   ]
+  },
+  "logs-dark": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    1000
+   ]
+  },
+  "deployments-light": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    1000
+   ]
+  },
+  "deployments-dark": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    1000
+   ]
+  },
+  "variables-light": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    808
+   ]
+  },
+  "variables-light-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    460
+   ]
+  },
+  "variables-dark": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    808
+   ]
+  },
+  "variables-dark-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    460
+   ]
+  },
+  "networking-light": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    832
+   ]
+  },
+  "networking-light-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "networking-dark": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    832
+   ]
+  },
+  "networking-dark-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "scale-light": {
+   "widths": [
+    800,
+    1600,
+    2400
+   ],
+   "ratio": [
+    2400,
+    1500
+   ]
+  },
+  "scale-light-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "scale-dark": {
+   "widths": [
+    800,
+    1600,
+    2400
+   ],
+   "ratio": [
+    2400,
+    1500
+   ]
+  },
+  "scale-dark-m": {
+   "widths": [
+    720,
+    920
+   ],
+   "ratio": [
+    920,
+    690
+   ]
+  },
+  "terminal-install-poster-m": {
+   "widths": [
+    720
+   ],
+   "ratio": [
+    720,
+    138
+   ]
+  }
+ },
+ "posters": {
+  "hero-poster": {
+   "widths": [
+    800,
+    1600
+   ],
+   "ratio": [
+    1600,
+    900
+   ]
+  },
+  "hero-phone": {
+   "widths": [
+    720,
+    1080
+   ],
+   "ratio": [
+    1080,
+    810
+   ]
+  },
+  "terminal-install-poster": {
+   "widths": [
+    574,
+    1148
+   ],
+   "ratio": [
+    1148,
+    586
+   ]
+  },
+  "terminal-up-poster": {
+   "widths": [
+    574,
+    1148
+   ],
+   "ratio": [
+    1148,
+    586
+   ]
+  }
+ },
+ "videos": {
+  "hero.mp4": {
+   "w": 1280,
+   "h": 720,
+   "duration": 27,
+   "bytes": 2404515
+  },
+  "hero.webm": {
+   "w": 1280,
+   "h": 720,
+   "duration": 27,
+   "bytes": 1991172
+  },
+  "terminal-install.mp4": {
+   "w": 1148,
+   "h": 586,
+   "duration": 19.6,
+   "bytes": 400174
+  },
+  "terminal-install.webm": {
+   "w": 1148,
+   "h": 586,
+   "duration": 19.6,
+   "bytes": 318230
+  },
+  "terminal-up.mp4": {
+   "w": 1148,
+   "h": 586,
+   "duration": 19.1,
+   "bytes": 627144
+  },
+  "terminal-up.webm": {
+   "w": 1148,
+   "h": 586,
+   "duration": 19.1,
+   "bytes": 361343
+  }
+ },
+ "hero": {
+  "date": "2026-10-22",
+  "chapters": [
+   {
+    "id": "image",
+    "start": 0,
+    "end": 6.42,
+    "text": "Deploy an image",
+    "caption": "Create, then Docker Image: nginx:1.27 deploys to an empty canvas. The wait is sped up and labelled."
+   },
+   {
+    "id": "postgres",
+    "start": 6.42,
+    "end": 11.7,
+    "text": "Add Postgres",
+    "caption": "Add Postgres. It runs as its own service with a volume."
+   },
+   {
+    "id": "variables",
+    "start": 11.7,
+    "end": 19.4,
+    "text": "Wire DATABASE_URL",
+    "caption": "Set DATABASE_URL on nginx to ${{Postgres.DATABASE_URL}}, then redeploy."
+   },
+   {
+    "id": "domain",
+    "start": 19.4,
+    "end": 24.6,
+    "text": "Get a URL",
+    "caption": "In Settings, Networking, Generate Domain gives nginx a public HTTPS name."
+   },
+   {
+    "id": "open",
+    "start": 24.6,
+    "end": 27,
+    "text": "Live",
+    "caption": "Open the name: the nginx welcome page, served over HTTPS."
+   }
+  ]
+ }
+}

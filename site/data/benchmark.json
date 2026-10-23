@@ -1,0 +1,13 @@
+{
+ "measured": "2026-10-22",
+ "source": "reference/design/benchmark.md in the 5050cloud repository, from the demo pipeline's make bench",
+ "build": "a pre-release build of 5050cloud",
+ "vm": "Ubuntu 24.04, 2 vCPU (AMD EPYC), 8 GB RAM, one host. lscpu: 1 core, 2 threads per core.",
+ "app": "apps/node-cpu: each request counts the primes below LIMIT on Node's main thread",
+ "load": "oha 1.16.0 on the same VM through the HTTPS proxy, 16 connections, 15 s warm-up, median of 3 runs of 30 s",
+ "rows": [
+  { "work": "60,000 primes per request (about 2 ms)", "off": 516, "on": 554, "offRuns": [514.8, 516.3, 517.7], "onRuns": [529.6, 553.8, 559.9] },
+  { "work": "300,000 primes per request (32 ms)", "off": 58.9, "on": 60.4, "offRuns": [58.9, 58.7, 58.9], "onRuns": [60.4, 60.8, 60.3] }
+ ],
+ "why": "The VM's two vCPUs are two hardware threads of one physical core, and this work keeps that core's divider busy, so a second process mostly waits for the same unit."
+}

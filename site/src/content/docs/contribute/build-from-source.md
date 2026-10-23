@@ -14,7 +14,7 @@ Build the control plane, the agent, the CLI, the console and this site from a cl
 ## Build
 
 ```sh
-git clone https://github.com/musakkka/5050cloud
+git clone {{REPO}}
 cd 5050cloud
 make deps
 make build      # bin/5050d, bin/5050-agent, bin/5050

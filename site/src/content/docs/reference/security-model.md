@@ -27,4 +27,4 @@ Mutual TLS between agents and the control plane. The channel is TLS to the conso
 
 ## Report a vulnerability
 
-See [SECURITY.md](https://github.com/5050cloud/5050cloud/blob/main/SECURITY.md).
+See [SECURITY.md]({{REPO}}/blob/main/SECURITY.md).

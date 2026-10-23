@@ -5,6 +5,8 @@ description: Services in one environment reach each other by name over a private
 
 Services in one environment reach each other by name over a private network that spans every host.
 
+> **Beta:** Private networking between hosts works in 0.1.0 but is not yet covered by the end-to-end tests. See [Honest limits](/docs/reference/honest-limits#beta).
+
 ## Names
 
 Every service has a private name, `<name>.internal` (also `<name>.railway.internal`), set in **Settings > Networking**. Call it on the port your service listens on:

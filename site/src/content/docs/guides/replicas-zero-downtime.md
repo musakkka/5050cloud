@@ -5,6 +5,8 @@ description: Run several replicas of a service across your hosts and deploy new 
 
 Run several replicas of a service across your hosts and deploy new versions without dropping requests.
 
+> **Beta:** Spreading replicas across hosts works in 0.1.0 but is not yet covered by the end-to-end tests. See [Honest limits](/docs/reference/honest-limits#beta).
+
 ## Set replicas
 
 In **Settings > Scale**, set **Replicas**, or run `5050 scale 2`. Replicas spread across eligible hosts. Public traffic and private DNS pick a random healthy replica.

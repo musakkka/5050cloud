@@ -7,6 +7,8 @@ Roll back to an earlier deployment and get its exact image and the variables it 
 
 ## Roll back
 
+![The Deployments tab of the api service: the active deployment and the history under it](shot:deployments "The Deployments tab: the active deployment and its history.")
+
 1. Open the service's **Deployments** tab.
 2. Open the menu of an earlier deployment and select **Rollback**.
 

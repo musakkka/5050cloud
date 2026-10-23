@@ -10,7 +10,7 @@ The `5050` CLI deploys, inspects and manages your services from a terminal or CI
 The CLI installs on macOS, Linux and Windows (Windows builds are experimental). On macOS or Linux:
 
 ```sh
-curl -fsSL https://5050cloud.com/install.sh | sh -s -- --cli
+curl -fsSL {{GET}} | sh -s -- --cli
 ```
 
 It goes to `/usr/local/bin` when that is writable (or you run it as root), else to `~/.local/bin`. Run `5050 alias install` to also answer to `railway`. Release archives for every platform are on the GitHub Releases page.

@@ -5,11 +5,20 @@ description: What 5050cloud v0.1 does not do, said plainly, with what to do abou
 
 What 5050cloud v0.1 does not do, said plainly, with what to do about each one.
 
+## Beta
+
+These work in 0.1.0 but are not yet covered by the end-to-end tests that run on fresh VMs for every release. Use them, and keep backups and a way back.
+
+- More than one host: [adding a host](/docs/guides/add-a-host), the [private WireGuard network](/docs/guides/private-networking) between hosts, and a second ingress host.
+- [Replicas](/docs/guides/replicas-zero-downtime) spread across hosts, with load balancing between them. Replicas on one host are not beta.
+- Database [backups](/docs/guides/backups) to an [S3-compatible bucket](/docs/guides/backups-bucket), and [restoring](/docs/guides/restore) them.
+- [Upgrades](/docs/guides/upgrading) with `5050 upgrade`, and the automatic revert when the new version is unhealthy.
+
 ## One control host
 
 With one host, a host failure stops everything until it is rebuilt. With more hosts, apps on other hosts keep serving (with a second ingress host), but deploys, cron and the console stop until the control host is back or rebuilt.
 
-What to do: set a bucket so state streams off the host, turn on **Store images in the bucket**, join a second host with `--roles app,ingress`, and practise [rebuilding the control host](/docs/guides/rebuild-control-host).
+What to do: copy state snapshots off the host ([Control plane backup](/docs/guides/control-plane-backup)), keep database backups on, join a second host with the `ingress` role, and read [Rebuild the control host](/docs/guides/rebuild-control-host): a one-command rebuild on a new VM is not supported in 0.1.0.
 
 ## Cron pauses with the control plane
 
@@ -33,7 +42,7 @@ Replicas and processes are set by you. Volumes have no size cap and share the ho
 
 ## Recovery point for the control plane
 
-With a bucket, control plane state is replicated within seconds. Without one, the recovery point is the last hourly snapshot, on the same disk.
+The control plane snapshots its state every hour to the host's own disk, keeping 24 hourly and 7 daily snapshots. Streaming to the bucket is later work. Until then the recovery point is one hour, plus however often you copy the snapshots off the host.
 
 ## Retention
 
@@ -46,3 +55,19 @@ IPv4 only; containers have no IPv6. Ubuntu 24.04 is the tested OS.
 ## You own the machines
 
 You own the hardware and the OS. Security updates are automated; reboots are yours. See [Upgrading and host maintenance](/docs/guides/upgrading).
+
+## Not yet
+
+The one list of what this release does not do yet. Other pages link here instead of naming a release.
+
+- The Railway project importer. Use the [manual move](/docs/guides/import-from-railway).
+- Master key rotation. See [Rotate the master key](/docs/guides/rotate-master-key).
+- Enforcing **Require two-factor authentication for everyone** at login. The setting is stored and shown.
+- Certificate errors in the console: a failed certificate stays on **Issuing certificate**. See [Custom domains and HTTPS](/docs/guides/custom-domains#when-the-certificate-does-not-come).
+- Holding certificate issuance until DNS points at your host. Create the record first, then add the domain.
+- Listing every ingress host's IP for a custom domain. The console shows the control host's IP only.
+- Refusing the console's own address as a service domain.
+- A DNS check in the installer before the first certificate request.
+- Keeping the old console name working after a change. See [Your domains](/docs/guides/console-domain).
+- Console screens for adopt mode after a restore. See [Restore](/docs/guides/restore).
+- A button that fills **Trusted proxies** with Cloudflare's ranges. See [Cloudflare in front](/docs/guides/behind-cloudflare).

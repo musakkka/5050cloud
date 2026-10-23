@@ -1,0 +1,21 @@
+WEBVTT
+
+image
+00:00:00.000 --> 00:00:06.420
+Deploy an image
+
+postgres
+00:00:06.420 --> 00:00:11.700
+Add Postgres
+
+variables
+00:00:11.700 --> 00:00:19.400
+Wire DATABASE_URL
+
+domain
+00:00:19.400 --> 00:00:24.600
+Get a URL
+
+open
+00:00:24.600 --> 00:00:27.000
+Live

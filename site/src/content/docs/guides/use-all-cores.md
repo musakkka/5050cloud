@@ -40,7 +40,16 @@ Memory use grows with each process. Raise the memory limit when you raise Proces
 
 ## The measured result
 
-The end-to-end test E20 runs `examples/node-cpu` with 1 process and with `auto` on a 2 vCPU non-burstable VM, with load from a second host, and requires at least 1.6x the throughput.
+Measured on 2026-10-22 on a pre-release build, on one 2 vCPU VM (Ubuntu 24.04, 8 GB), with `oha` on the same VM through the HTTPS proxy, 16 connections, median of 3 runs of 30 s:
+
+| Work per request | One process | Use all cores | On / off |
+|---|---|---|---|
+| 60,000 primes (about 2 ms) | 516 req/s | 554 req/s | 1.07x |
+| 300,000 primes (32 ms) | 58.9 req/s | 60.4 req/s | 1.03x |
+
+With **Use all cores** on, the console says "Runs 2 Node processes sharing port 8080 (cluster mode)" and both workers run at 100% CPU. The gain is small because this VM's two vCPUs are two hardware threads of one physical core (`lscpu` shows `Thread(s) per core: 2`), and this work keeps that core busy. Check `lscpu` on your VM: the setting helps most where the vCPUs are full cores. That case is not measured yet.
+
+![The Scale settings of the api service: Replicas set to 2 and Use all cores ticked, with the note that it runs 2 Node processes sharing port 8080](shot:scale "Settings, Scale: Replicas and Use all cores.")
 
 ## Next steps
 

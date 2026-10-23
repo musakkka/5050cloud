@@ -9,6 +9,23 @@
   ]
  },
  {
+  "label": "Set up",
+  "items": [
+   "docs/guides/install",
+   "docs/guides/console-domain",
+   "docs/guides/firewall",
+   "docs/guides/smtp",
+   "docs/guides/github-app",
+   "docs/guides/backups-bucket",
+   "docs/guides/add-a-host",
+   "docs/guides/behind-cloudflare",
+   "docs/guides/cli-setup",
+   "docs/guides/members-roles-2fa",
+   "docs/guides/upgrading",
+   "docs/guides/restore"
+  ]
+ },
+ {
   "label": "Guides",
   "items": [
    "docs/guides/deploy-from-github",
@@ -24,7 +41,6 @@
    "docs/guides/staged-changes",
    "docs/guides/custom-domains",
    "docs/guides/use-all-cores",
-   "docs/guides/add-a-host",
    "docs/guides/replicas-zero-downtime",
    "docs/guides/health-checks",
    "docs/guides/rollbacks",
@@ -38,12 +54,9 @@
    "docs/guides/quarantined-environments",
    "docs/guides/monitors",
    "docs/guides/email-notifications",
-   "docs/guides/members-roles-2fa",
-   "docs/guides/upgrading",
    "docs/guides/control-plane-backup",
    "docs/guides/rebuild-control-host",
    "docs/guides/rotate-master-key",
-   "docs/guides/behind-cloudflare",
    "docs/guides/troubleshooting"
   ]
  },

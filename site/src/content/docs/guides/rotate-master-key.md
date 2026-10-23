@@ -1,20 +1,34 @@
 ---
 title: Rotate the master key
-description: Replace the key that encrypts every secret in the control plane, for example after someone with host access leaves.
+description: Rotating the key that encrypts every secret in the control plane is not available in 0.1.0; this page says how to protect the key until it is.
 ---
 
-Replace the key that encrypts every secret in the control plane, for example after someone with host access leaves.
+Rotating the key that encrypts every secret in the control plane is not available in 0.1.0; this page says how to protect the key until it is.
 
-## Rotate
+## In 0.1.0
+
+The command exists and refuses:
 
 ```sh
 sudo 5050d rotate-master-key
 ```
 
-The command generates a new key, re-encrypts every secret column in one transaction, writes the new recovery key to a 0600 file and prints its path, and takes a fresh snapshot.
+```text
+rotate-master-key is not available in this release; keep the current recovery key safe
+```
 
-## Afterwards
+## Until it ships
 
-1. Store the new recovery key and delete the file from the host.
-2. Keep the old recovery key until the old snapshots expire (30 days in the bucket): they are still encrypted with it.
-3. Rotate API tokens and bucket keys too if you suspect a leak; the master key protects data at rest, not credentials someone already copied.
+- Keep the recovery key in a password manager, not on the host. It decrypts your backups and state snapshots.
+- Keep `/etc/5050/` readable by root only. The installer writes the master key, the host key and `config.json` there with mode 0600.
+- Limit who has root or `sudo` on the control host.
+- If someone with host access leaves, rotate what they could have copied: API tokens in **Settings**, **API tokens**, the bucket keys in **Settings**, **Backups**, and SMTP and registry passwords. The master key protects data at rest, not credentials someone already read.
+
+## What rotation will do
+
+When it ships, the command will create a new key, re-encrypt every secret in one transaction, write the new recovery key to a 0600 file and take a fresh snapshot. Old snapshots stay encrypted with the old key, so keep the old recovery key until they expire.
+
+## Next steps
+
+- [Security model](/docs/reference/security-model)
+- [Control plane backup](/docs/guides/control-plane-backup)

@@ -17,7 +17,7 @@ description: 5050cloud is a control plane, an agent on every host, and Caddy, a 
 | BuildKit | Build hosts | Nothing; builds run on their own bridge network |
 | WireGuard `wg5050` | Every host, with 2 or more hosts | UDP 51820, peers only |
 | TCP proxy (in the agent) | Ingress hosts | Allocated ports in 20000 to 29999 |
-| Litestream (child of `5050d`) | Control host, with a bucket | Nothing; streams state to the bucket |
+| Litestream (child of `5050d`, later work) | Control host, with a bucket | Not in 0.1.0; state is snapshotted hourly to the host's disk |
 | Your apps | Per placement | Nothing on the host |
 
 The control plane never connects to an agent. Agents dial out.
@@ -27,7 +27,7 @@ The control plane never connects to an agent. Agents dial out.
 - `state.db` (SQLite) on the control host: users, projects, settings, encrypted variables, deployments. Snapshotted hourly and streamed to your bucket.
 - `metrics.db`: 30 days of metrics.
 - Logs stay on each host for 7 days and are fetched on demand.
-- Images live in the registry on the control host, or in your bucket when **Store images in the bucket** is on.
+- Images live in the registry on the control host. Keeping them in your bucket is later work.
 
 ## A deploy
 

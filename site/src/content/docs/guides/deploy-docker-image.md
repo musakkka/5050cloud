@@ -7,7 +7,9 @@ Run any public or private Docker image as a service, with the same variables, do
 
 ## Add the service
 
-1. On the canvas, select **+ Create**, then **Docker image**.
+![The Create menu open on the canvas: GitHub Repo, Database, Template, Docker Image, Empty Service and Volume](shot:palette "Create, then Docker Image.")
+
+1. On the canvas, select **+ Create**, then **Docker Image**.
 2. Enter the image, for example `nginx:1.27` or `ghcr.io/owner/app:1.4.2`.
 3. Select **Deploy Now**.
 

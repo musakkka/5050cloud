@@ -45,9 +45,10 @@ Railway's `OTEL_*` tracing variables are not set. Set them yourself to point at 
 
 ## Moving a project
 
-1. [Import from Railway](/docs/guides/import-from-railway) brings services, settings, variables, domains and database services over as staged changes.
+1. [Move a project from Railway](/docs/guides/import-from-railway): recreate the services from the same repos and copy their variables. The one-step importer is not in 0.1.0.
 2. [Move a database from Railway](/docs/guides/move-database-from-railway) copies the data.
 3. Point your DNS at your host and [add the custom domains](/docs/guides/custom-domains).
+4. Run `5050 alias install` so `railway` commands talk to your console.
 
 ## Next steps
 

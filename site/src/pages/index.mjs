@@ -1,215 +1,359 @@
 // SPDX-License-Identifier: MIT
-// The landing page (docs/SPEC.md 14.1). Every claim is pulled from
-// claims.json by id, so the page and the evidence list cannot drift apart.
+// The landing page (docs/SPEC.md 14.1, reference/design/site-rules.md). It is
+// built around the real product: the hero is a recording of install, deploy,
+// Postgres, a variable reference and a domain on a fresh VM (5050cloud-demo),
+// and the console screenshots come from 5050cloud-brand/screens, both through
+// scripts/media.mjs.
+// Claims come from claims.json by id; prices from data/pricing.json; the
+// all-cores figures from data/benchmark.json. Nothing here is drawn to look
+// like the product.
 
 import { escapeHtml as e } from '../lib/markdown.mjs';
+import { REPO, INSTALL, INSTALL_WGET, INSTALL_GUIDED, INSTALL_CLI } from '../lib/config.mjs';
+import { proven } from '../lib/claims.mjs';
+import { shot, picture } from '../lib/media.mjs';
 
-const INSTALL = 'curl -fsSL https://5050cloud.com/install.sh | sudo sh';
-const INSTALL_WGET = 'wget -qO- https://5050cloud.com/install.sh | sudo sh';
-const JOIN = 'curl -fsSL https://5050cloud.com/install.sh | sudo sh -s -- --join https://console.example.com --token J-... --roles app';
-
-function copyBlock(cmd, label) {
-  return `<div class="code cmd"><pre><code>${e(cmd)}</code></pre><button class="copy" type="button" aria-label="Copy ${e(label)}">Copy</button></div>`;
+// keepTokens stops a command from breaking inside a short flag such as
+// --token: each short token is kept whole, and long ones (URLs) may break only
+// after a slash. The copied text is unchanged.
+export function keepTokens(cmd) {
+  const tok = (t) => (t.length <= 1 ? e(t) : `<span class="tok">${t.length <= 28 ? e(t) : e(t).replace(/\//g, '/<wbr>')}</span>`);
+  return cmd.split('\n').map((line) => line.split(' ').map(tok).join(' ')).join('\n');
 }
 
-// e20 reads the measured result from a report.json entry when one is given.
-function e20Result(report) {
-  if (!report) return null;
-  const tests = Array.isArray(report) ? report : report.tests || report.results || [];
-  const t = tests.find((x) => (x.id || x.test) === 'E20');
-  if (!t || !(t.pass === true || t.status === 'pass' || t.result === 'pass')) return null;
-  const ev = t.evidence || {};
-  return { ratio: ev.ratio, single: ev.rpsSingle || ev.rps1, auto: ev.rpsAuto, sku: t.vmSku || t.sku || report.vmSku || ev.sku };
+export function copyBlock(cmd, label, cls = '') {
+  return `<div class="code cmd${cls ? ' ' + cls : ''}"><pre><code>${keepTokens(cmd)}</code></pre><button class="copy" type="button" aria-label="Copy ${e(label)}">Copy</button></div>`;
 }
 
-export function landing({ shell, rel, claims, costs, prices, report, screens, REPO }) {
+const money = (n) => `$${Number(n).toFixed(2).replace(/\.00$/, '')}`;
+
+// demoSection is the full demo, shown only when the build found a finished,
+// reviewed render in public/demo (build.mjs findDemo, scripts/media.mjs --demo).
+// Without one the section is left out entirely: the page never shows a placeholder.
+export function demoSection(r, demo) {
+  if (!demo || !demo.ready) return '';
+  const p = demo.poster;
+  const posterSrc = r(`/demo/poster-${p.widths[p.widths.length - 1]}.webp`);
+  const chapters = (demo.chapters || []).map((c) => `<li><button type="button" class="chapter" data-at="${c.start}"><span class="chapter-time">${e(c.time)}</span> ${e(c.text)}</button></li>`).join('');
+  return `<section id="demo" class="demo" aria-labelledby="demo-h">
+  <div class="wrap demo-grid">
+    <div class="demo-head">
+      <h2 id="demo-h">Watch the ${Math.round(demo.duration)} s demo</h2>
+      <p>One take on a fresh VM: install, deploy, add Postgres, reference its URL, open the HTTPS address, scale. Captions are on; there is no sound.</p>
+      ${chapters ? `<ol class="chapters" aria-label="Chapters">${chapters}</ol>` : ''}
+    </div>
+    <div class="mat demo-body">
+      <video class="demo-video" controls muted playsinline preload="none" poster="${posterSrc}" width="${p.ratio[0]}" height="${p.ratio[1]}">
+        <source src="${r('/demo/5050cloud-demo.webm')}" type="video/webm">
+        <source src="${r('/demo/5050cloud-demo.mp4')}" type="video/mp4">
+        <track kind="captions" src="${r('/demo/5050cloud-demo.en.vtt')}" srclang="en" label="English" default>
+        ${demo.chapters ? `<track kind="chapters" src="${r('/demo/chapters.vtt')}" srclang="en" label="Chapters">` : ''}
+      </video>
+    </div>
+  </div>
+</section>`;
+}
+
+export function landing({ shell, rel, claims, pricing, bench, media, report, demo }) {
   const byId = new Map(claims.claims.map((c) => [c.id, c]));
-  const c = (id) => {
+  const ok = proven(claims, report);
+  const get = (id) => {
     const x = byId.get(id);
     if (!x) throw new Error(`landing page uses claim ${id}, which is not in claims.json`);
-    return e(x.claim);
+    return x;
   };
+  // say is the claim when its evidence holds (a passing report, a recording
+  // or a source), else its fallback (the feature with no figure), else null.
+  const say = (id) => {
+    const x = get(id);
+    if (ok.has(id)) return e(x.claim);
+    if (x.fallback) return e(x.fallback);
+    throw new Error(`landing page states claim ${id}, which has no passing evidence and no fallback`);
+  };
+  const raw = (id) => get(id).claim;
   const r = (h) => rel('', h);
-  const e20 = e20Result(report);
+  const ex = new Map(pricing.examples.map((x) => [x.id, x]));
+  const rw = Object.fromEntries(pricing.prices.railway.map((p) => [`${p.item}|${p.unit}`, p]));
+  const railPrice = (item, unit) => {
+    const p = rw[`${item}|${unit}`];
+    if (!p) throw new Error(`pricing.json has no Railway price ${item} ${unit}`);
+    return p.value;
+  };
+  const steady = ex.get('api-steady');
+  const steadyRail = steady.railway.find((x) => x.case === 'steady').monthly;
+  const ded = steady.selfhost.find((x) => /^Hetzner CCX33/.test(x.option)).monthly + steady.addToEachSelfhost.backups;
+  const typicalRail = steady.railway.find((x) => x.case === 'typical').monthly;
+  const priceLine = `For the 4 vCPU API running all month: Railway ${money(steadyRail)} at steady load and ${money(typicalRail)} at typical load; a VM with 8 dedicated vCPU that fits it, about ${money(ded.toFixed(2))}.`;
+  if (priceLine !== raw('price-steady')) throw new Error(`claims.json price-steady is out of date with pricing.json: ${priceLine}`);
 
-  // Real screenshots of the console, one light and one dark file per screen.
-  const has = (name) => screens.includes(`${name}-dark.jpg`) && screens.includes(`${name}-light.jpg`);
-  const shot = (name, alt, eager) => `<picture>
-<source srcset="${r(`/screens/${name}-dark.jpg`)}" media="(prefers-color-scheme: dark)">
-<img src="${r(`/screens/${name}-light.jpg`)}" alt="${e(alt)}" width="1600" height="1000"${eager ? '' : ' loading="lazy"'}>
-</picture>`;
-  const TOUR = [
-    ['palette', 'Deploy from the UI', 'Pick a GitHub repo, a Docker image or a database template. No YAML to start.'],
-    ['deployments', 'Every deploy explains itself', 'A failed deploy says why in one sentence, and the last good version keeps serving.'],
-    ['logs', 'Live build and deploy logs', 'Logs stream as they happen, in the browser or with 5050 logs.'],
-    ['variables', 'Variables with references', 'DATABASE_URL=${{Postgres.DATABASE_URL}} resolves on deploy, like Railway.'],
-    ['scale', 'Replicas and every core', 'Run several replicas and turn on all cores for Node apps from Settings.'],
-    ['networking', 'Domains with automatic HTTPS', 'A generated domain in one click, or bring your own with the DNS record shown.'],
-    ['metrics', 'Metrics per service', 'CPU, memory and network for each service and replica.'],
-  ].filter(([n]) => has(n));
-  const heroShot = has('canvas')
-    ? `<figure class="hero-shot">${shot('canvas', 'The 5050cloud project canvas with web, api, worker, Postgres and Redis services', true)}</figure>`
-    : '';
-  const screensHtml = TOUR.length
-    ? `<section id="screens"><h2>The console</h2><p>These are screenshots of v0.1.0 running on a single test VM.</p><div class="tour">${TOUR
-        .map(([n, title, text]) => `<figure>${shot(n, title)}<figcaption><strong>${e(title)}</strong> ${e(text)}</figcaption></figure>`)
-        .join('')}</div></section>`
-    : '';
-  const termVideo = `<figure class="term"><video autoplay muted loop playsinline preload="metadata" poster="${r('/media/terminal-install-poster.png')}">
-<source src="${r('/media/terminal-install.webm')}" type="video/webm"><source src="${r('/media/terminal-install.mp4')}" type="video/mp4"></video>
-<figcaption>The install, recorded on a fresh Ubuntu 24.04 VM.</figcaption></figure>`;
+  const full = '(min-width: 1800px) 1700px, (min-width: 721px) calc(100vw - 64px), 100vw';
+  const half = '(min-width: 1800px) 1000px, (min-width: 1000px) 58vw, 100vw';
 
-  const costRows = costs.rows
-    .map((row) => `<tr><td>${e(row.option)}</td><td>${e(row.monthly)}</td><td>${e(row.vsRailway)}</td><td><a href="${e(row.source)}" rel="noopener">source</a></td></tr>`)
+  // The hero: the real recording, with its steps beside it. Each step is a
+  // button that jumps the recording to that step; site.js marks the step that
+  // is playing. Without script the list is still the plain list of steps.
+  // On a phone the whole screen is too small to read, so the hero shows the
+  // capture's own Deploy a Docker image dialog instead, and the button plays
+  // the recording at full width.
+  const hv = media.videos['hero.mp4'];
+  const hp = media.posters['hero-poster'];
+  const chapters = media.hero.chapters;
+  const steps = chapters
+    .map((c) => `<li><button type="button" class="step" data-at="${c.start}" data-end="${c.end}"><span class="step-bar" aria-hidden="true"></span><span class="step-text">${e(c.text)}</span></button></li>`)
+    .join('');
+  const heroVideo = `<video class="hero-video" muted loop playsinline preload="metadata" poster="${r(`/media/hero-poster-${hp.widths[hp.widths.length - 1]}.webp`)}" width="${hv.w}" height="${hv.h}" aria-label="${e(`A recording of the real console: ${raw('hero-recording').toLowerCase()}`)}" data-autoplay>
+<source src="${r('/media/hero.webm')}" type="video/webm">
+<source src="${r('/media/hero.mp4')}" type="video/mp4">
+<track kind="captions" src="${r('/media/hero.en.vtt')}" srclang="en" label="English">
+<track kind="chapters" src="${r('/media/hero.chapters.vtt')}" srclang="en" label="Steps">
+</video>`;
+  const heroPhone = picture(r, media, 'hero-phone', { alt: 'The Deploy a Docker image dialog in the console, with nginx:1.27 typed in the Image field and the Deploy Now button', sizes: '100vw' });
+  const transcript = chapters.map((c) => `<li><strong>${e(c.text)}.</strong> ${e(c.caption)}</li>`).join('');
+
+  // The tour: one large real screenshot at a time, the whole window, with a
+  // phone crop of the part that matters.
+  const tour = [
+    { id: 'canvas', tab: 'Canvas', shot: 'canvas', text: 'Every service of a project on one canvas. Dashed lines are variable references; x2 marks a service with two replicas.', alt: 'The canvas of the shop project: web, api with 2 replicas, worker, Postgres and Redis, joined by dashed reference lines', doc: ['/docs/basics', 'The basics'] },
+    { id: 'create', tab: 'Create menu', shot: 'palette', text: 'Add a GitHub repo, a database, a template, a Docker image, an empty service or a volume from one menu.', alt: 'The Create menu open on the canvas, listing GitHub Repo, Database, Template, Docker Image, Empty Service and Volume', doc: ['/docs/guides/deploy-docker-image', 'Deploy a Docker image'] },
+    { id: 'metrics', tab: 'Metrics', shot: 'metrics', text: 'CPU, memory, network, HTTP requests, error rate and response time for each service, with every deploy marked on the charts.', alt: 'The Metrics tab of the api service: CPU, memory, network and HTTP request charts over one hour, with deploy markers', doc: ['/docs/basics', 'The basics'] },
+    { id: 'scale', tab: 'Replicas and all cores', shot: 'scale', text: 'Set Replicas and 5050cloud runs that many copies behind its proxy. Use all cores runs a Node service started with node server.js as one process per vCPU; other runtimes get WEB_CONCURRENCY.', alt: 'The Scale settings of the api service: Replicas set to 2, Max surge, Singleton, and Use all cores ticked with the note that it runs 2 Node processes sharing port 8080', doc: ['/docs/guides/use-all-cores', 'Use all cores'] },
+  ];
+  const tabs = tour.map((t, i) => `<a class="tab" id="t-${t.id}" href="#p-${t.id}" role="tab" aria-controls="p-${t.id}" aria-selected="${i === 0}">${e(t.tab)}</a>`).join('');
+  const benchLine = bench
+    ? ` <span class="bench-line">${e(raw('bench'))} On a 2 vCPU VM whose vCPUs are two threads of one core, a CPU-bound Node service went from ${bench.rows.map((x) => `${x.off} to ${x.on} req/s`).join(' and from ')} (${bench.rows.map((x) => `${(x.on / x.off).toFixed(2)}x`).join(', ')}). ${e(bench.why)} <a href="${r('/docs/guides/use-all-cores')}">How it was measured</a></span>`
+    : '';
+  const panels = tour
+    .map((t, i) => `<div class="tour-panel" id="p-${t.id}" role="tabpanel" aria-labelledby="t-${t.id}"${i ? ' data-hidden' : ''}><figure>
+  <div class="shot-frame">${shot(r, media, t.shot, { alt: t.alt, sizes: full })}</div>
+  <figcaption><span>${e(t.text)} <a href="${r(t.doc[0])}">${e(t.doc[1])}</a></span>${t.id === 'scale' ? `<span class="beta-note"><strong>Beta:</strong> replicas spread across several hosts work in 0.1.0 but are not yet covered by the end-to-end tests. <a href="${r('/docs/reference/honest-limits#beta')}">What is beta</a></span>${benchLine}` : ''}</figcaption>
+</figure></div>`)
     .join('');
 
-  const e20Html = e20
-    ? `<p class="big">${e(String(e20.single))} requests per second with 1 process, ${e(String(e20.auto))} with Processes set to auto (${e(String(e20.ratio))}x) on ${e(String(e20.sku))}.</p>`
-    : `<p class="big">${c('cores')}.</p>`;
+  // The price chart: one workload, four bars, every bar labelled with its price.
+  const add = steady.addToEachSelfhost.backups;
+  const pick = (re) => steady.selfhost.find((x) => re.test(x.option));
+  const shared = pick(/^Hetzner CPX42/);
+  const dedicated = pick(/^Hetzner CCX33/);
+  const typical = steady.railway.find((x) => x.case === 'typical').monthly;
+  const costRows = [
+    { who: 'railway', name: 'Railway, steady load', note: 'all of it in use around the clock', monthly: steadyRail },
+    { who: 'railway', name: 'Railway, typical load', note: 'about 1.6 vCPU and 6 GB on average', monthly: typical },
+    { who: 'vm', name: 'Hetzner CCX33 with 5050cloud', note: '8 dedicated vCPU, 32 GB: the fair match for steady load', monthly: dedicated.monthly + add },
+    { who: 'vm', name: 'Hetzner CPX42 with 5050cloud', note: '8 shared vCPU, 16 GB: may be throttled under constant load', monthly: shared.monthly + add },
+  ];
+  const costMax = Math.max(...costRows.map((x) => x.monthly));
+  const costBars = costRows
+    .map((x) => `<li class="bar is-${x.who}"><span class="bar-name">${e(x.name)}<small>${e(x.note)}</small></span><span class="bar-track"><span class="bar-fill" style="--w:${((x.monthly / costMax) * 100).toFixed(1)}%"></span><span class="bar-value">${money(x.monthly.toFixed(2))}</span></span></li>`)
+    .join('');
+  const sources = [...new Set([...pricing.prices.railway, ...(pricing.prices.hetzner || [])].map((p) => p.source))];
 
   const main = `<main id="main" class="landing">
-<section class="hero">
-  <h1>Railway's developer experience on servers you own.</h1>
-  <p class="sub">${c('install')} with git deploys, databases, logs and rollbacks. Open source. No per-seat, per-minute or per-server fees.</p>
-  ${copyBlock(INSTALL, 'install command')}
-  <p class="small">Or with wget: <code>${e(INSTALL_WGET)}</code>. Ubuntu 24.04 is the tested OS. Piped, it asks nothing; in a terminal it offers a guided setup. Every answer is also a flag. See <a href="${r('/docs/reference/install-options')}">Install options</a>.</p>
-  <p class="actions"><a class="btn primary" href="${r('/docs/quick-start')}">Get started</a><a class="btn" href="${REPO}" rel="noopener">GitHub</a></p>
-  <p class="small">${c('first-deploy')}.</p>
-  <p class="small">v0.1.0 is an early release: see <a href="#limits">the limits below</a> for what has been tested so far.</p>
-  ${heroShot}
+<section class="hero" aria-labelledby="hero-h">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <h1 id="hero-h">Railway's workflow on your own servers</h1>
+      <p class="lead">Open source and self-hosted. Install it on a Linux VM and deploy apps and databases from a canvas, the way you do on Railway.</p>
+      ${copyBlock(INSTALL, 'install command', 'hero-cmd')}
+      <p class="hero-links"><a class="btn primary" href="${r('/docs/guides/install')}">Install on a VM</a> <a href="${REPO}" rel="noopener">View on GitHub</a></p>
+    </div>
+    <figure class="hero-demo">
+      <div class="hero-screen">
+        ${heroVideo}
+        <div class="hero-phone">${heroPhone}</div>
+        <button class="hero-toggle" type="button" hidden>Play</button>
+      </div>
+      <figcaption class="hero-cap">
+        <ol class="steps" aria-label="Steps in the recording">${steps}</ol>
+        <p class="hero-note">${e(raw('hero-recording'))}: the real console on a fresh 2 vCPU VM, ${e(media.hero.date)}, one take of ${Math.round(hv.duration)} s. Waits are sped up and labelled on screen; host names are replaced with example.com.</p>
+        <details class="transcript"><summary>Read the steps</summary><ol>${transcript}</ol><p>The same flow, step by step, is the <a href="${r('/docs/quick-start')}">quick start</a>.</p></details>
+      </figcaption>
+    </figure>
+  </div>
 </section>
 
-<section id="install-video">
-  <h2>One command on any Linux VM</h2>
-  ${termVideo}
+${demoSection(r, demo)}
+
+<section id="console" class="tour" aria-labelledby="tour-h">
+  <div class="wrap">
+    <div class="tour-head">
+      <h2 id="tour-h">The console you already know</h2>
+      <div class="tabs" role="tablist" aria-label="Parts of the console">${tabs}</div>
+    </div>
+    ${panels}
+  </div>
 </section>
 
-${screensHtml}
-
-<section id="cost">
-  <h2>Why it costs less</h2>
-  <p>The workload: ${e(costs.workload)}</p>
-  <div class="table"><table>
-    <thead><tr><th>Option</th><th>Monthly</th><th>vs Railway steady ($${e(String(costs.railwaySteady))})</th><th>Price page</th></tr></thead>
-    <tbody>${costRows}</tbody>
-  </table></div>
-  <p class="small">List prices read on ${e(costs.date)}; check current prices. Exchange rate: ${e(costs.exchangeRate)}. 5050cloud itself costs $0. Railway list prices used: $${prices.cpuPerVcpuMonth} per vCPU month, $${prices.memoryPerGbMonth} per GB of RAM month, $${prices.egressPerGb} per GB egress, $${prices.volumePerGbMonth} per GB of volume month (<a href="${e(prices.source)}" rel="noopener">source</a>, ${e(prices.date)}).</p>
-  <ul>
-    <li><strong>Low average use favours Railway.</strong> At typical load (an average of 1 vCPU and 8 GB) Railway costs about $${e(String(costs.railwayTypical))}, about the same as a Hetzner CCX23 and less than a DigitalOcean, AWS on-demand or Azure VM. For idle hobby projects there is no saving to claim.</li>
-    <li><strong>Egress is included</strong> on Hetzner in the EU (20 TB) and on DigitalOcean (5 to 6 TB).</li>
-    <li><strong>Growth is flat on a VM.</strong> Twice the traffic costs nothing until the box is full; the next step is a fixed price you choose.</li>
-    <li><strong>You own patching.</strong> The installer turns on unattended security updates and <code>5050 upgrade</code> reverts itself when the new version is unhealthy. Reboots are yours.</li>
-  </ul>
-  <p>See your own number: the <strong>Usage</strong> page shows what your use would cost on Railway.</p>
-  <p class="small">Headline: ${c('price-steady')}.</p>
+<section id="install" class="install" aria-labelledby="install-h">
+  <div class="wrap install-grid">
+    <figure class="install-shot">
+      ${picture(r, media, 'terminal-install-poster', { alt: 'The installer’s real output on a fresh VM: packages, Docker Engine, the control plane, the console address and a one-time link to create the owner account', sizes: half })}
+      <figcaption>What the installer prints on a fresh Ubuntu 24.04 VM. The address and token are masked.</figcaption>
+    </figure>
+    <div class="install-text">
+      <h2 id="install-h">Install with one command</h2>
+      <p>${say('install')}. Run it on a fresh Ubuntu 24.04 VM with a public IPv4 address and ports 80 and 443 open. It installs Docker, the control plane, the agent, Caddy for HTTPS and a private registry, then prints a one-time link to create your account.</p>
+      <dl class="ways">
+        <div><dt>With curl</dt><dd>${copyBlock(INSTALL, 'install command')}</dd></div>
+        <div><dt>With wget</dt><dd>${copyBlock(INSTALL_WGET, 'wget install command')}</dd></div>
+        <div><dt>Guided: asks for your domain and email</dt><dd>${copyBlock(INSTALL_GUIDED, 'guided install command')}</dd></div>
+      </dl>
+      <p class="install-foot">No domain needed: without one, the console and your services get sslip.io names with real certificates. See the <a href="${r('/docs/guides/install')}">install guide</a> and <a href="${r('/docs/reference/install-options')}">every install option</a>.</p>
+    </div>
+  </div>
 </section>
 
-<section id="cores">
-  <h2>Use every core you pay for</h2>
-  ${e20Html}
-  <p>Most Node apps run one process and use one core. Turn on <strong>Use all cores</strong> (Settings > Scale) and 5050cloud runs one process per vCPU. For a start command of the form <code>node server.js</code> it runs the processes in Node cluster mode sharing one port; for every other runtime it sets <code>WEB_CONCURRENCY</code>, which gunicorn, uvicorn, puma and many frameworks read. Test condition: ${e(byId.get('cores').condition)} <a href="${REPO}/tree/main/examples" rel="noopener">The test app and script</a> are in the repo.</p>
-  <p><a href="${r('/docs/guides/use-all-cores')}">Use all cores guide</a></p>
+<section id="domains" class="domains" aria-labelledby="domains-h">
+  <div class="wrap domains-grid">
+    <div class="domains-side">
+      <h2 id="domains-h">Your domains, with HTTPS</h2>
+      <p class="domains-lead">${say('domains')}.</p>
+      <ol class="status">
+        <li><strong>Generate Domain</strong> gives a public HTTPS name that works at once.</li>
+        <li><strong>Custom Domain</strong> asks for one DNS record.</li>
+        <li>The status moves from <strong>Waiting for DNS</strong> to <strong>Issuing certificate</strong> to <strong>Active</strong>.</li>
+      </ol>
+      <div class="table records">
+        <table>
+          <caption>Records for shop.example.com, host at 203.0.113.10. <a href="${r('/docs/guides/custom-domains')}">Custom domains guide</a></caption>
+          <thead><tr><th scope="col">Type</th><th scope="col">Name</th><th scope="col">Value</th></tr></thead>
+          <tbody>
+            <tr><td>A</td><td><code>shop</code></td><td><code>203.0.113.10</code></td></tr>
+            <tr><td>CNAME</td><td><code>www</code></td><td><code>shop.example.com</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <figure class="domains-shot">
+      <div class="shot-frame">${shot(r, media, 'networking', { alt: 'The Networking settings of the web service: a public domain marked Active with its certificate expiry date, Generate Domain and Custom Domain buttons, a TCP proxy, the target port and the private domain web.internal', sizes: half })}</div>
+      <figcaption>Settings, Networking, on a service with a generated name. The certificate date is the real one from Let's Encrypt.</figcaption>
+    </figure>
+  </div>
 </section>
 
-<section id="hosts">
-  <h2>Add servers with one command</h2>
-  ${copyBlock(JOIN, 'join command')}
-  <ul>
-    <li>${c('join')}. Get the command from <strong>Hosts > Add host</strong> or <code>5050 host add</code>.</li>
-    <li>${c('no-inbound')}.</li>
-    <li>${c('replicas')}.</li>
-    <li>${c('mesh')}.</li>
-    <li>${c('second-ingress')}.</li>
-  </ul>
+<section id="cost" class="cost field" aria-labelledby="cost-h">
+  <div class="wrap cost-grid">
+    <div class="cost-head">
+      <h2 id="cost-h">What it costs</h2>
+      <p class="cost-figure">${e(priceLine)}</p>
+      <p>${e(raw('free'))} A small, mostly idle app costs about the same either way, and Railway also runs the servers for you.</p>
+    </div>
+    <figure class="cost-chart" id="w-api-steady">
+      <figcaption class="chart-title">${e(steady.title)}. ${e(raw('cost-charts'))} VM prices include ${money(add)} for a backups bucket.</figcaption>
+      <ul class="bars" aria-label="Monthly cost in US dollars">${costBars}</ul>
+      <details class="assumptions"><summary>Prices and sources</summary>
+        <ul>${steady.assumptions.map((a) => `<li>${e(a)}</li>`).join('')}</ul>
+        <p>List prices in USD read on ${e(pricing.generated)}, excluding tax; euro prices at ${pricing.fx.usdPerEur} USD per EUR (ECB, ${e(pricing.fx.rateDate)}). Shared vCPUs under constant full load may be throttled, so the dedicated row is the fair comparison for the steady case. Check current prices: ${sources.map((s) => `<a href="${e(s)}" rel="noopener">${e(new URL(s).hostname.replace(/^www\./, '') + new URL(s).pathname.replace(/\/$/, ''))}</a>`).join(', ')}.</p>
+      </details>
+    </figure>
+  </div>
 </section>
 
-<section id="reliable">
-  <h2>Reliable by default</h2>
-  <ul>
-    <li>${c('backups')}.</li>
-    <li>${c('zero-downtime')}.</li>
-    <li>${c('failed-deploy')}.</li>
-    <li>${c('rollback')}.</li>
-    <li>${c('upgrade')}.</li>
-    <li>${c('cp-down')}.</li>
-    <li>${c('state-stream')}.</li>
-  </ul>
-  <p class="small">v0.1.0 is an early release. A fresh single-host install was smoke tested end to end (install, sign-up, image deploy, generated HTTPS domain, Postgres with a variable reference). The full release suite on fresh VMs, which proves each line above, runs next. The test conditions are listed in <a href="${REPO}/blob/main/site/claims.json" rel="noopener">claims.json</a>.</p>
+<section id="railway" class="habits" aria-labelledby="habits-h">
+  <div class="wrap">
+    <h2 id="habits-h">Bring your Railway habits</h2>
+    <p class="habits-lead">${say('alias')}. After <code>5050 alias install</code>, the commands you type today deploy to your own console.</p>
+    <div class="habits-grid">
+      <div class="table split-table stack-table habits-table">
+        <table>
+          <caption>Install the CLI on your laptop with <code class="nw">${e(INSTALL_CLI)}</code>. <a href="${r('/docs/coming-from-railway')}">Coming from Railway</a> lists every difference.</caption>
+          <thead><tr><th scope="col">On Railway</th><th scope="col">On 5050cloud</th></tr></thead>
+          <tbody>
+            <tr><td data-label="On Railway"><code>railway up</code></td><td data-label="On 5050cloud"><code>railway up</code>, or <code>5050 up</code></td></tr>
+            <tr><td data-label="On Railway"><code>railway link</code></td><td data-label="On 5050cloud"><code>railway link</code></td></tr>
+            <tr><td data-label="On Railway"><code>\${{Postgres.DATABASE_URL}}</code></td><td data-label="On 5050cloud"><code>\${{Postgres.DATABASE_URL}}</code></td></tr>
+            <tr><td data-label="On Railway"><code>railway.json</code> in the repo</td><td data-label="On 5050cloud">${say('railway-json')}</td></tr>
+            <tr><td data-label="On Railway">Railpack builds</td><td data-label="On 5050cloud">Railpack builds, or your Dockerfile</td></tr>
+            <tr><td data-label="On Railway">Import a project</td><td data-label="On 5050cloud">By hand in 0.1.0: <a href="${r('/docs/guides/import-from-railway')}">move a project</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figure class="habits-shot">
+        <div class="shot-frame">${shot(r, media, 'variables', { alt: 'The Variables tab of the api service: DATABASE_URL set to ${{Postgres.DATABASE_URL}}, REDIS_URL set to ${{Redis.REDIS_URL}}, and two hidden plain values', sizes: half })}</div>
+        <figcaption>The same reference syntax in the 5050cloud console: <code>DATABASE_URL</code> follows Postgres wherever it runs. <a href="${r('/docs/guides/variables')}">Variables</a></figcaption>
+      </figure>
+    </div>
+  </div>
 </section>
 
-<section id="move">
-  <h2>Move from Railway in minutes</h2>
-  <ul>
-    <li>${c('import')}.</li>
-    <li>${c('railway-json')}.</li>
-    <li>${c('alias')}: <code>\${{Postgres.DATABASE_URL}}</code> works as it does on Railway.</li>
-  </ul>
-  <p><a href="${r('/docs/coming-from-railway')}">Coming from Railway</a> lists every difference.</p>
+<section id="limits" class="limits" aria-labelledby="limits-h">
+  <div class="wrap">
+    <h2 id="limits-h">Honest limits</h2>
+    <div class="limit-group">
+      <h3 id="beta">Beta in 0.1.0</h3>
+      <div>
+        <p class="small">These work but are not yet covered by the end-to-end tests that run on fresh VMs.</p>
+        <ul class="plain">
+          <li>More than one host: joining hosts, the private WireGuard network, a second ingress host.</li>
+          <li>Replicas spread across hosts.</li>
+          <li>Database backups to an S3-compatible bucket, and restoring them.</li>
+          <li>Upgrades with <code>5050 upgrade</code> and their automatic revert.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="limit-group">
+      <h3>Not in 0.1.0</h3>
+      <ul class="plain">
+        <li>The Railway project importer. The <a href="${r('/docs/guides/import-from-railway')}">manual move</a> works today.</li>
+        <li>PR environments, app sleeping, global regions and an edge network.</li>
+        <li>Master key rotation, and enforcing two-factor login for everyone.</li>
+        <li>A clear error when a certificate fails: it stays on <strong>Issuing certificate</strong>.</li>
+      </ul>
+    </div>
+    <div class="limit-group">
+      <h3>By design</h3>
+      <ul class="plain">
+        <li>One control host. If it is down, apps keep serving but deploys, cron and the console wait.</li>
+        <li>Databases run on one host each, with no automatic failover.</li>
+        <li>Services with a volume have a short gap on each deploy.</li>
+        <li>You own the VM. Security updates are automatic; reboots are yours.</li>
+      </ul>
+    </div>
+    <p class="limits-foot"><a href="${r('/docs/reference/honest-limits')}">Every limit, with what to do about it</a></p>
+  </div>
 </section>
 
-<section id="lockin">
-  <h2>No lock-in</h2>
-  <ul>
-    <li>Builds use Railpack, Railway's own builder, or your Dockerfile.</li>
-    <li>Every deployment is a standard Docker image.</li>
-    <li><code>5050 config pull</code> exports an environment's services and settings to one file.</li>
-    <li>The server is AGPL-3.0. The CLI, API types, templates and installer are MIT.</li>
-  </ul>
+<section id="open" class="open" aria-labelledby="open-h">
+  <div class="wrap open-grid">
+    <h2 id="open-h">Open source, no lock-in</h2>
+    <p class="statement">The server is AGPL-3.0; the CLI, templates and installer are MIT. Every deployment is a standard Docker image, databases are ordinary containers, and <code>5050 config pull</code> writes your services to one file.</p>
+    <ul class="open-links">
+      <li><a href="${REPO}" rel="noopener">View on GitHub</a><span>The server, CLI, installer and templates in one repository.</span></li>
+      <li><a href="${REPO}/releases/tag/v0.1.0" rel="noopener">Release v0.1.0</a><span>The server for Linux on amd64 and arm64, the CLI for Linux, macOS and Windows, and signed checksums.</span></li>
+      <li><a href="${r('/docs/compare/railway')}">Compare with Railway, Coolify, Dokploy and Kamal</a><span>How they differ, feature by feature.</span></li>
+    </ul>
+  </div>
 </section>
 
-<section id="compare">
-  <h2>Compared with</h2>
-  <div class="table"><table>
-    <thead><tr><th></th><th>5050cloud</th><th>Railway</th><th>Coolify</th><th>Dokploy</th><th>Kamal</th><th>Dokku</th></tr></thead>
-    <tbody>
-      <tr><td>Runs on your servers</td><td>Yes</td><td>No (managed)</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-      <tr><td>Web UI</td><td>Yes, a canvas</td><td>Yes, a canvas</td><td>Yes</td><td>Yes</td><td>No</td><td>No (paid Pro)</td></tr>
-      <tr><td>Variable references between services</td><td>Yes, Railway syntax</td><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
-      <tr><td>Multi-host</td><td>Yes, built-in load balancing</td><td>Managed regions</td><td>One copy per server, bring a load balancer</td><td>Swarm cluster, needs a registry</td><td>Needs an external load balancer</td><td>K3s scheduler</td></tr>
-      <tr><td>Replicas on one host</td><td>Yes</td><td>Yes</td><td>No</td><td>Yes</td><td>One container per role per host</td><td>Yes</td></tr>
-      <tr><td>Zero-downtime deploys</td><td>Yes, without a volume</td><td>Yes</td><td>Rolling update, with exceptions</td><td>Swarm rolling updates</td><td>Yes</td><td>Yes</td></tr>
-      <tr><td>Backups with restore</td><td>Point-in-time Postgres, restore to a copy</td><td>Yes</td><td>Scheduled dumps, restore largely manual</td><td>DB and volume backups</td><td>None built in</td><td>Plugins</td></tr>
-      <tr><td>Inbound management port</td><td>None (agents dial out)</td><td>Not applicable</td><td>SSH</td><td>Swarm ports</td><td>SSH</td><td>SSH</td></tr>
-      <tr><td>License</td><td>AGPL-3.0 server, MIT CLI</td><td>Proprietary</td><td>Apache-2.0</td><td>Apache-2.0 plus a proprietary directory</td><td>MIT</td><td>MIT</td></tr>
-    </tbody>
-  </table></div>
-  <p class="small">Facts as of 2026-10-22, from each project's docs. Details per tool under <a href="${r('/docs/compare/coolify')}">Compare</a>.</p>
+<section id="faq" class="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <h2 id="faq-h">Questions</h2>
+    <div class="faq-list">
+      <details><summary>Is it cheaper than Railway for a small project?</summary><p>Usually not. Railway bills by use, so an idle app costs ${money(ex.get('small-app').railway[0].monthly)} to ${money(ex.get('small-app').railway[1].monthly)} a month there, about what a small VM costs. The saving shows up at steady load, with several apps on one VM, and with a lot of egress.</p></details>
+      <details><summary>What do I need?</summary><p>A Linux VM with a public IPv4 address, ports 80 and 443 open, and root access. Ubuntu 24.04 is tested, on amd64 or arm64. 2 vCPU and 4 GB of RAM is a comfortable start.</p></details>
+      <details><summary>Do I need a domain?</summary><p>No. Without one, the console and your services get sslip.io names with real certificates. Add your own domain at install time or later, per service.</p></details>
+      <details><summary>Is it a fork of Railway?</summary><p>No. It is an independent project that follows Railway's ideas and names so your projects and habits move over. It is not affiliated with Railway. Builds use Railpack, Railway's open-source builder.</p></details>
+      <details><summary>Can I use my Docker Compose file?</summary><p>Yes. <code>5050 import compose docker-compose.yml</code> stages its services, variables, ports and volumes for you to review and deploy.</p></details>
+    </div>
+  </div>
 </section>
 
-<section id="limits">
-  <h2>Honest limits</h2>
-  <ul>
-    <li>v0.1.0 is an early release. A fresh single-host install on Ubuntu 24.04 was smoke tested: sign-up, an image deploy, a generated HTTPS domain and Postgres with a variable reference. Multi-host, backups, upgrades and the Railway import are built but have not yet been through the full release test suite.</li>
-    <li>One control host. With one host, a host failure stops everything until it is rebuilt. With more hosts, apps on other hosts keep serving (with a second ingress host), but deploys, cron and the console stop until the control host is back or rebuilt.</li>
-    <li>Cron runs pause while the control plane is down; missed runs are listed, not replayed.</li>
-    <li>Databases run on one host each. No high availability, no automatic failover.</li>
-    <li>Services with a volume have a short gap on every deploy.</li>
-    <li>Without a second ingress host, all public traffic enters through one machine. No global edge, CDN or DDoS protection.</li>
-    <li>No autoscaling. Volumes have no size cap; they share the host disk.</li>
-    <li>With a bucket, control plane state is replicated within seconds; without one, the recovery point is the last hourly snapshot on the same disk.</li>
-    <li>Metrics are kept 30 days. Logs are kept 7 days on each host.</li>
-    <li>IPv4 only. Ubuntu 24.04 is the tested OS.</li>
-    <li>You own the hardware and the OS (security updates are automated, reboots are yours).</li>
-  </ul>
-  <p><a href="${r('/docs/reference/honest-limits')}">Details for each limit</a></p>
-</section>
-
-<section id="faq">
-  <h2>FAQ</h2>
-  <details><summary>What does it cost?</summary><p>Nothing. 5050cloud is open source. You pay your server provider and, if you want off-site backups, a few dollars for an S3-compatible bucket.</p></details>
-  <details><summary>What do I need?</summary><p>A Linux VM with a public IPv4 address, ports 80 and 443 open, and root access. Ubuntu 24.04 is tested; Ubuntu 22.04 and Debian 12 install with a warning. 2 vCPU and 4 GB of RAM is a comfortable start.</p></details>
-  <details><summary>Do I need a domain?</summary><p>No. Without one, services get <code>sslip.io</code> names with real certificates. Add your own domain at install time with <code>--domain</code> or later per service.</p></details>
-  <details><summary>Is it a fork of Railway?</summary><p>No. It is an independent project that follows Railway's ideas and names so your projects and habits move over. It is not affiliated with Railway.</p></details>
-  <details><summary>Can I use my existing Docker Compose file?</summary><p>Yes. <code>5050 import compose docker-compose.yml</code> or drag it onto the canvas. Services, variables, ports, volumes and dependencies are staged for you to review.</p></details>
-  <details><summary>How do I get my data out?</summary><p>Your databases are standard containers you can dump with <code>5050 connect</code>, backups sit in your own bucket, and <code>5050 config pull</code> writes your services to a file.</p></details>
+<section class="close" aria-labelledby="close-h">
+  <div class="wrap close-inner">
+    <h2 id="close-h">Install it on a VM you already pay for</h2>
+    ${copyBlock(INSTALL, 'install command', 'close-cmd')}
+    <p><a class="btn primary" href="${r('/docs/guides/install')}">Install on a VM</a> <a href="${r('/docs/quick-start')}">Read the quick start</a></p>
+  </div>
 </section>
 </main>`;
 
   return shell({
     slug: '',
-    title: "5050cloud: Railway's developer experience on servers you own",
-    description: 'One command turns any Linux VM into a canvas of services with git deploys, databases, logs and rollbacks. Open source. No per-seat, per-minute or per-server fees.',
+    title: "5050cloud: Railway's workflow on your own servers",
+    description: 'Open source and self-hosted. Install 5050cloud on a Linux VM and deploy apps and databases from a canvas, the way you do on Railway. You pay only for the VM.',
     main,
     bodyClass: 'home',
+    head: `<link rel="preload" as="image" href="${r('/media/hero-poster-1600.webp')}" media="(min-width: 721px)" fetchpriority="high">`,
   });
 }
+
+export { money };

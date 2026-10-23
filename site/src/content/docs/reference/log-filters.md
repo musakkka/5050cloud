@@ -7,6 +7,8 @@ Filter deploy, build and HTTP logs in the console and with `5050 logs -f` using 
 
 ## Grammar
 
+![The Deploy Logs tab with the filter box, the Time, Replica, Level, Service and Live options, and streaming log lines](shot:logs "The filter box takes the grammar below.")
+
 ```
 expr  := term { [AND|OR] term }      adjacent terms mean AND
 term  := [-] ( word | "phrase" | @attr:value | @attr:op number | @attr:a..b | replica:<id> | ( expr ) )
