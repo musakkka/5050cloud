@@ -97,6 +97,8 @@ If a domain is still on **Issuing certificate** after five minutes:
 
 ## What is not supported
 
+The full list for this release is on [Honest limits](/docs/reference/honest-limits#not-yet).
+
 - Wildcard custom domains (`*.example.com`) are refused: "Not in v0.1: wildcard domains. Add each name instead." For generated names under your own domain, install with `--domain` and a wildcard A record. See [Your domains](/docs/guides/console-domain).
 - IPv6 (AAAA records to your host).
 - Your console's own address and names under your base domain: the console refuses them, so a service can never take over the console. IP addresses are refused too.

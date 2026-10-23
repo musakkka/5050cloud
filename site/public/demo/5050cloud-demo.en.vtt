@@ -1,0 +1,66 @@
+WEBVTT
+
+1
+00:00:00.200 --> 00:00:02.850
+5050cloud: Railway's workflow on your own servers.
+
+2
+00:00:03.200 --> 00:00:09.264
+One command on a fresh VM installs everything.
+
+3
+00:00:09.614 --> 00:00:14.264
+Create the owner account. This VM is the first host.
+
+4
+00:00:14.614 --> 00:00:16.864
+Start from an empty canvas.
+
+5
+00:00:17.214 --> 00:00:24.364
+Deploy a Docker image from the UI.
+
+6
+00:00:24.714 --> 00:00:30.364
+Add Postgres in two clicks.
+
+7
+00:00:30.714 --> 00:00:39.364
+Reference variables across services, like Railway.
+
+8
+00:00:39.714 --> 00:00:45.864
+Generate a public HTTPS URL.
+
+9
+00:00:46.214 --> 00:00:48.464
+It is live, with a certificate.
+
+10
+00:00:48.814 --> 00:00:53.490
+Or push from your laptop with railway up. The build log streams live.
+
+11
+00:00:53.840 --> 00:00:58.490
+Deploy logs for every deployment, in the console.
+
+12
+00:00:58.840 --> 00:01:05.990
+Scale replicas and turn on Use all cores.
+
+13
+00:01:06.340 --> 00:01:11.490
+Use all cores, measured.
+
+14
+00:01:11.840 --> 00:01:17.990
+Costs a month, from list prices with the date.
+
+15
+00:01:18.340 --> 00:01:23.790
+You run the server, and you keep the savings.
+
+16
+00:01:24.140 --> 00:01:27.790
+Install it on your own server today.
+

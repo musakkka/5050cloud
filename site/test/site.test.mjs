@@ -125,8 +125,13 @@ test('the landing page is built around real product media', () => {
   assert.doesNotMatch(html, /class="logo"/);
   // The hero recording: muted, looping, inline, with a poster and both formats,
   // and its steps (from the render's chapters) beside it as buttons.
-  const videos = [...html.matchAll(/<video [^>]*>[\s\S]*?<\/video>/g)].map((m) => m[0]);
+  const allVideos = [...html.matchAll(/<video [^>]*>[\s\S]*?<\/video>/g)].map((m) => m[0]);
+  const videos = allVideos.filter((v) => v.includes('class="hero-video"'));
   assert.equal(videos.length, 1);
+  // The full demo: controls, a poster, both formats, captions and chapters.
+  const demo = allVideos.filter((v) => v.includes('class="demo-video"'));
+  assert.equal(demo.length, 1);
+  for (const want of ['controls', 'poster="demo/', 'demo/5050cloud-demo.webm', 'demo/5050cloud-demo.mp4', '<track kind="captions"', '<track kind="chapters"']) assert.ok(demo[0].includes(want), want);
   assert.ok((html.match(/<button type="button" class="step" data-at="/g) || []).length >= 4, 'hero steps');
   for (const v of videos) {
     for (const want of ['muted', 'loop', 'playsinline', 'poster="media/', 'type="video/webm"', 'type="video/mp4"', 'aria-label="', '<track kind="captions"']) assert.ok(v.includes(want), want);
