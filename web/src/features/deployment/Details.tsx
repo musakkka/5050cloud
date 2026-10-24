@@ -25,7 +25,7 @@ export default function Details({ d, onRedeploy, onSettings }: { d: DeploymentDe
 }
 
 function StatusBlock({ d, look, onRedeploy, onSettings }: { d: DeploymentDetail; look: ReturnType<typeof lookOf>; onRedeploy?: () => void; onSettings?: () => void }) {
-  const [open, setOpen] = useState(look === "bad" || look === "busy" || look === "wait");
+  const [open, setOpen] = useState(look === "bad" || look === "busy" || look === "wait" || (d.status === "COMPLETED" && !!d.diagnosis));
   const frame = look === "bad" ? "border-danger-line" : look === "busy" || look === "wait" ? "border-blue-200" : "border-green-200";
   const head = look === "bad" ? "bg-danger-bg" : look === "busy" || look === "wait" ? "bg-blue-50" : "bg-green-50";
   return (
@@ -40,12 +40,14 @@ function StatusBlock({ d, look, onRedeploy, onSettings }: { d: DeploymentDetail;
         <StepRows d={d} indent={16} labelGap={32}
           after={d.diagnosis ? <Diagnosis text={d.diagnosis} onRedeploy={onRedeploy} onSettings={onSettings} /> : undefined} />
       )}
-      {open && d.diagnosis && !d.steps.some((s) => s.state === "failed") && <Diagnosis text={d.diagnosis} onRedeploy={onRedeploy} onSettings={onSettings} />}
+      {open && d.diagnosis && !d.steps.some((s) => s.state === "failed") && (d.status === "COMPLETED"
+        ? <Diagnosis title="Ran to completion" text={d.diagnosis} />
+        : <Diagnosis text={d.diagnosis} onRedeploy={onRedeploy} onSettings={onSettings} />)}
     </div>
   );
 }
 
-function Diagnosis({ text, onRedeploy, onSettings }: { text: string; onRedeploy?: () => void; onSettings?: () => void }) {
+function Diagnosis({ title = "Diagnosis", text, onRedeploy, onSettings }: { title?: string; text: string; onRedeploy?: () => void; onSettings?: () => void }) {
   return (
     <div className="flex pb-4 pl-4 pr-4 pt-3">
       <span className="flex w-4 shrink-0 flex-col items-center">
@@ -53,7 +55,7 @@ function Diagnosis({ text, onRedeploy, onSettings }: { text: string; onRedeploy?
         <span className="mt-2 w-px flex-1 bg-pink-200" />
       </span>
       <div className="ml-8 min-w-0 flex-1">
-        <div className="text-sm font-medium text-accent-text">Diagnosis</div>
+        <div className="text-sm font-medium text-accent-text">{title}</div>
         <p className="mt-3 text-sm leading-[22.75px] text-foreground">{text}</p>
         {(onRedeploy || onSettings) && (
           <div className="mt-3 flex flex-wrap gap-2">

@@ -255,6 +255,9 @@ function LeadCard({ d, onOpen, onAction }: { d: Deployment; onOpen: (did: string
           {open && <div className="mt-1 overflow-hidden rounded-md bg-background"><StepRows d={d} indent={92} labelGap={24} /></div>}
         </>
       )}
+      {d.status === "COMPLETED" && d.diagnosis && (
+        <p className="mt-1 rounded-md bg-background py-2.5 pl-[92px] pr-3 text-sm leading-[22px] text-fg-2">{d.diagnosis}</p>
+      )}
     </div>
   );
 }
