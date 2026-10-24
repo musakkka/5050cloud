@@ -1121,6 +1121,10 @@ func (o *Orchestrator) rolloutAndFinish(ctx context.Context, d *depRow, snap cpa
 		o.aborted(ctx, d)
 		return
 	}
+	if errors.Is(err, errCompleted) {
+		o.finish(ctx, d, api.DepCompleted, completedText)
+		return
+	}
 	o.removeReplicasOf(context.WithoutCancel(ctx), d.ID)
 	var q *queueTimeout
 	if errors.As(err, &q) {
@@ -1167,6 +1171,11 @@ func (o *Orchestrator) rollout(ctx context.Context, d *depRow, snap cpapi.Servic
 		}
 		o.step(ctx, d, stepHealthcheck, "running", "")
 		if err := o.waitHealthy(ctx, d); err != nil {
+			if errors.Is(err, errCompleted) {
+				o.step(ctx, d, stepStart, "ok", "")
+				o.step(ctx, d, stepHealthcheck, "ok", "")
+				return err
+			}
 			o.step(ctx, d, stepHealthcheck, "failed", "")
 			return err
 		}
@@ -1210,8 +1219,12 @@ func (o *Orchestrator) waitHealthy(ctx context.Context, d *depRow) error {
 		if err != nil {
 			return err
 		}
-		all := len(reps) > 0
+		all, done := len(reps) > 0, len(reps) > 0
 		for _, r := range reps {
+			if ranToCompletion(d.Config, r) {
+				continue
+			}
+			done = false
 			switch r.State {
 			case "healthy":
 			case "crashed", "exited", "unhealthy":
@@ -1219,6 +1232,9 @@ func (o *Orchestrator) waitHealthy(ctx context.Context, d *depRow) error {
 			default:
 				all = false
 			}
+		}
+		if done {
+			return errCompleted
 		}
 		if all {
 			return nil
@@ -1442,6 +1458,11 @@ func (o *Orchestrator) rolloutVolume(ctx context.Context, d *depRow, snap cpapi.
 	}
 	o.step(ctx, d, stepHealthcheck, "running", "")
 	if err := o.waitHealthy(ctx, d); err != nil {
+		if errors.Is(err, errCompleted) {
+			o.step(ctx, d, stepStart, "ok", "")
+			o.step(ctx, d, stepHealthcheck, "ok", "")
+			return err
+		}
 		o.step(ctx, d, stepHealthcheck, "failed", "")
 		if ctx.Err() != nil {
 			o.removeReplicasOf(context.WithoutCancel(ctx), d.ID)

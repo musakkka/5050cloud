@@ -13,6 +13,7 @@ import { api, type GitHubRepo, type GitHubStatus, type TemplateSummary } from ".
 import { BrandIcon, Button, Skeleton, Spinner, cx, toastError } from "../../kit";
 import { PaletteCard, PaletteInput, PaletteList, PaletteStep, useListNav, type PItem, type StepDir } from "./Palette";
 import { categoryLabel, fuzzyFilter, loadGitHub, loadRepos, loadTemplates, pastedRepo, registryPage, sortDatabases, sortPopular } from "./data";
+import { continueAfterCreate, goInstall } from "../settings/githubFlow";
 import { imageError, imageName } from "./image";
 import type { Target } from "./flows";
 
@@ -128,6 +129,7 @@ export function GitHubStep({ dir, back, open, canCreate }: StepProps) {
   const [repos, setRepos] = useState<GitHubRepo[]>();
   const [refreshing, setRefreshing] = useState(false);
 
+  const [forwarding] = useState(() => continueAfterCreate());
   useEffect(() => { loadGitHub().then(setStatus, () => setStatus({ appConfigured: false, installations: [] })); }, []);
   const load = (refresh = false) => {
     setRefreshing(refresh);
@@ -152,7 +154,14 @@ export function GitHubStep({ dir, back, open, canCreate }: StepProps) {
   const list = pasted ? (known ? [known] : []) : fuzzyFilter(repos || [], q, (r) => r.fullName);
 
   const items: PItem[] = [];
-  if (status?.appConfigured) {
+  if (status?.appConfigured && !status.installations.length && status.installUrl) {
+    const installUrl = status.installUrl;
+    items.push({
+      key: "install", icon: <Settings size={16} />, label: "Install the GitHub App", sub: "The app is created but not installed on any account yet.",
+      onPick: () => goInstall(installUrl),
+      right: <Button size="xs" variant="primary" tabIndex={-1} onClick={(e) => { e.stopPropagation(); goInstall(installUrl); }}>Install</Button>,
+    });
+  } else if (status?.appConfigured) {
     items.push({
       key: "configure", icon: <Settings size={16} />, label: "Configure GitHub App",
       onPick: () => { if (status.configureUrl) window.open(status.configureUrl, "_blank", "noopener"); },
@@ -186,12 +195,13 @@ export function GitHubStep({ dir, back, open, canCreate }: StepProps) {
       <PaletteInput value={q} onChange={setQ} label="Search repositories" placeholder="Search repositories, or paste a URL..." onBack={back}
         listId="new-gh" activeId={`new-gh-${navi.active}`}
         onKeyDown={(e) => { if (pasted && !known && e.key === "Enter") { e.preventDefault(); deployPasted(); } else navi.onKeyDown(e); }} />
-      {!canCreate ? <ViewerCard /> : pasted && !known && repos ? (
+      {forwarding ? <PaletteList id="new-gh" items={[]} active={0} onHover={() => {}} maxHeight={TALL_MAX}><LoadingRows n={3} /></PaletteList>
+        : !canCreate ? <ViewerCard /> : pasted && !known && (repos || (status && !status.appConfigured)) ? (
         <PaletteCard icon={<BrandIcon name="github" size={32} mono />} title={pasted}
           body={status?.appConfigured ? "Not in the app's repositories. Public repositories deploy as is; give the app access for private ones." : "Public repositories deploy as is. Connect a GitHub App for private ones."}
           action={
             <div className="flex items-center justify-center gap-2">
-              {status?.installUrl && <Button onClick={() => window.open(status.installUrl, "_blank", "noopener")}>Grant access</Button>}
+              {status?.installUrl && <Button onClick={() => goInstall(status.installUrl!)}>Grant access</Button>}
               <Button variant="primary" onClick={deployPasted}>Deploy Repo</Button>
             </div>
           } />

@@ -31,6 +31,12 @@ type replicaFacts struct {
 	HasPort      bool // the service is expected to listen (web)
 }
 
+// ranToCompletion reports whether r exited cleanly and will stay down, which
+// is success for a one-shot container rather than a crash.
+func ranToCompletion(cfg api.ServiceConfig, r repRow) bool {
+	return r.State == "exited" && r.ExitCode != nil && *r.ExitCode == 0 && cfg.Deploy.RestartPolicy != "always"
+}
+
 // diagnose returns the sentence for a failed replica.
 func diagnose(f replicaFacts) string {
 	if f.OOM {

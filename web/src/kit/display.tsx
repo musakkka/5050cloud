@@ -146,7 +146,17 @@ export function StatusDot({ status, tone, size = 6, pulse, className, label }: {
   );
 }
 
-const AVATAR_BG = ["#7c4dff", "#d6338a", "#2f9e77", "#e8590c", "#1c7ed6", "#ae3ec9", "#0c8599", "#f08c00"];
+// Gradients around the pink accent and the cool end of the palette; no oranges or yellows.
+const AVATAR_BG = [
+  "linear-gradient(135deg, hsl(328 70% 58%), hsl(300 55% 45%))",
+  "linear-gradient(135deg, hsl(312 60% 55%), hsl(270 50% 48%))",
+  "linear-gradient(135deg, hsl(340 65% 60%), hsl(318 55% 42%))",
+  "linear-gradient(135deg, hsl(285 50% 58%), hsl(250 45% 46%))",
+  "linear-gradient(135deg, hsl(250 55% 62%), hsl(222 55% 46%))",
+  "linear-gradient(135deg, hsl(215 60% 56%), hsl(195 55% 40%))",
+  "linear-gradient(135deg, hsl(190 50% 48%), hsl(170 45% 36%))",
+  "linear-gradient(135deg, hsl(322 45% 50%), hsl(258 35% 36%))",
+];
 
 /** A round avatar: image, or initials on a colour picked from the name. */
 export function Avatar({ name, src, size = 24, className }: { name?: string | null; src?: string | null; size?: number; className?: string }) {
