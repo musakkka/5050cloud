@@ -13,7 +13,7 @@ import {
 import type { Canvas, Domain, TCPProxy } from "../../api/types.gen";
 import { del, get, patch, post } from "../service/client";
 import { useLoad } from "../service/ui";
-import { Button, Confirm, IconButton, Tooltip, cx, toastError } from "../../kit";
+import { Button, Confirm, IconButton, Notice, Tooltip, cx, toastError } from "../../kit";
 import { isDatabase, useFieldState, useSettings } from "./context";
 import { Code, InlinePanel, PANEL_INPUT, Pill, SettingField, ToggleRow } from "./ui";
 
@@ -53,6 +53,11 @@ function PublicNetworking() {
   return (
     <SettingField title="Public Networking" keywords="public domain custom domain generate tcp proxy port dns certificate https"
       description="Reach this service from the internet over HTTPS on these domains.">
+      {svc.status === "completed" && svc.kind !== "cron" && (
+        <Notice tone="warn" className="mb-4" title="Nothing is listening">
+          The last deployment ran once and exited, so its domains answer with a 503. Deploy an image that keeps a web server running to serve requests here.
+        </Notice>
+      )}
       <div className="flex flex-col gap-2">
         {list.map((d) => <DomainRow key={d.id} d={d} onChange={update} onDelete={() => setRemoving(d)} />)}
         {proxies.map((p) => <ProxyRow key={p.id} p={p} onDelete={() => setRemovingProxy(p)} />)}

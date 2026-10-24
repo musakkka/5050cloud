@@ -39,19 +39,29 @@ func (p caddyParams) accessLog() string { return filepath.Join(p.Dir, "logs", "a
 func (p caddyParams) tlsLog() string    { return filepath.Join(p.Dir, "logs", "tls.log") }
 func (p caddyParams) storage() string   { return filepath.Join(p.Dir, "data") }
 
-// notFoundPage is the catch-all answer for a domain with no service.
-const notFoundPage = `<!doctype html>
+// pageHead is the shared look of the router's own pages.
+const pageHead = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Not found</title>
 <style>
 :root{color-scheme:light dark;--bg:#fafafa;--fg:#18181b;--muted:#71717a;--card:#fff;--line:#e4e4e7}
 @media (prefers-color-scheme:dark){:root{--bg:#09090b;--fg:#fafafa;--muted:#a1a1aa;--card:#18181b;--line:#27272a}}
 body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px;box-sizing:border-box}
 main{max-width:440px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:32px}
-h1{margin:0 0 8px;font-size:20px}p{margin:0;color:var(--muted)}code{font-size:14px}
-</style></head>
+h1{margin:0 0 8px;font-size:20px}p{margin:0 0 8px;color:var(--muted)}p:last-child{margin:0}code{font-size:14px}
+</style>`
+
+// notFoundPage is the catch-all answer for a domain with no service.
+const notFoundPage = pageHead + `<title>Not found</title></head>
 <body><main><h1>No service is attached to this domain</h1>
 <p>If this is your domain, attach it to a service in its Settings, under Networking.</p></main></body></html>
+`
+
+// unavailablePage answers when a domain's service has no replica that takes
+// requests: it is stopped, still starting, crashed, or ran once and exited.
+const unavailablePage = pageHead + `<title>Service unavailable</title></head>
+<body><main><h1>This service is not running</h1>
+<p>The domain is attached to a service, but no replica of it is answering requests right now.</p>
+<p>If this is your service, open its Deployments tab in the console. A deployment marked Completed ran once and exited, so nothing is listening: use an image that keeps a web server running, such as <code>nginx</code>.</p></main></body></html>
 `
 
 type obj = map[string]any
@@ -169,6 +179,17 @@ func notFoundRoute() obj {
 	}}, "terminal": true}
 }
 
+// unavailableRoutes turn the proxy's upstream errors (no replica answers)
+// into a page that says what is going on, keeping the status code.
+func unavailableRoutes() obj {
+	return obj{"routes": []obj{{"handle": []obj{{
+		"handler":     "static_response",
+		"status_code": "{http.error.status_code}",
+		"headers":     obj{"Content-Type": []string{"text/html; charset=utf-8"}, "Cache-Control": []string{"no-store"}},
+		"body":        unavailablePage,
+	}}, "terminal": true}}}
+}
+
 func acmeIssuers(in proto.Ingress) ([]obj, error) {
 	withEmail := func(o obj) obj {
 		if in.ACMEEmail != "" {
@@ -252,12 +273,14 @@ func renderCaddy(p caddyParams, in proto.Ingress) ([]byte, []error) {
 		"tls_connection_policies": []obj{{}},
 		"automatic_https":         obj{"disable": true},
 		"logs":                    logs,
+		"errors":                  unavailableRoutes(),
 	}
 	http := obj{
 		"listen":          []string{":" + strconv.Itoa(p.HTTPPort)},
 		"routes":          httpRoutes,
 		"automatic_https": obj{"disable": true},
 		"logs":            logs,
+		"errors":          unavailableRoutes(),
 	}
 	if len(in.TrustedProxies) > 0 {
 		var ranges []string
