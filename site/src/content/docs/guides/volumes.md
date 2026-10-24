@@ -7,7 +7,7 @@ Give a service persistent storage that survives deploys and restarts.
 
 ## Add a volume
 
-Select **+ Create > Volume** and pick a service and mount path, right-click a service and select **Attach Volume**, or run `5050 volume add --mount /data`. One volume per service.
+Select **+ Add > Volume** and pick a service and mount path, right-click a service and select **Attach Volume**, or run `5050 volume add --mount /data`. One volume per service.
 
 The volume is a Docker named volume on the service's host (on the data disk when there is one). It is owned by root; if your app runs as another user and cannot write, set **Run as user** to `0` in **Settings > Deploy** (or `RAILWAY_RUN_UID=0`).
 

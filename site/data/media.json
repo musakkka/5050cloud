@@ -1,6 +1,15 @@
 {
- "captured": "2026-10-22",
+ "captured": "2026-10-24",
  "stills": {
+  "terminal-install-poster-m": {
+   "widths": [
+    720
+   ],
+   "ratio": [
+    720,
+    138
+   ]
+  },
   "canvas-light": {
    "widths": [
     800,
@@ -154,7 +163,7 @@
    ],
    "ratio": [
     1600,
-    1000
+    1348
    ]
   },
   "deployments-dark": {
@@ -164,7 +173,7 @@
    ],
    "ratio": [
     1600,
-    1000
+    1348
    ]
   },
   "variables-light": {
@@ -174,7 +183,7 @@
    ],
    "ratio": [
     1600,
-    808
+    912
    ]
   },
   "variables-light-m": {
@@ -184,7 +193,7 @@
    ],
    "ratio": [
     920,
-    460
+    690
    ]
   },
   "variables-dark": {
@@ -194,7 +203,7 @@
    ],
    "ratio": [
     1600,
-    808
+    912
    ]
   },
   "variables-dark-m": {
@@ -204,7 +213,7 @@
    ],
    "ratio": [
     920,
-    460
+    690
    ]
   },
   "networking-light": {
@@ -214,7 +223,7 @@
    ],
    "ratio": [
     1600,
-    832
+    1342
    ]
   },
   "networking-light-m": {
@@ -234,7 +243,7 @@
    ],
    "ratio": [
     1600,
-    832
+    1342
    ]
   },
   "networking-dark-m": {
@@ -287,15 +296,6 @@
    "ratio": [
     920,
     690
-   ]
-  },
-  "terminal-install-poster-m": {
-   "widths": [
-    720
-   ],
-   "ratio": [
-    720,
-    138
    ]
   }
  },

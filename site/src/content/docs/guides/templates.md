@@ -7,7 +7,7 @@ Deploy ready-made apps such as n8n, Umami or Uptime Kuma in one click, and add a
 
 ## Deploy a template
 
-1. On the canvas, select **+ Create**, then **Template**.
+1. On the canvas, select **+ Add**, then **Template**.
 2. Pick a template. The detail page shows the services it creates and its inputs; generated values (secrets) are prefilled and can be regenerated.
 3. Fill in required inputs and select **Deploy**.
 

@@ -7,7 +7,7 @@ description: 5050cloud organises your apps into projects, environments, services
 
 ## Projects
 
-![The project canvas: web, api with 2 replicas, worker, Postgres and Redis, joined by dashed reference lines](shot:canvas "A project on the canvas. Dashed lines are variable references between services.")
+![The project canvas: web, api with 3 replicas, a cron job, a worker, Postgres grouped with PgBouncer, Redis, docs and search, joined by dashed reference lines](shot:canvas "A project on the canvas. Dashed lines are variable references between services.")
 
 A project is a canvas of services that belong together, such as an API, a web app, a worker and their databases. Create one from the dashboard with **New project** or with `5050 init`.
 

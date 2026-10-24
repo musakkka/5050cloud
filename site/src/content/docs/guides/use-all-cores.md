@@ -53,7 +53,7 @@ With **Use all cores** on, the console says "Runs 8 Node processes sharing port 
 
 An earlier run on a 2 vCPU VM with 1 physical core (2 threads) gained only 1.03x at 300,000 primes (58.9 to 60.4 req/s) and 1.07x at 60,000 (516 to 554 req/s). Both Node workers ran at 100% CPU, but they shared one core's divider. A CPU-bound loop gains almost nothing from a core's second hardware thread, so count physical cores, not vCPUs. Check `lscpu` on your VM before expecting a multiple. The load generator and proxy shared the VM with the app, so a second load machine would leave the app a little more CPU.
 
-![The Scale settings of the api service: Replicas set to 2 and Use all cores ticked, with the note that it runs 2 Node processes sharing port 8080](shot:scale "Settings, Scale: Replicas and Use all cores.")
+![The Scale settings of the api service: CPU and memory limits per replica, the memory reservation, and Use all cores switched on under Processes](shot:scale "Settings, Scale: replica limits and Use all cores.")
 
 ## Next steps
 

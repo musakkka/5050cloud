@@ -7,7 +7,7 @@ Add a database in one click; it gets a volume, generated credentials and the sam
 
 ## Add a database
 
-1. On the canvas, select **+ Create**, then **Database**, then the engine.
+1. On the canvas, select **+ Add**, then **Database**, then the engine.
 2. The database deploys at once onto a host with the `data` role.
 3. In your app's **Variables**, reference it, for example `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
 

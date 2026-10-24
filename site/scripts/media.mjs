@@ -5,6 +5,7 @@
 // stays dependency-free.
 //
 //   node scripts/media.mjs [--brand ../5050cloud-brand]
+//   node scripts/media.mjs --stills        (console stills only)
 //   node scripts/media.mjs --demo ../5050cloud-demo/out --reviewed
 //
 // Needs ffmpeg with libsvtav1 (AVIF) and the Chromium that the brand repo's
@@ -56,19 +57,22 @@ const OUT = join(SITE, 'public/media');
 // part that matters, at 4:3, served below 720 px so the text stays readable.
 const H = (x, y, w, h) => ({ x: x * 2, y: y * 2, w: w * 2, h: h * 2 });
 const STILLS = [
-  { name: 'canvas', crop: null, phone: H(598, 250, 690, 518), widths: [800, 1600, 2400] },
-  { name: 'palette', crop: null, phone: H(980, 62, 460, 345), widths: [800, 1600, 2400] },
-  { name: 'metrics', crop: null, phone: H(436, 266, 480, 360), widths: [800, 1600, 2400] },
-  // The worker in the screenshot project prints sample job lines; the landing
-  // page does not use this picture, only the log filters reference page does.
-  { name: 'logs', crop: H(415, 56, 1025, 641), widths: [800, 1600] },
-  { name: 'deployments', crop: H(415, 56, 1025, 641), widths: [800, 1600] },
+  // The canvas: the whole window; the phone crop keeps web, api and the cron job.
+  { name: 'canvas', crop: null, phone: H(190, 110, 560, 420), widths: [800, 1600, 2400] },
+  // The Add menu open over the canvas; the phone crop is the menu.
+  { name: 'palette', crop: null, phone: H(960, 110, 480, 360), widths: [800, 1600, 2400] },
+  // Metrics: the whole window; the phone crop is the CPU chart.
+  { name: 'metrics', crop: null, phone: H(572, 316, 560, 420), widths: [800, 1600, 2400] },
+  // The project log explorer; only the log filters reference page uses it.
+  { name: 'logs', crop: null, widths: [800, 1600] },
+  // Deployments: the service panel from its title to the last history row.
+  { name: 'deployments', crop: H(528, 82, 912, 768), widths: [800, 1600] },
   // Variables: the panel from its title to the provided variables line.
-  { name: 'variables', crop: H(425, 66, 990, 500), phone: H(436, 274, 584, 292), widths: [800, 1600] },
-  // Networking: the section heading to the private domain note.
-  { name: 'networking', crop: H(425, 212, 815, 424), phone: H(434, 214, 500, 375), widths: [800, 1600] },
-  // Scale: the whole window; the phone crop keeps Replicas to Use all cores.
-  { name: 'scale', crop: null, phone: H(436, 262, 800, 600), widths: [800, 1600, 2400] },
+  { name: 'variables', crop: H(528, 82, 912, 520), phone: H(566, 252, 644, 483), widths: [800, 1600] },
+  // Networking: the section heading to the private domain.
+  { name: 'networking', crop: H(580, 300, 620, 520), phone: H(600, 330, 600, 450), widths: [800, 1600] },
+  // Scale: the whole window; the phone crop keeps the limits and Use all cores.
+  { name: 'scale', crop: null, phone: H(590, 380, 640, 480), widths: [800, 1600, 2400] },
 ];
 // The terminal recordings are cropped to the terminal's text: the capture's
 // own window bar and the tinted backdrop around it are left out.
@@ -111,60 +115,6 @@ async function webp(pngs) {
   await browser.close();
 }
 
-// recolour takes the console's violet accent out of the captures (site rules
-// C4: no violet anywhere on the page). Light captures: each pixel is read as a
-// blend of the accent, rgb(134, 58, 218), and what is behind it, and the accent
-// share becomes ink, so a violet button turns into an ink button with its white
-// label intact. Dark captures: violet pixels go to their own lightness in grey,
-// so violet text on the dark ground stays readable. Other hues (status green,
-// the blue Postgres mark, amber notes) are left alone.
-async function recolour(jobs) {
-  const pw = await import(pathToFileURL(join(BRAND, 'node_modules/playwright-core/index.mjs')).href);
-  const browser = await pw.chromium.launch();
-  const page = await browser.newPage();
-  for (const [src, out, theme] of jobs) {
-    const b64 = readFileSync(src).toString('base64');
-    const data = await page.evaluate(async ({ url, theme }) => {
-      const img = new Image();
-      img.src = url;
-      await img.decode();
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      const g = c.getContext('2d');
-      g.drawImage(img, 0, 0);
-      const im = g.getImageData(0, 0, c.width, c.height);
-      const d = im.data;
-      const P = [134, 58, 218], T = [28, 28, 26];
-      for (let i = 0; i < d.length; i += 4) {
-        const r = d[i], gg = d[i + 1], b = d[i + 2];
-        const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), ch = mx - mn;
-        if (ch < 6 || b < r || b < gg) continue;
-        let h = mx === r ? ((gg - b) / ch) % 6 : mx === gg ? (b - r) / ch + 2 : (r - gg) / ch + 4;
-        h = (h * 60 + 360) % 360;
-        const wh = h >= 250 && h <= 295 ? 1 : h > 235 && h < 250 ? (h - 235) / 15 : h > 295 && h < 310 ? (310 - h) / 15 : 0;
-        if (!wh) continue;
-        if (theme === 'light') {
-          const a = Math.min(1, ch / 160) * wh;
-          d[i] = r + a * (T[0] - P[0]);
-          d[i + 1] = gg + a * (T[1] - P[1]);
-          d[i + 2] = b + a * (T[2] - P[2]);
-        } else {
-          const a = Math.min(1, ch / 100) * wh;
-          const y = Math.min(255, (0.299 * r + 0.587 * gg + 0.114 * b) * 1.2);
-          d[i] = r + a * (y - r);
-          d[i + 1] = gg + a * (y - gg);
-          d[i + 2] = b + a * (y - b);
-        }
-      }
-      g.putImageData(im, 0, 0);
-      return c.toDataURL('image/png');
-    }, { url: `data:image/png;base64,${b64}`, theme });
-    writeFileSync(out, Buffer.from(data.split(',')[1], 'base64'));
-  }
-  await browser.close();
-}
-
 // still writes name-<w>.{avif,webp,png} for each width.
 function still(src, name, crop, widths, toWebp) {
   const files = [];
@@ -180,20 +130,41 @@ function still(src, name, crop, widths, toWebp) {
   return { widths: files, ratio: [w, h] };
 }
 
+// --stills remakes only the console stills (after a console capture) and keeps
+// the hero loop, the terminal recordings and the brand files as they are.
+async function stillsOnly() {
+  const media = JSON.parse(readFileSync(join(SITE, 'data/media.json'), 'utf8'));
+  const manifest = JSON.parse(readFileSync(join(SCREENS, 'manifest.json'), 'utf8'));
+  media.captured = manifest.captured;
+  const names = new Set(STILLS.map((s) => s.name));
+  for (const k of Object.keys(media.stills)) if (names.has(k.replace(/-(light|dark)(-m)?$/, ''))) delete media.stills[k];
+  for (const f of readdirSync(OUT)) if (names.has(f.replace(/-(light|dark)(-m)?-\d+\.(png|avif|webp)$/, ''))) rmSync(join(OUT, f));
+  const toWebp = [];
+  for (const s of STILLS) {
+    for (const theme of ['light', 'dark']) {
+      const src = join(SCREENS, `${s.name}-${theme}.png`);
+      media.stills[`${s.name}-${theme}`] = still(src, `${s.name}-${theme}`, s.crop, s.widths, toWebp);
+      if (s.phone) media.stills[`${s.name}-${theme}-m`] = still(src, `${s.name}-${theme}-m`, s.phone, [720, 920], toWebp);
+    }
+  }
+  await webp(toWebp);
+  writeFileSync(join(SITE, 'data/media.json'), JSON.stringify(media, null, 1) + '\n');
+  console.log(`Wrote ${toWebp.length} stills (x3 formats) to public/media`);
+}
+
 async function main() {
   if (process.argv.includes('--demo')) return demo();
+  if (process.argv.includes('--stills')) return stillsOnly();
   if (!existsSync(SCREENS)) throw new Error(`no captures at ${SCREENS}; pass --brand`);
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
   const manifest = JSON.parse(readFileSync(join(SCREENS, 'manifest.json'), 'utf8'));
   const media = { captured: manifest.captured, stills: {}, posters: {}, videos: {} };
   const toWebp = [];
-  const TMP = join(tmpdir(), `5050site-recolour-${process.pid}`);
-  mkdirSync(TMP, { recursive: true });
-  await recolour(STILLS.flatMap((s) => ['light', 'dark'].map((theme) => [join(SCREENS, `${s.name}-${theme}.png`), join(TMP, `${s.name}-${theme}.png`), theme])));
+  // The captures keep the console's own colours: its pink accent is the site's accent.
   for (const s of STILLS) {
     for (const theme of ['light', 'dark']) {
-      const src = join(TMP, `${s.name}-${theme}.png`);
+      const src = join(SCREENS, `${s.name}-${theme}.png`);
       media.stills[`${s.name}-${theme}`] = still(src, `${s.name}-${theme}`, s.crop, s.widths, toWebp);
       if (s.phone) media.stills[`${s.name}-${theme}-m`] = still(src, `${s.name}-${theme}-m`, s.phone, [720, 920], toWebp);
     }

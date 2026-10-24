@@ -12,7 +12,7 @@ Give a service a generated HTTPS name with no DNS setup, or put it on your own d
 
 The name looks like `web-k3x9.203-0-113-10.sslip.io`, or `web-k3x9.apps.example.com` when the install has [its own base domain](/docs/guides/console-domain). It works at once with a valid certificate.
 
-![The Networking settings of a web service: a public domain marked Active with its certificate expiry date, Generate Domain and Custom Domain buttons, a TCP proxy and the private domain web.internal](shot:networking "Settings, Networking: the domain is Active and the certificate date is shown.")
+![The Networking settings of a web service: a generated domain and a custom domain, each with a valid certificate, the Generate Domain, Custom Domain and TCP Proxy buttons, and the private domain web.internal](shot:networking "Settings, Networking: each domain shows the state of its certificate.")
 
 ## Add your own domain
 

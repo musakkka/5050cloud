@@ -113,10 +113,10 @@ export function landing({ shell, rel, claims, pricing, bench, media, report, dem
   // The tour: one large real screenshot at a time, the whole window, with a
   // phone crop of the part that matters.
   const tour = [
-    { id: 'canvas', tab: 'Canvas', shot: 'canvas', text: 'Every service of a project on one canvas. Dashed lines are variable references; x2 marks a service with two replicas.', alt: 'The canvas of the shop project: web, api with 2 replicas, worker, Postgres and Redis, joined by dashed reference lines', doc: ['/docs/basics', 'The basics'] },
-    { id: 'create', tab: 'Create menu', shot: 'palette', text: 'Add a GitHub repo, a database, a template, a Docker image, an empty service or a volume from one menu.', alt: 'The Create menu open on the canvas, listing GitHub Repo, Database, Template, Docker Image, Empty Service and Volume', doc: ['/docs/guides/deploy-docker-image', 'Deploy a Docker image'] },
-    { id: 'metrics', tab: 'Metrics', shot: 'metrics', text: 'CPU, memory, network, HTTP requests, error rate and response time for each service, with every deploy marked on the charts.', alt: 'The Metrics tab of the api service: CPU, memory, network and HTTP request charts over one hour, with deploy markers', doc: ['/docs/basics', 'The basics'] },
-    { id: 'scale', tab: 'Replicas and all cores', shot: 'scale', text: 'Set Replicas and 5050cloud runs that many copies behind its proxy. Use all cores runs a Node service started with node server.js as one process per vCPU; other runtimes get WEB_CONCURRENCY.', alt: 'The Scale settings of the api service: Replicas set to 2, Max surge, Singleton, and Use all cores ticked with the note that it runs 2 Node processes sharing port 8080', doc: ['/docs/guides/use-all-cores', 'Use all cores'] },
+    { id: 'canvas', tab: 'Canvas', shot: 'canvas', text: 'Every service of a project on one canvas. Dashed lines are variable references; changes wait in one bar until you deploy them.', alt: 'The canvas of the orbit project: web, api with 3 replicas, a cron job, a crashed worker, Postgres grouped with PgBouncer, Redis, docs with one staged change and search deploying, joined by dashed reference lines', doc: ['/docs/basics', 'The basics'] },
+    { id: 'create', tab: 'Add menu', shot: 'palette', text: 'Add a GitHub repo, a database, a template, a Docker image, an empty service or a volume from one menu.', alt: 'The Add menu open on the canvas, listing GitHub Repo, Template, Database, Docker Image, Empty Service, Volume and Import Compose File', doc: ['/docs/guides/deploy-docker-image', 'Deploy a Docker image'] },
+    { id: 'metrics', tab: 'Metrics', shot: 'metrics', text: 'CPU, memory, network, HTTP requests, error rate and response time for each service, with every deploy marked on the charts.', alt: 'The Metrics tab of the api service: CPU per replica over the last week with a deploy marker, and the top of the memory chart', doc: ['/docs/basics', 'The basics'] },
+    { id: 'scale', tab: 'Replicas and all cores', shot: 'scale', text: 'Set Replicas and 5050cloud runs that many copies behind its proxy. Use all cores runs a Node service started with node server.js as one process per vCPU; other runtimes get WEB_CONCURRENCY.', alt: 'The Scale settings of the api service: CPU and memory limits per replica, the memory reservation, and Use all cores switched on under Processes', doc: ['/docs/guides/use-all-cores', 'Use all cores'] },
   ];
   const tabs = tour.map((t, i) => `<a class="tab" id="t-${t.id}" href="#p-${t.id}" role="tab" aria-controls="p-${t.id}" aria-selected="${i === 0}">${e(t.tab)}</a>`).join('');
   const benchLine = bench
@@ -224,8 +224,8 @@ ${demoSection(r, demo)}
       </div>
     </div>
     <figure class="domains-shot">
-      <div class="shot-frame">${shot(r, media, 'networking', { alt: 'The Networking settings of the web service: a public domain marked Active with its certificate expiry date, Generate Domain and Custom Domain buttons, a TCP proxy, the target port and the private domain web.internal', sizes: half })}</div>
-      <figcaption>Settings, Networking, on a service with a generated name. The certificate date is the real one from Let's Encrypt.</figcaption>
+      <div class="shot-frame">${shot(r, media, 'networking', { alt: 'The Networking settings of the web service: a generated domain and a custom domain, each with a valid certificate, the Generate Domain, Custom Domain and TCP Proxy buttons, and the private domain web.internal', sizes: half })}</div>
+      <figcaption>Settings, Networking, on a service with a generated name and a custom domain.</figcaption>
     </figure>
   </div>
 </section>
@@ -268,7 +268,7 @@ ${demoSection(r, demo)}
         </table>
       </div>
       <figure class="habits-shot">
-        <div class="shot-frame">${shot(r, media, 'variables', { alt: 'The Variables tab of the api service: DATABASE_URL set to ${{Postgres.DATABASE_URL}}, REDIS_URL set to ${{Redis.REDIS_URL}}, and two hidden plain values', sizes: half })}</div>
+        <div class="shot-frame">${shot(r, media, 'variables', { alt: 'The Variables tab of the api service: DATABASE_URL open for editing with the value ${{Postgres.DATABASE_URL}}, then NODE_ENV, REDIS_URL, a sealed SESSION_SECRET and WEB_ORIGIN with hidden values', sizes: half })}</div>
         <figcaption>The same reference syntax in the 5050cloud console: <code>DATABASE_URL</code> follows Postgres wherever it runs. <a href="${r('/docs/guides/variables')}">Variables</a></figcaption>
       </figure>
     </div>

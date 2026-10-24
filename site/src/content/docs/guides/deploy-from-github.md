@@ -9,7 +9,7 @@ Connect a GitHub repo to a service and 5050cloud builds and deploys every push t
 
 Public repos need no setup.
 
-1. On the canvas, select **+ Create**, then **GitHub Repo**.
+1. On the canvas, select **+ Add**, then **GitHub Repo**.
 2. Paste the repo URL, for example `https://github.com/owner/name`.
 3. Review the scan: Dockerfile or Railpack, config files found, suggested port and variable names from `.env.example` files.
 4. Select **Deploy Now**, or **Add Variables** to stage the service and set variables first.

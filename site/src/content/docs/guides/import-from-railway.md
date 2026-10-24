@@ -27,7 +27,7 @@ Run the second line once per service, changing `--service` and the file name. Wr
 5050 init -n my-app
 ```
 
-3. Add each database with the same name it had on Railway, so references like `${{Postgres.DATABASE_URL}}` keep working. On the canvas, select **+ Create**, **Database**, then the engine, and rename it if needed. Or:
+3. Add each database with the same name it had on Railway, so references like `${{Postgres.DATABASE_URL}}` keep working. On the canvas, select **+ Add**, **Database**, then the engine, and rename it if needed. Or:
 
 ```sh
 5050 add -d postgres
@@ -37,13 +37,13 @@ Run the second line once per service, changing `--service` and the file name. Wr
 
 For each service built from a repo:
 
-1. On the canvas, select **+ Create**, then **GitHub Repo**, and paste the repo's address.
+1. On the canvas, select **+ Add**, then **GitHub Repo**, and paste the repo's address.
 2. Set the same **Branch** and **Root directory** in **Settings**, **Source**.
 3. Name the service as it was named on Railway.
 
 A `railway.json` or `railway.toml` in the repo is read and applied: start command, pre-deploy command, health check path and environment overrides come from it. See [Config as code](/docs/guides/config-as-code).
 
-For a service built from an image, select **+ Create**, **Docker Image**, or run `5050 add --image <image>`.
+For a service built from an image, select **+ Add**, **Docker Image**, or run `5050 add --image <image>`.
 
 Have a Docker Compose file? `5050 import compose docker-compose.yml` stages every service in it at once. See [Import Docker Compose](/docs/guides/import-docker-compose).
 

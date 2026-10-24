@@ -7,7 +7,7 @@ Filter deploy, build and HTTP logs in the console and with `5050 logs -f` using 
 
 ## Grammar
 
-![The Deploy Logs tab with the filter box, the Time, Replica, Level, Service and Live options, and streaming log lines](shot:logs "The filter box takes the grammar below.")
+![The project log explorer: the filter box, the time range, a histogram of the last week and log lines from queue-worker and Postgres](shot:logs "The filter box takes the grammar below.")
 
 ```
 expr  := term { [AND|OR] term }      adjacent terms mean AND

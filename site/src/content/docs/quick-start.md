@@ -60,19 +60,19 @@ The setup link works once and expires after 24 hours. `sudo 5050d setup-token` o
 4. The service card shows **Building**, then **Deploying**, then **Active**.
 5. Open the service, go to **Settings**, **Networking** and select **Generate Domain**. Open the address.
 
-![The Networking settings of a web service: a public domain marked Active with its certificate expiry date, Generate Domain and Custom Domain buttons, a TCP proxy and the private domain web.internal](shot:networking "Settings, Networking, after Generate Domain: the name is Active with its certificate.")
+![The Networking settings of a web service: a generated domain and a custom domain, each with a valid certificate, the Generate Domain, Custom Domain and TCP Proxy buttons, and the private domain web.internal](shot:networking "Settings, Networking: the generated name and a custom domain, each with a valid certificate.")
 
 ## Add Postgres
 
-1. On the canvas, select **+ Create**, then **Database**, then **Postgres**.
+1. On the canvas, select **+ Add**, then **Database**, then **Postgres**.
 2. Open your app service, go to **Variables** and add `DATABASE_URL` with the value `${{Postgres.DATABASE_URL}}`.
 3. Select **Deploy** in the banner at the top of the canvas to apply the staged change.
 
-![The Variables tab of the api service: DATABASE_URL set to ${{Postgres.DATABASE_URL}} and REDIS_URL set to ${{Redis.REDIS_URL}}](shot:variables "A reference to Postgres in the Variables tab, written the way Railway writes it.")
+![The Variables tab of the api service: DATABASE_URL open for editing with the value ${{Postgres.DATABASE_URL}}, above REDIS_URL and the other variables](shot:variables "A reference to Postgres in the Variables tab, written the way Railway writes it.")
 
 The canvas now draws a line from your app to Postgres, the dashed lines below.
 
-![The project canvas: web, api with 2 replicas, worker, Postgres and Redis, joined by dashed reference lines](shot:canvas "A larger project on the canvas. Each dashed line is a variable reference.")
+![The project canvas: web, api with 3 replicas, a cron job, a worker, Postgres grouped with PgBouncer, Redis, docs and search, joined by dashed reference lines](shot:canvas "A larger project on the canvas. Each dashed line is a variable reference.")
 
 ## What success looks like
 

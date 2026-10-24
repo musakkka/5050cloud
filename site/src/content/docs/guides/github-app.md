@@ -42,7 +42,7 @@ The app asks for read access to repository contents, metadata, pull requests and
 
 ## Deploy a private repo
 
-On the canvas, select **+ Create**, then **GitHub Repo**. The repo picker now lists every repo the app can read. See [Deploy from GitHub](/docs/guides/deploy-from-github) for the rest.
+On the canvas, select **+ Add**, then **GitHub Repo**. The repo picker now lists every repo the app can read. See [Deploy from GitHub](/docs/guides/deploy-from-github) for the rest.
 
 ## After a console domain change
 
