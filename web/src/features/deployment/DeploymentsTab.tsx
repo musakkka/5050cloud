@@ -56,7 +56,8 @@ export default function DeploymentsTab({ eid, service, onOpen, onTab }: {
     const running = list.filter(inProgress);
     const active = list.find((d) => d.active);
     const latest = list.find((d) => !inProgress(d));
-    const failed = !active && latest && (latest.status === "FAILED" || latest.status === "CRASHED") ? latest : undefined;
+    // A failed run, or a one-shot image that ran to completion, leads when nothing is active.
+    const failed = !active && latest && (latest.status === "FAILED" || latest.status === "CRASHED" || latest.status === "COMPLETED") ? latest : undefined;
     // Cron jobs have no long-running deployment: the latest run leads instead.
     const lastRun = !active && !failed && service.kind === "cron" && latest && latest.status !== "SKIPPED" ? latest : undefined;
     const lead = [...running, ...(active ? [active] : []), ...(failed ? [failed] : []), ...(lastRun ? [lastRun] : [])];
