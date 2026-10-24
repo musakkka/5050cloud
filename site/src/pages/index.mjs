@@ -107,7 +107,7 @@ export function landing({ shell, rel, claims, pricing, bench, media, report, dem
 <track kind="captions" src="${r('/media/hero.en.vtt')}" srclang="en" label="English">
 <track kind="chapters" src="${r('/media/hero.chapters.vtt')}" srclang="en" label="Steps">
 </video>`;
-  const heroPhone = picture(r, media, 'hero-phone', { alt: 'The Deploy a Docker image dialog in the console, with nginx:1.27 typed in the Image field and the Deploy Now button', sizes: '100vw' });
+  const heroPhone = picture(r, media, 'hero-phone', { alt: 'The Docker image picker in the console, with nginx:1.27 typed and the Add nginx:1.27 option', sizes: '100vw' });
   const transcript = chapters.map((c) => `<li><strong>${e(c.text)}.</strong> ${e(c.caption)}</li>`).join('');
 
   // The tour: one large real screenshot at a time, the whole window, with a

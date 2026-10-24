@@ -6,6 +6,7 @@
 //
 //   node scripts/media.mjs [--brand ../5050cloud-brand]
 //   node scripts/media.mjs --stills        (console stills only)
+//   node scripts/media.mjs --hero-only     (the hero loop, its poster and phone still only)
 //   node scripts/media.mjs --demo ../5050cloud-demo/out --reviewed
 //
 // Needs ffmpeg with libsvtav1 (AVIF) and the Chromium that the brand repo's
@@ -34,8 +35,9 @@ const BRAND = resolve(arg('--brand', join(SITE, '..', '5050cloud-brand')));
 // The hero loop: a HERO=1 render from the demo pipeline (5050cloud-demo:
 // scripts/hero-frames.mjs, then HERO=1 node render.mjs --takes work/takes-hero
 // --out work/hero). It is install, deploy an image, add Postgres, reference its
-// URL, generate a domain and open it, recorded on a fresh VM, with the violet
-// accent recoloured and the sslip.io names replaced by example.com names.
+// URL, generate a domain and open it, recorded on a fresh VM in the console's
+// dark theme (its pink accent is the site's accent), with the sslip.io names
+// replaced by example.com names at capture time (HERO=1 node capture.mjs).
 const HERO = resolve(arg('--hero', join(SITE, '..', '5050cloud-demo', 'work', 'hero')));
 // The loop starts at the first console step: the install command is printed
 // as text right beside it, so the recording does not open on a terminal. The
@@ -44,10 +46,11 @@ const HERO = resolve(arg('--hero', join(SITE, '..', '5050cloud-demo', 'work', 'h
 // project name and the sidebar are in view and the frame is not cropped. The
 // loop itself opens on an empty canvas, which is a poor first impression.
 const HERO_FROM = arg('--hero-from', 'image');
-const HERO_POSTER_AT = Number(arg('--hero-poster-at', '11.5'));
-// The phone picture: the same dialog from the capture itself (3200 x 1800),
-// cropped to the dialog so its text stays readable at 390 px.
-const HERO_PHONE = { take: join(HERO, '..', 'takes-hero', 'deploy', 'frames', '000076.jpg'), crop: { x: 1060, y: 548, w: 1080, h: 810 } };
+const HERO_POSTER_AT = Number(arg('--hero-poster-at', '9.9'));
+// The phone picture: the canvas Add menu's Docker image picker with nginx:1.27
+// typed, from the capture itself (3200 x 1800), cropped to the picker so its
+// text stays readable at 390 px. The crop is 880 px wide, so no width is larger.
+const HERO_PHONE = { take: join(HERO, '..', 'takes-hero', 'deploy', 'frames', '000110.jpg'), crop: { x: 1160, y: 200, w: 880, h: 660 }, widths: [720, 880] };
 const SCREENS = join(BRAND, 'screens');
 const OUT = join(SITE, 'public/media');
 
@@ -152,9 +155,23 @@ async function stillsOnly() {
   console.log(`Wrote ${toWebp.length} stills (x3 formats) to public/media`);
 }
 
+// --hero-only remakes only the hero loop (after a new hero render) and keeps the
+// console stills, the terminal recordings and the brand files as they are.
+async function heroOnly() {
+  if (!existsSync(join(HERO, 'master.mkv'))) throw new Error(`no hero render at ${join(HERO, 'master.mkv')}; see the note at HERO`);
+  const media = JSON.parse(readFileSync(join(SITE, 'data/media.json'), 'utf8'));
+  for (const f of readdirSync(OUT)) if (/^hero[.-]/.test(f)) rmSync(join(OUT, f));
+  const toWebp = [];
+  await heroLoop(media, toWebp);
+  await webp(toWebp);
+  writeFileSync(join(SITE, 'data/media.json'), JSON.stringify(media, null, 1) + '\n');
+  console.log(`Wrote the hero loop and ${toWebp.length} hero stills (x3 formats) to public/media`);
+}
+
 async function main() {
   if (process.argv.includes('--demo')) return demo();
   if (process.argv.includes('--stills')) return stillsOnly();
+  if (process.argv.includes('--hero-only')) return heroOnly();
   if (!existsSync(SCREENS)) throw new Error(`no captures at ${SCREENS}; pass --brand`);
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
@@ -233,7 +250,7 @@ async function heroLoop(media, toWebp) {
   ff('-ss', String(HERO_POSTER_AT), '-i', join(OUT, 'hero.mp4'), '-frames:v', '1', png);
   media.posters['hero-poster'] = still(png, 'hero-poster', null, [800, 1280], toWebp);
   if (!existsSync(HERO_PHONE.take)) throw new Error(`no hero take frame at ${HERO_PHONE.take}`);
-  media.posters['hero-phone'] = still(HERO_PHONE.take, 'hero-phone', HERO_PHONE.crop, [720, 1080], toWebp);
+  media.posters['hero-phone'] = still(HERO_PHONE.take, 'hero-phone', HERO_PHONE.crop, HERO_PHONE.widths, toWebp);
   const runFile = join(HERO, '..', 'run.json');
   const date = existsSync(runFile) ? JSON.parse(readFileSync(runFile, 'utf8')).date : null;
   const r2 = (n) => Math.round(n * 100) / 100;
@@ -250,7 +267,7 @@ async function heroLoop(media, toWebp) {
 // What each step of the hero recording shows, in one plain sentence. These are
 // the captions track and the transcript under the video.
 const HERO_CAPTIONS = {
-  image: 'Create, then Docker Image: nginx:1.27 deploys to an empty canvas. The wait is sped up and labelled.',
+  image: 'On an empty canvas, Add, then Docker Image: nginx:1.27 is staged and deployed. The wait is sped up and labelled.',
   postgres: 'Add Postgres. It runs as its own service with a volume.',
   variables: 'Set DATABASE_URL on nginx to ${{Postgres.DATABASE_URL}}, then redeploy.',
   domain: 'In Settings, Networking, Generate Domain gives nginx a public HTTPS name.',

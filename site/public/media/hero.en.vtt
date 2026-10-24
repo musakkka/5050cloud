@@ -1,21 +1,21 @@
 WEBVTT
 
 1
-00:00:00.000 --> 00:00:06.420
-Create, then Docker Image: nginx:1.27 deploys to an empty canvas. The wait is sped up and labelled.
+00:00:00.000 --> 00:00:05.740
+On an empty canvas, Add, then Docker Image: nginx:1.27 is staged and deployed. The wait is sped up and labelled.
 
 2
-00:00:06.420 --> 00:00:11.700
+00:00:05.740 --> 00:00:10.140
 Add Postgres. It runs as its own service with a volume.
 
 3
-00:00:11.700 --> 00:00:19.400
+00:00:10.140 --> 00:00:16.540
 Set DATABASE_URL on nginx to ${{Postgres.DATABASE_URL}}, then redeploy.
 
 4
-00:00:19.400 --> 00:00:24.600
+00:00:16.540 --> 00:00:21.740
 In Settings, Networking, Generate Domain gives nginx a public HTTPS name.
 
 5
-00:00:24.600 --> 00:00:27.000
+00:00:21.740 --> 00:00:24.140
 Open the name: the nginx welcome page, served over HTTPS.
