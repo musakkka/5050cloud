@@ -1,55 +1,88 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 // /project/:pid/settings/:section (docs/SPEC.md 13.1).
-import { Navigate, useParams, useSearchParams } from "react-router-dom";
-import TokensPanel from "../account/TokensPanel";
+import { useEffect } from "react";
+import { NavLink, Navigate, useLocation, useParams } from "react-router-dom";
+import { Box, ChartColumn, Coins, Globe, Server, Settings, TriangleAlert, Users, Webhook, type LucideIcon } from "lucide-react";
+import type * as T from "../../api/types.gen";
+import { useProject } from "../../app/project";
+import { cx } from "../../kit";
 import { v1 } from "../settings/client";
 import { isAdmin } from "../settings/InstallSettings";
-import { Loading, Page, Select, useLoad } from "../settings/ui";
-import UsagePanel from "../usage/UsagePanel";
-import { Danger, Environments, General, Members, SharedVariables, Webhooks } from "./sections";
+import ProjectMembers from "../members/ProjectMembers";
+import Danger from "./Danger";
+import Environments from "./Environments";
+import General from "./General";
+import Integrations from "./Integrations";
+import SharedVariables from "./SharedVariables";
+import Tokens from "./Tokens";
+import Usage from "./Usage";
+import Webhooks from "./Webhooks";
+import { LoadError, SectionSkeleton, useLoad } from "./ui";
 
-export const PROJECT_SECTIONS = [
-  { id: "general", label: "General" },
-  { id: "usage", label: "Usage" },
-  { id: "environments", label: "Environments" },
-  { id: "shared-variables", label: "Shared Variables" },
-  { id: "webhooks", label: "Webhooks" },
-  { id: "members", label: "Members" },
-  { id: "tokens", label: "Tokens" },
-  { id: "danger", label: "Danger" },
+// Feature flags are left out on purpose: 5050cloud has no flag service yet and we do not ship dead pages.
+export const PROJECT_SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: "general", label: "General", icon: Settings },
+  { id: "usage", label: "Usage", icon: ChartColumn },
+  { id: "environments", label: "Environments", icon: Server },
+  { id: "shared-variables", label: "Shared Variables", icon: Globe },
+  { id: "webhooks", label: "Webhooks", icon: Webhook },
+  { id: "members", label: "Members", icon: Users },
+  { id: "tokens", label: "Tokens", icon: Coins },
+  { id: "integrations", label: "Integrations", icon: Box },
+  { id: "danger", label: "Danger", icon: TriangleAlert },
 ];
 
 export default function ProjectSettingsPage() {
   const { pid = "", section = "general" } = useParams();
-  const [params, setParams] = useSearchParams();
+  const { search } = useLocation();
+  const { env, reloadProject } = useProject();
   const project = useLoad(() => v1.project(pid), [pid]);
   const me = useLoad(v1.me, []);
-  if (!PROJECT_SECTIONS.some((s) => s.id === section)) return <Navigate to={`/project/${pid}/settings/general`} replace />;
-  const q = params.toString() ? `?${params}` : "";
-  const nav = PROJECT_SECTIONS.map((s) => ({ to: `/project/${pid}/settings/${s.id}${q}`, label: s.label }));
-  if (!project.data || !me.data) return <Page title="Project Settings" nav={nav}><Loading error={project.error || me.error} /></Page>;
+  useEffect(() => { document.title = "Project Settings"; }, []);
+  if (!PROJECT_SECTIONS.some((s) => s.id === section)) return <Navigate to={`/project/${pid}/settings/general${search}`} replace />;
   const p = project.data;
-  const admin = isAdmin(me.data.user.role);
-  const envName = params.get("env");
-  const env = p.environments.find((e) => e.name === envName || e.id === envName) || p.environments[0];
-  const envPicker = env && (section === "shared-variables" || section === "danger") && p.environments.length > 1 && (
-    <div className="max-w-xs mb-4">
-      <Select aria-label="Environment" value={env.id} options={p.environments.map((e) => ({ value: e.id, label: e.name }))}
-        onChange={(e) => { const next = new URLSearchParams(params); next.set("env", p.environments.find((x) => x.id === e.target.value)!.name); setParams(next); }} />
+  const admin = me.data ? isAdmin(me.data.user.role) : false;
+  const current: T.Environment | undefined = p?.environments.find((e) => e.id === env?.id) || p?.environments[0];
+  // keep the project switcher in step after edits made here
+  const onProject = (next: T.Project) => { project.setData(next); reloadProject?.(); };
+  return (
+    <div className="flex h-full flex-col">
+      <header className="flex h-[98px] shrink-0 items-center border-b border-line px-6 md:px-12">
+        <h1 className="text-h1 text-foreground">Project Settings</h1>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-thin md:flex-row md:overflow-hidden">
+        <nav aria-label="Project settings" className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto px-4 py-3 md:block md:w-[292px] md:space-y-2 md:overflow-y-auto md:py-12 md:pl-[52px] md:pr-[52px]">
+          {PROJECT_SECTIONS.map((s) => (
+            <NavLink key={s.id} to={`/project/${pid}/settings/${s.id}${search}`}
+              className={({ isActive }) => cx("group flex h-10 shrink-0 items-center gap-4 whitespace-nowrap rounded px-3 text-lead transition-colors md:w-[188px]",
+                isActive ? "font-medium text-foreground" : "text-fg-2 hover:bg-surface-hover")}>
+              {({ isActive }) => <><s.icon size={20} className={cx("shrink-0 transition-colors", isActive ? "text-accent-text" : "text-fg-4")} />{s.label}</>}
+            </NavLink>
+          ))}
+        </nav>
+        <main className="min-w-0 flex-1 px-4 pb-16 pt-6 md:overflow-y-auto md:px-0 md:pb-24 md:pt-12 scroll-thin">
+          <div key={section} className="max-w-[768px] animate-fade-in md:pr-8">
+            {project.error || me.error ? <LoadError error={(project.error || me.error)!} onRetry={() => { project.reload(); me.reload(); }} />
+              : !p || !me.data ? <SectionSkeleton />
+              : <Section id={section} p={p} current={current} admin={admin} onProject={onProject} search={search} />}
+          </div>
+        </main>
+      </div>
     </div>
   );
-  return (
-    <Page title="Project Settings" nav={nav}>
-      {envPicker}
-      {section === "general" && <General project={p} onProject={project.setData} admin={admin} />}
-      {section === "usage" && <UsagePanel pid={p.id} />}
-      {section === "environments" && <Environments project={p} onProject={project.setData} admin={admin} />}
-      {section === "shared-variables" && env && <SharedVariables env={env} />}
-      {section === "webhooks" && <Webhooks project={p} />}
-      {section === "members" && <Members project={p} admin={admin} />}
-      {section === "tokens" && <TokensPanel environments={p.environments} />}
-      {section === "danger" && env && <Danger project={p} env={env} admin={admin} />}
-    </Page>
-  );
+}
+
+function Section({ id, p, current, admin, onProject, search }: { id: string; p: T.Project; current?: T.Environment; admin: boolean; onProject: (p: T.Project) => void; search: string }) {
+  switch (id) {
+    case "general": return <General project={p} onProject={onProject} admin={admin} />;
+    case "usage": return <Usage project={p} env={current} />;
+    case "environments": return <Environments project={p} current={current} onProject={onProject} admin={admin} />;
+    case "shared-variables": return <SharedVariables project={p} current={current} />;
+    case "webhooks": return <Webhooks project={p} />;
+    case "members": return <ProjectMembers project={p} admin={admin} />;
+    case "tokens": return <Tokens environments={p.environments} current={current} />;
+    case "integrations": return <Integrations pid={p.id} query={search} />;
+    default: return <Danger project={p} env={current} admin={admin} />;
+  }
 }

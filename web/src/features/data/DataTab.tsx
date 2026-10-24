@@ -1,130 +1,161 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// Data tab for databases (docs/SPEC.md 13.3, 9.13): tables and collections,
-// Postgres extensions, the Redis key browser, and Regenerate credentials.
-// There is no query box in v0.1.
+// Database tab: sub-bar (Data, Stats, Config, Connect), the deployment checklist
+// that gates the views, then the selected view. The sub-tab lives in ?state=.
 
-import { useEffect, useState } from "react";
-import type { DataResponse, Extension, RedisKeysPage, RedisRevealResponse, Service } from "../../api/types.gen";
-import { get, post, qs, svcPath } from "../service/client";
-import { Button, Confirm, Empty, ErrorLine, Input, Loading, NotInV01, Section, fmtBytes, useAction, useLoad } from "../service/ui";
+import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { CheckCircle2, Loader2, Plug, XCircle } from "lucide-react";
+import type { ConnectInfo, Service } from "../../api/types.gen";
+import { BrandIcon, Button, ErrorLine, Notice, cx, toastError, toastSuccess } from "../../kit";
+import { get, post, svcPath } from "../service/client";
+import { useLoad } from "../service/ui";
+import ConnectModal from "./ConnectModal";
+import ConfigView from "./ConfigView";
+import DataView from "./DataView";
+import StatsView from "./StatsView";
+import { engineOf } from "./engine";
+
+type Sub = "data" | "stats" | "config";
+const SUBS: { id: Sub; label: string }[] = [{ id: "data", label: "Data" }, { id: "stats", label: "Stats" }, { id: "config", label: "Config" }];
+
+const BAD = new Set(["no_deployment", "crashed", "failed", "sleeping", "removed", "unhealthy", "host_lost"]);
+const BUSY = new Set(["deploying", "building", "pending"]);
+
+const BAD_TEXT: Record<string, string> = {
+  no_deployment: "This service requires a deployment to be online.",
+  crashed: "The database deployment has encountered an issue. It crashed and is not running.",
+  failed: "The database deployment has encountered an issue. The last deployment failed.",
+  unhealthy: "The database deployment has encountered an issue. It is running but failing its health check.",
+  sleeping: "The database is asleep. Deploy it to wake it up.",
+  removed: "The last deployment was removed. This service requires a deployment to be online.",
+  host_lost: "The host that holds this database volume is gone. Restore it from a backup.",
+};
 
 export default function DataTab({ eid, service }: { eid: string; service: Service }) {
   const base = svcPath(eid, service.id);
-  const tpl = service.config.template;
-  const data = useLoad(() => (tpl === "redis" ? Promise.resolve(null) : get<DataResponse>(`${base}/data`)), [base, tpl]);
-  const [regen, setRegen] = useState(false);
-  const [regenDone, setRegenDone] = useState(false);
+  const [sp, setSp] = useSearchParams();
+  const raw = sp.get("state");
+  const sub: Sub = raw === "stats" || raw === "config" ? raw : "data";
+  const [connect, setConnect] = useState(false);
+  const engine = engineOf(service);
+  const info = useLoad(() => get<ConnectInfo>(`${base}/connect-info`), [base, service.status], service.status === "online" ? 0 : 5000);
+  const setSub = (s: Sub) => {
+    const n = new URLSearchParams(sp);
+    if (s === "data") n.delete("state"); else n.set("state", s);
+    setSp(n, { replace: false });
+  };
+  const connectOk = !!info.data;
 
   return (
     <div>
-      {data.error && <ErrorLine>{data.error}</ErrorLine>}
-      {tpl !== "redis" && (
-        !data.data ? (!data.error && <Loading />) : (
-          <Section title={tpl === "mongodb" ? "Collections" : "Tables"}>
-            <div className="mb-3 text-xs text-gray-500">Version {data.data.version} · {fmtBytes(data.data.sizeBytes)} · {data.data.connections} connections</div>
-            {data.data.tables.length === 0 ? <Empty>Nothing here yet.</Empty> : (
-              <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="w-full text-sm">
-                  <thead className="text-left text-xs text-gray-500"><tr><th className="p-2">Name</th><th className="p-2">Rows (estimate)</th><th className="p-2">Size</th></tr></thead>
-                  <tbody>
-                    {data.data.tables.map((t) => (
-                      <tr key={`${t.schema}.${t.name}`} className="border-t border-gray-200">
-                        <td className="p-2 font-mono">{t.schema && t.schema !== "public" ? `${t.schema}.` : ""}{t.name}</td>
-                        <td className="p-2">{t.rows.toLocaleString()}</td>
-                        <td className="p-2">{fmtBytes(t.bytes)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Section>
-        )
-      )}
-      {tpl === "postgres" && <Extensions base={base} />}
-      {tpl === "redis" && <RedisKeys base={base} />}
-      <NotInV01 label="SQL query box" instead="connect with 5050 connect and your own client" />
-      <Section title="Credentials">
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-gray-600">Make a new password. Services that reference this database redeploy with it.</span>
-          <Button variant="danger" onClick={() => setRegen(true)}>Regenerate credentials</Button>
+      <div className="sticky -top-8 z-20 -mx-4 -mt-8 flex h-16 items-center justify-between bg-surface px-4 sm:-mx-12 sm:px-12">
+        <div role="tablist" aria-label="Database views" className="flex gap-8">
+          {SUBS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={sub === t.id} onClick={() => setSub(t.id)}
+              className={cx("text-lead transition-colors duration-100", sub === t.id ? "text-foreground" : "text-fg-3 hover:text-foreground")}>
+              {t.label}
+            </button>
+          ))}
         </div>
-        {regenDone && <div className="mt-2 text-sm text-green-700">New credentials are set and dependent services are redeploying.</div>}
-      </Section>
-      {regen && <Confirm title="Regenerate credentials" danger confirm="Regenerate" typeName={service.config.name}
-        body="The old password stops working. Services that use this database through references redeploy with the new one."
-        onClose={() => setRegen(false)} onConfirm={async () => { await post(`${base}/regenerate-credentials`); setRegenDone(true); }} />}
+        <button type="button" aria-disabled={!connectOk} title={connectOk ? undefined : "Connection details are not available yet"}
+          onClick={() => connectOk && setConnect(true)}
+          className={cx("inline-flex items-center gap-2 text-body font-medium transition-colors", connectOk ? "text-accent-text hover:text-accent-muted" : "cursor-not-allowed text-fg-4")}>
+          <Plug size={16} />Connect
+        </button>
+      </div>
+
+      <div className="mx-auto max-w-[799px] pt-6 sm:px-2">
+        {!engine ? (
+          <Notice tone="warn">This database engine was not recognised, so the database view is unavailable. Use the CLI to connect.</Notice>
+        ) : (
+          <Gate service={service} base={base} info={info} onReload={() => info.reload()}>
+            {sub === "data" && <DataView eid={eid} service={service} engine={engine} />}
+            {sub === "stats" && <StatsView eid={eid} service={service} engine={engine} />}
+            {sub === "config" && <ConfigView eid={eid} service={service} engine={engine} />}
+          </Gate>
+        )}
+      </div>
+      {connect && <ConnectModal base={base} onClose={() => setConnect(false)} />}
     </div>
   );
 }
 
-function Extensions({ base }: { base: string }) {
-  const ext = useLoad(() => get<Extension[]>(`${base}/extensions`), [base]);
-  const [filter, setFilter] = useState("");
-  const a = useAction();
+function Gate({ service, base, info, children }: {
+  service: Service; base: string; info: ReturnType<typeof useLoad<ConnectInfo>>; onReload: () => void; children: React.ReactNode;
+}) {
+  const engine = engineOf(service)!;
+  const st = service.status;
+  const [busy, setBusy] = useState(false);
+  const deploy = async () => {
+    setBusy(true);
+    try {
+      toastSuccess("Deploying database");
+      await post(`${base}/deploy`, {});
+    } catch (e) { toastError(e); } finally { setBusy(false); }
+  };
+  if (st === "online") {
+    if (info.error) {
+      return (
+        <Intro engine={engine}>
+          <Row state="ok" title="Deployment Online" />
+          <Row state="bad" title="Required Variables">
+            <Inset>The connection variables for this database could not be read.</Inset>
+            <ErrorLine error={info.error} className="mt-3" />
+          </Row>
+        </Intro>
+      );
+    }
+    return <>{children}</>;
+  }
   return (
-    <Section title="Extensions">
-      <Input aria-label="Filter extensions" placeholder="Filter extensions" value={filter} onChange={(e) => setFilter(e.target.value)} className="mb-2" />
-      <ErrorLine>{a.error || ext.error}</ErrorLine>
-      {!ext.data ? (!ext.error && <Loading />) : (
-        <div className="max-h-80 divide-y divide-gray-200 overflow-y-auto rounded-lg border border-gray-200">
-          {ext.data.filter((x) => x.name.includes(filter.toLowerCase())).map((x) => (
-            <div key={x.name} className="flex items-center gap-3 px-3 py-1.5 text-sm">
-              <span className="w-40 font-mono">{x.name}</span>
-              <span className="flex-1 truncate text-xs text-gray-500" title={x.comment}>{x.version} {x.comment}</span>
-              {x.installed ? <span className="text-xs text-green-700">Enabled</span> : (
-                <Button variant="ghost" disabled={a.busy} onClick={() => void a.run(async () => {
-                  const r = await post<Extension>(`${base}/extensions`, { name: x.name });
-                  ext.setData((cur) => cur?.map((e) => (e.name === r.name ? r : e)));
-                })}>Enable</Button>
-              )}
-            </div>
-          ))}
-        </div>
+    <Intro engine={engine}>
+      {BUSY.has(st) ? (
+        <Row state="busy" title={st === "building" ? "Building deployment" : "Deploying database"}>
+          <p className="text-body text-fg-2">{service.statusText || "The database will be available when the deployment is online."}</p>
+        </Row>
+      ) : BAD.has(st) ? (
+        <Row state="bad" title="Deployment Online">
+          <Inset>{BAD_TEXT[st] ?? "This service requires a deployment to be online."}</Inset>
+          <Button variant="accent-outline" className="mt-4" busy={busy} onClick={deploy}>{st === "no_deployment" ? "Deploy database" : "Redeploy database"}</Button>
+        </Row>
+      ) : (
+        <Row state="busy" title="Checking deployment status..." />
       )}
-    </Section>
+      <Row state={info.data ? "ok" : info.error ? "bad" : "busy"} title="Required Variables">
+        {info.data ? <p className="text-body text-fg-2">This service has all the necessary variables that this view uses to connect to the database.</p>
+          : info.error ? <Inset>Some connection variables are missing. Check the Variables tab.</Inset> : null}
+      </Row>
+    </Intro>
   );
 }
 
-function RedisKeys({ base }: { base: string }) {
-  const [match, setMatch] = useState("*");
-  const [page, setPage] = useState<RedisKeysPage | null>(null);
-  const [values, setValues] = useState<Record<string, RedisRevealResponse>>({});
-  const a = useAction();
-  const load = (cursor?: string) => a.run(async () => {
-    const r = await get<RedisKeysPage>(`${base}/redis/keys${qs({ match, cursor })}`);
-    setPage((cur) => (cursor && cur ? { keys: [...cur.keys, ...r.keys], cursor: r.cursor } : r));
-  });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load(); }, [base]);
+function Intro({ engine, children }: { engine: NonNullable<ReturnType<typeof engineOf>>; children: React.ReactNode }) {
   return (
-    <Section title="Keys">
-      <form className="mb-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); setPage(null); void load(); }}>
-        <Input aria-label="Key pattern" value={match} onChange={(e) => setMatch(e.target.value)} />
-        <Button type="submit">Search</Button>
-      </form>
-      <ErrorLine>{a.error}</ErrorLine>
-      {!page ? <Loading /> : page.keys.length === 0 ? <Empty>No keys match.</Empty> : (
-        <div className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-          {page.keys.map((k) => (
-            <div key={k.key} className="px-3 py-1.5 text-sm">
-              <div className="flex items-center gap-3">
-                <span className="flex-1 break-all font-mono">{k.key}</span>
-                <span className="text-xs text-gray-500">{k.type}</span>
-                <span className="text-xs text-gray-500">{fmtBytes(k.sizeBytes)}</span>
-                <span className="text-xs text-gray-500">{k.ttlMs > 0 ? `TTL ${Math.round(k.ttlMs / 1000)}s` : "no TTL"}</span>
-                <Button variant="ghost" onClick={() => void a.run(async () => {
-                  const v = await post<RedisRevealResponse>(`${base}/redis/keys/reveal`, { key: k.key });
-                  setValues((m) => ({ ...m, [k.key]: v }));
-                })}>Reveal</Button>
-              </div>
-              {values[k.key] && <pre className="mt-1 whitespace-pre-wrap break-all rounded bg-gray-100 p-2 text-xs">{values[k.key].value}{values[k.key].truncated ? "\n(first 1 KB shown)" : ""}</pre>}
-            </div>
-          ))}
-        </div>
-      )}
-      {page?.cursor && <Button className="mt-2" onClick={() => void load(page.cursor)}>Load more</Button>}
-    </Section>
+    <div>
+      <h2 className="flex items-center gap-3 text-h2 text-foreground" style={{ lineHeight: "27.5px" }}>
+        <BrandIcon name={engine.brand} size={22} />{engine.label} DB
+      </h2>
+      <p className="mt-2 text-lead text-fg-2">A custom interface into your database</p>
+      <ul className="mt-6 flex flex-col gap-4">{children}</ul>
+    </div>
   );
+}
+
+function Row({ state, title, children }: { state: "ok" | "bad" | "busy"; title: string; children?: React.ReactNode }) {
+  return (
+    <li className="flex gap-4">
+      <span className="mt-0.5 shrink-0">
+        {state === "ok" ? <CheckCircle2 size={20} className="text-ok" /> : state === "bad" ? <XCircle size={20} className="text-danger" /> : <Loader2 size={20} className="spin text-fg-3" />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-lead text-foreground" style={{ lineHeight: "24px" }}>{title}</div>
+        {children && <div className="mt-2">{children}</div>}
+      </div>
+    </li>
+  );
+}
+
+function Inset({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-md bg-surface p-3 text-body text-fg-2">{children}</div>;
 }

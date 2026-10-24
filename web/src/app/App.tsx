@@ -6,14 +6,16 @@ import { RequireAuth, SessionProvider } from "./session";
 import { featureComponent } from "./routes";
 import ProjectLayout from "./ProjectLayout";
 import { useProject } from "./project";
-import { Spinner, Toaster, applyTheme, watchSystemTheme } from "../kit";
-import { CliAuthPage, ForgotPage, InvitePage, LoginPage, ResetPage, SetupPage, VerifyPage } from "../features/auth/AuthPages";
+import { Toaster, applyTheme, watchSystemTheme } from "../kit";
+import { AppShell, ShellSkeleton } from "./Shell";
+import { AuthNotFound, CliAuthPage, ForgotPage, InvitePage, LoginPage, ResetPage, SetupPage, VerifyPage } from "../features/auth/AuthPages";
 import Dashboard from "../features/dashboard/Dashboard";
 
 const NewPage = lazy(() => import("../features/new/NewPage"));
 const TemplateList = lazy(() => import("../features/templates/Templates").then((m) => ({ default: m.TemplateList })));
 const TemplateDetailPage = lazy(() => import("../features/templates/Templates").then((m) => ({ default: m.TemplateDetailPage })));
-const RailwayImport = lazy(() => import("../features/import/RailwayImport"));
+const ConsolePopout = lazy(() => import("../features/shell/ConsolePopout"));
+const ImportPage = lazy(() => import("../features/import/ImportPage"));
 
 const ServiceRoute = featureComponent<{ eid: string }>("service", "ServiceRoute", true);
 const VolumeRoute = featureComponent<{ eid: string }>("service", "VolumeRoute", true);
@@ -34,7 +36,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <SessionProvider>
-        <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+        <Suspense fallback={<ShellSkeleton />}>
           <Routes>
             <Route path="/setup" element={<SetupPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -43,11 +45,17 @@ export default function App() {
             <Route path="/verify/:token" element={<VerifyPage />} />
             <Route path="/invite/:token" element={<InvitePage />} />
             <Route path="/cli-auth" element={<RequireAuth><CliAuthPage /></RequireAuth>} />
-            <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
-            <Route path="/new" element={<RequireAuth><NewPage /></RequireAuth>} />
-            <Route path="/new/template" element={<RequireAuth><TemplateList /></RequireAuth>} />
-            <Route path="/new/template/:id" element={<RequireAuth><TemplateDetailPage /></RequireAuth>} />
-            <Route path="/new/import/railway" element={<RequireAuth><RailwayImport /></RequireAuth>} />
+            <Route path="/console-popout" element={<RequireAuth><ConsolePopout /></RequireAuth>} />
+            <Route element={<RequireAuth><AppShell /></RequireAuth>}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/new" element={<NewPage />} />
+              <Route path="/new/:step" element={<NewPage />} />
+              <Route path="/new/template" element={<TemplateList />} />
+              <Route path="/new/template/:id" element={<TemplateDetailPage />} />
+              <Route path="/new/import" element={<ImportPage />} />
+              <Route path="/settings/:section?" element={<InstallSettings />} />
+              <Route path="/account/:section?" element={<AccountPage />} />
+            </Route>
             <Route path="/project/:pid" element={<RequireAuth><ProjectLayout /></RequireAuth>}>
               <Route index element={null} />
               <Route path="service/:sid/deployment/:did/:tab?" element={<WithEnv C={ServiceRoute} />} />
@@ -57,9 +65,7 @@ export default function App() {
               <Route path="observability" element={<WithEnv C={ObservabilityRoute} />} />
               <Route path="settings/:section?" element={<ProjectSettingsPage />} />
             </Route>
-            <Route path="/settings/:section?" element={<RequireAuth><InstallSettings /></RequireAuth>} />
-            <Route path="/account/:section?" element={<RequireAuth><AccountPage /></RequireAuth>} />
-            <Route path="*" element={<RequireAuth><Dashboard /></RequireAuth>} />
+            <Route path="*" element={<AuthNotFound />} />
           </Routes>
         </Suspense>
         <Toaster />

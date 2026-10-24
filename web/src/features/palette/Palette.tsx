@@ -1,42 +1,46 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// Cmd+K command palette (SPEC 13.4). Mounted by the top bar, so it sees the
-// open project when there is one.
+// Cmd+K command palette: a 500px card over an 80% dim, a flat command tree with sub-menus
+// (tag chips above the card, 16px slide), whole-tree search under breadcrumb headers, keycap
+// chips on rows, and a "report a missing command" fallback row in place of an empty state.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronRight, Search } from "lucide-react";
-import { api, type SearchResult, type Service } from "../../api/client";
+import { ArrowUpRight, ChevronRight, Folder, MessageSquarePlus, Star } from "lucide-react";
+import { api, type Project, type SearchResult } from "../../api/client";
 import { useMaybeProject } from "../../app/project";
-import { canEdit, useMe } from "../../app/session";
-import { Button, ErrorLine, Field, Input, Modal, cx, toast, toastError, toggleTheme } from "../../kit";
-import { NEW_MENU, sendCanvas, type NewKind } from "../canvas/menus";
+import { canEdit, isAdmin, useMe } from "../../app/session";
+import { Button, ErrorLine, Field, Input, Modal, ServiceIcon, cx, isMac, readPref, toastError, writePref } from "../../kit";
 import { isTyping } from "../canvas/Changes";
-import { back, missingCommandUrl, push, rank, redeployLabel, type Cmd, type Level } from "./model";
-
-export const PROJECT_SETTINGS = ["general", "usage", "environments", "shared-variables", "webhooks", "members", "tokens", "danger"];
-export const INSTALL_SETTINGS = ["general", "hosts", "github", "registry-credentials", "backups", "members", "api-tokens", "upgrades", "audit-log"];
-const title = (s: string) => s.split("-").map((w, i) => (i ? w : w[0].toUpperCase() + w.slice(1))).join(" ");
+import { ACTIVITY_KEY } from "../activity/bridge";
+import { buildCommands } from "./commands";
+import { back, missingCommandUrl, push, rank, searchGroups, type Cmd, type Level } from "./model";
 
 export const PALETTE_EVENT = "5050:palette";
 export const openPalette = () => window.dispatchEvent(new Event(PALETTE_EVENT));
+/** Opens the palette directly on the sub-level whose command id is `id` (for example "search:projects"). */
+export const openPaletteAt = (id: string) => window.dispatchEvent(new CustomEvent(PALETTE_EVENT, { detail: { open: id } }));
+
+const FAVOURITES_PREF = "5050.favourites";
 
 export function Palette() {
   const [open, setOpen] = useState(false);
+  const [initial, setInitial] = useState<string>();
   const nav = useNavigate();
   const me = useMe();
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); setOpen((o) => !o); }
-      if (mod && e.key === "/" && canEdit(me)) { e.preventDefault(); nav("/new"); }
+      if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); setInitial(undefined); setOpen((o) => !o); }
+      if (mod && e.key === "/" && canEdit(me)) { e.preventDefault(); setOpen(false); nav("/new"); }
     };
-    const o = () => setOpen(true);
+    const o = (e: Event) => { setInitial((e as CustomEvent<{ open?: string } | null>).detail?.open); setOpen(true); };
     window.addEventListener("keydown", k);
     window.addEventListener(PALETTE_EVENT, o);
     return () => { window.removeEventListener("keydown", k); window.removeEventListener(PALETTE_EVENT, o); };
   }, [nav, me]);
   useTabShortcuts();
-  return open ? <PaletteDialog onClose={() => setOpen(false)} /> : null;
+  return open ? <PaletteDialog initial={initial} onClose={() => setOpen(false)} /> : null;
 }
 
 /** G D / G V / G M / G S switch the open service's tab (Deployments, Variables, Metrics, Settings). */
@@ -64,100 +68,74 @@ function selectedService(pathname: string) {
   return m ? decodeURIComponent(m[1]) : undefined;
 }
 
-function PaletteDialog({ onClose }: { onClose: () => void }) {
+/** A 28px keycap: "Cmd" renders as the platform modifier glyph. */
+function Keycap({ children }: { children: string }) {
+  const label = children === "Cmd" ? (isMac() ? "⌘" : "Ctrl") : children;
+  return <kbd className="inline-flex h-7 min-w-7 items-center justify-center rounded border border-line bg-surface-hover px-2 py-1 font-sans text-caption leading-none text-fg-2">{label}</kbd>;
+}
+
+const FALLBACK = "__fallback";
+
+function PaletteDialog({ onClose, initial }: { onClose: () => void; initial?: string }) {
   const nav = useNavigate();
   const loc = useLocation();
   const me = useMe();
-  const editable = canEdit(me);
   const proj = useMaybeProject();
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(0);
   const [stack, setStack] = useState<Level[]>([{ items: [] }]);
+  const [dir, setDir] = useState<"push" | "pop" | null>(null);
   const [found, setFound] = useState<SearchResult>();
+  const [projects, setProjects] = useState<Project[]>();
   const [newEnv, setNewEnv] = useState(false);
+  const [favs, setFavs] = useState<string[]>(() => readPref(FAVOURITES_PREF, []));
   const input = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const [activityOpen] = useState<boolean>(() => readPref(ACTIVITY_KEY, false));
   const sid = selectedService(loc.pathname);
 
+  // hand focus back to whatever had it when the palette opened
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    return () => { if (prev && document.contains(prev)) prev.focus(); };
+  }, []);
+  useEffect(() => { void api.projects("activity").then(setProjects, () => {}); }, []);
+
   const go = useCallback((path: string) => { onClose(); nav(path); }, [nav, onClose]);
+  const toggleFavourite = useCallback((id: string) => setFavs((f) => { const n = f.includes(id) ? f.filter((x) => x !== id) : [...f, id]; writePref(FAVOURITES_PREF, n); return n; }), []);
 
-  const root = useMemo<Cmd[]>(() => {
-    const out: Cmd[] = [];
-    const services = proj?.canvas?.services || [];
-    const svcPath = (s: Service, tab = "") => proj ? proj.withEnv(`/project/${proj.pid}/service/${encodeURIComponent(s.id)}${tab}`) : "/";
-    const sel = services.find((s) => s.id === sid);
-    const name = (s: Service) => (s.staged || s.config).name;
-    /** A service command: direct for the open service, otherwise a sub-menu of services. */
-    const forService = (id: string, label: string, ok: (s: Service) => boolean, fn: (s: Service) => void, labelFor?: (s: Service) => string | null): Cmd | null => {
-      if (sel) {
-        if (!ok(sel)) return null;
-        const l = labelFor ? labelFor(sel) : label;
-        return l ? { id, title: l, subtitle: name(sel), group: "Service", run: () => fn(sel) } : null;
-      }
-      const list = services.filter(ok);
-      if (!list.length) return null;
-      return { id, title: label, group: "Service", children: () => list.map((s) => ({ id: `${id}:${s.id}`, title: name(s), subtitle: labelFor?.(s) || undefined, run: () => fn(s) })) };
-    };
-    const act = (s: Service, a: "redeploy" | "restart") => api.deploymentAction(s.activeDeployment!, a).then(() => toast(`${a === "restart" ? "Restarting" : "Redeploying"} ${name(s)}`), toastError);
+  const root = useMemo(() => buildCommands({
+    go, close: onClose, proj, editable: canEdit(me), admin: isAdmin(me), serviceId: sid, projects,
+    newEnvironment: () => setNewEnv(true), newProject: () => go("/new"), favourites: favs, toggleFavourite, activityOpen,
+  }), [go, onClose, proj, me, sid, projects, favs, toggleFavourite, activityOpen]);
 
-    // navigation
-    out.push({ id: "nav:dashboard", title: "Go to Dashboard", group: "Navigation", run: () => go("/") });
-    out.push({ id: "nav:project", title: "Go to project", group: "Navigation", children: async () => (await api.projects("activity")).map((p) => ({ id: `p:${p.id}`, title: p.name, run: () => go(`/project/${p.id}`) })) });
-    if (proj?.project) {
-      const p = proj.project;
-      if (services.length) out.push({ id: "nav:service", title: "Go to service", group: "Navigation", children: () => services.map((s) => ({ id: `s:${s.id}`, title: name(s), run: () => go(svcPath(s)) })) });
-      out.push({ id: "nav:env", title: "Switch environment", group: "Navigation", children: () => p.environments.map((e) => ({ id: `e:${e.id}`, title: e.name, subtitle: e.id === proj.eid ? "current" : undefined, run: () => { onClose(); proj.setEnvironment(e.id); } })) });
-      out.push({ id: "nav:psettings", title: "Project settings", group: "Navigation", children: () => PROJECT_SETTINGS.map((s) => ({ id: `ps:${s}`, title: title(s), run: () => go(proj.withEnv(`/project/${p.id}/settings/${s}`)) })) });
-      out.push({ id: "nav:logs", title: "Open logs", group: "Navigation", run: () => go(proj.withEnv(`/project/${p.id}/logs`)) });
-      out.push({ id: "nav:obs", title: "Open observability", group: "Navigation", run: () => go(proj.withEnv(`/project/${p.id}/observability`)) });
-    }
-    out.push({ id: "nav:settings", title: "Install settings", group: "Navigation", children: () => INSTALL_SETTINGS.map((s) => ({ id: `is:${s}`, title: title(s), run: () => go(`/settings/${s}`) })) });
-    out.push({ id: "nav:account", title: "Account settings", group: "Navigation", children: () => ["profile", "security", "notifications"].map((s) => ({ id: `as:${s}`, title: title(s), run: () => go(`/account/${s}`) })) });
+  // open straight on a sub-level when asked (for example the dashboard search button)
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || !initial) return;
+    const c = root.find((x) => x.id === initial && x.children);
+    if (!c) return;
+    opened.current = true;
+    setStack([{ items: root }, { title: c.title, placeholder: c.placeholder, items: c.children!() }]);
+  }, [root, initial]);
 
-    if (editable) {
-      out.push({ id: "new:project", title: "New project", shortcut: "Cmd+/", group: "Create", run: () => go("/new") });
-      for (const m of NEW_MENU) {
-        if (m.disabled) continue;
-        out.push({ id: `new:${m.id}`, title: `New ${m.label}`, group: "Create", keywords: ["add", "create"],
-          run: () => { onClose(); if (proj?.canvas) sendCanvas({ kind: "new", what: m.id as NewKind }); else nav("/new"); } });
-      }
-      if (proj?.project) out.push({ id: "new:env", title: "New Environment", group: "Create", run: () => setNewEnv(true) });
-    }
-
-    if (proj?.canvas && editable) {
-      const cmds = [
-        forService("deploy", "Deploy latest commit", (s) => s.config.source.type === "github", (s) => { onClose(); api.deploy(proj.eid, s.id).then(() => toast(`Deploying ${name(s)}`), toastError); }),
-        forService("redeploy", "Redeploy", (s) => !!redeployLabel(s), (s) => { onClose(); void act(s, "redeploy"); }, redeployLabel),
-        forService("restart", "Restart", (s) => !!s.activeDeployment, (s) => { onClose(); void act(s, "restart"); }),
-        forService("rollback", "Rollback", (s) => !!s.activeDeployment, (s) => {
-          onClose();
-          api.deployments(proj.eid, s.id, 20).then((ds) => {
-            const prev = ds.find((d) => !d.active && d.canRollback && d.id !== s.activeDeployment && (d.status === "SUCCESS" || d.status === "REMOVED"));
-            if (!prev) { toast("No earlier deployment to roll back to."); return; }
-            return api.deploymentAction(prev.id, "rollback").then(() => toast(`Rolling ${name(s)} back`));
-          }).catch(toastError);
-        }),
-        forService("shell", "Open shell", (s) => !!s.activeDeployment, (s) => go(svcPath(s, "/shell"))),
-        forService("info", "Update service info", () => true, (s) => { onClose(); sendCanvas({ kind: "update-info", serviceId: s.id }); }),
-        forService("heroku", "Import variables from Heroku", (s) => s.kind !== "database", (s) => go(`${svcPath(s, "/variables")}&import=heroku`)),
-      ];
-      for (const c of cmds) if (c) out.push(c);
-      out.push({ id: "canvas:edges", title: "Hide connections", keywords: ["show connections", "edges"], group: "Canvas", run: () => { onClose(); sendCanvas({ kind: "toggle-connections" }); } });
-      out.push({ id: "canvas:tidy", title: "Tidy canvas", group: "Canvas", run: () => { onClose(); sendCanvas({ kind: "tidy" }); } });
-    }
-    if (proj?.canvas) {
-      const c = forService("copy-private", "Copy private URL", (s) => !!s.privateDomain, (s) => { onClose(); void navigator.clipboard?.writeText(s.privateDomain).then(() => toast(`Copied ${s.privateDomain}`)); });
-      if (c) out.push(c);
-    }
-    out.push({ id: "theme", title: "Toggle theme", keywords: ["dark", "light"], group: "Preferences", run: () => { toggleTheme(); onClose(); } });
-    return out;
-  }, [proj, sid, editable, go, nav, onClose]);
-
-  useEffect(() => { setStack([{ items: root }]); }, [root]);
+  // rebuild the open levels when the tree changes (projects arrive, favourites toggle) without losing depth
+  useEffect(() => {
+    setStack((s) => {
+      if (s.length === 1) return [{ items: root }];
+      let items = root;
+      return s.map((lvl, i) => {
+        if (i === 0) return { items: root };
+        const parent = items.find((c) => c.title === lvl.title && c.children);
+        items = parent?.children?.() || lvl.items;
+        return { ...lvl, items };
+      });
+    });
+  }, [root]);
   const level = stack[stack.length - 1];
   const atRoot = stack.length === 1;
 
-  // server search (projects, services, environments, settings pages, deployments by commit message)
+  // server search covers what the tree cannot: services of other projects, deployments by commit message
   useEffect(() => {
     setFound(undefined);
     if (!atRoot || q.trim().length < 2) return;
@@ -166,74 +144,133 @@ function PaletteDialog({ onClose }: { onClose: () => void }) {
     return () => { clearTimeout(t); ctl.abort(); };
   }, [q, atRoot]);
 
-  const items = useMemo(() => {
-    const local = rank(level.items, q);
-    if (!found) return local;
-    const seen = new Set(local.map((c) => c.title + (c.subtitle || "")));
-    const groups: [keyof SearchResult, string][] = [["projects", "Projects"], ["services", "Services"], ["environments", "Environments"], ["settings", "Settings"], ["deployments", "Deployments"]];
-    const remote: Cmd[] = groups.flatMap(([k, label]) => (found[k] || []).map((it) => ({ id: `r:${k}:${it.id}`, title: it.title, subtitle: it.subtitle, group: label, run: () => go(it.path) })));
-    return [...local, ...remote.filter((c) => !seen.has(c.title + (c.subtitle || "")))];
-  }, [level, q, found, go]);
+  /** Sections of rows, each with an optional header, plus the flat row list for the cursor. */
+  const { sections, rows } = useMemo(() => {
+    const query = q.trim();
+    let secs: { header?: string; items: Cmd[] }[] = [];
+    if (!query) {
+      // root: consecutive commands of one group share a section; only later groups get a header
+      const keyed: { key: string; items: Cmd[] }[] = [];
+      for (const c of level.items) {
+        const key = atRoot ? c.group || "" : "";
+        const last = keyed[keyed.length - 1];
+        if (last && last.key === key) last.items.push(c); else keyed.push({ key, items: [c] });
+      }
+      secs = keyed.map((k, n) => ({ header: atRoot && n > 0 && k.key ? k.key : undefined, items: k.items }));
+    } else if (atRoot) {
+      secs = searchGroups(level.items, query).map((g) => ({ header: g.header, items: g.hits.map((h) => h.cmd) }));
+      if (found) {
+        const have = new Set(secs.flatMap((s) => s.items.map((c) => c.title.toLowerCase())));
+        const extra: [keyof SearchResult, string][] = [["services", "Services"], ["environments", "Environments"], ["settings", "Settings"], ["deployments", "Deployments"]];
+        for (const [k, label] of extra) {
+          const items = (found[k] || []).filter((it) => !have.has(it.title.toLowerCase())).map((it): Cmd => ({
+            id: `r:${k}:${it.id}`, title: it.title, subtitle: it.subtitle, icon: k === "services" ? <ServiceIcon size={20} /> : <Folder />, run: () => go(it.path),
+          }));
+          if (items.length) secs.push({ header: label, items });
+        }
+      }
+    } else {
+      const items = rank(level.items, query);
+      if (items.length) secs = [{ items }];
+    }
+    if (!secs.length && query) {
+      secs = [{ items: [{ id: FALLBACK, title: `Report a missing command "${query}"`, accent: true, run: () => { onClose(); window.open(missingCommandUrl(query), "_blank", "noopener"); } }] }];
+    }
+    return { sections: secs, rows: secs.flatMap((s) => s.items) };
+  }, [level, q, atRoot, found, go, onClose]);
 
   useEffect(() => { setCursor(0); }, [q, stack]);
   useEffect(() => { listRef.current?.querySelector<HTMLElement>(`[data-i="${cursor}"]`)?.scrollIntoView({ block: "nearest" }); }, [cursor]);
 
-  const enter = async (c: Cmd) => {
+  const enter = (c: Cmd) => {
     if (c.children) {
-      const kids = await c.children();
-      setStack((s) => push(s, c, kids)); setQ(""); input.current?.focus();
+      setDir("push"); setStack((s) => push(s, c, c.children!())); setQ(""); input.current?.focus();
       return;
     }
     c.run?.();
   };
+  const pop = () => { setDir("pop"); setStack(back); };
 
   const onKey = (e: React.KeyboardEvent) => {
-    const cur = items[cursor];
-    if (e.key === "ArrowDown") { e.preventDefault(); setCursor((i) => Math.min(items.length - 1, i + 1)); }
+    const cur = rows[cursor];
+    if (e.key === "ArrowDown") { e.preventDefault(); setCursor((i) => Math.min(rows.length - 1, i + 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setCursor((i) => Math.max(0, i - 1)); }
-    else if (e.key === "ArrowRight" && cur?.children && (e.currentTarget as HTMLInputElement).selectionStart === q.length) { e.preventDefault(); void enter(cur).catch(toastError); }
-    else if (e.key === "Backspace" && !q && !atRoot) { e.preventDefault(); setStack(back); }
-    else if (e.key === "Enter") {
-      e.preventDefault();
-      if (!items.length && e.shiftKey && q.trim()) { window.open(missingCommandUrl(q.trim()), "_blank", "noopener"); onClose(); return; }
-      if (cur) void enter(cur).catch(toastError);
-    } else if (e.key === "Escape") { e.preventDefault(); if (!atRoot) setStack(back); else onClose(); }
+    else if (e.key === "ArrowRight" && cur?.children && (e.currentTarget as HTMLInputElement).selectionStart === q.length) { e.preventDefault(); enter(cur); }
+    else if (e.key === "Backspace" && !q && !atRoot) { e.preventDefault(); pop(); }
+    else if (e.key === "Tab") e.preventDefault();
+    else if (e.key === "Enter") { e.preventDefault(); if (cur) try { enter(cur); } catch (err) { toastError(err); } }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (!atRoot) pop(); else onClose(); }
   };
 
   if (newEnv && proj) return <NewEnvironment onClose={onClose} />;
-  let lastGroup: string | undefined;
-  return (
-    <div className="fixed inset-0 z-[150] flex items-start justify-center bg-black/50 px-4 pt-[12vh]" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-label="Command palette" className="w-full max-w-[600px] overflow-hidden rounded-xl border border-gray-200 bg-secondaryBg shadow-[0_20px_50px_rgba(0,0,0,.5)]">
-        <div className="flex items-center gap-2 border-b border-gray-200 px-4">
-          <Search size={16} className="text-gray-500" />
-          {!atRoot && <span className="shrink-0 rounded bg-gray-100 px-2 text-xs text-gray-600">{level.title}</span>}
-          <input ref={input} autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} aria-label="Search commands"
-            role="combobox" aria-expanded="true" aria-controls="palette-list" aria-activedescendant={items[cursor] ? `pal-${cursor}` : undefined}
-            placeholder={atRoot ? "Type a command or search" : "Filter"} className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400" />
+  let index = -1;
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-overlay p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="relative mb-20 w-full md:w-[500px]">
+        {!atRoot && (
+          <div className="absolute bottom-full left-0 flex space-x-1.5 pb-3">
+            {stack.slice(1).map((l, i) => <span key={i} className="rounded bg-surface-raised px-2 py-1 text-body font-medium text-foreground">{l.title}</span>)}
+          </div>
+        )}
+        <div role="dialog" aria-modal="true" aria-label="Command palette" className="flex max-h-[420px] flex-col overflow-hidden rounded-lg bg-surface-raised">
+          <input ref={input} autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} aria-label="Search commands" autoComplete="off" spellCheck={false}
+            role="combobox" aria-expanded="true" aria-controls="palette-list" aria-activedescendant={rows[cursor] ? `pal-${cursor}` : undefined}
+            placeholder={level.placeholder || "What can we help with?"}
+            className="h-14 w-full shrink-0 rounded-t-lg bg-surface-raised px-6 text-lead text-foreground caret-white outline-none placeholder:text-fg-3 focus-visible:shadow-none" />
+          <div key={stack.length} className={cx("scroll-palette min-h-0 flex-1 overflow-y-auto border-t border-line", dir === "push" && "animate-palette-push", dir === "pop" && "animate-palette-pop")}>
+            <ul id="palette-list" ref={listRef} role="listbox" className="py-3">
+              {sections.map((sec, si) => (
+                <li key={si} role="presentation" className={cx(sec.header && si > 0 && "mt-2 border-t border-line pt-2")}>
+                  {sec.header && <p className="mx-3 px-3 py-1 text-caption font-semibold text-gray-700">{sec.header}</p>}
+                  <ul role="group">
+                    {sec.items.map((c) => {
+                      index++;
+                      const i = index;
+                      const on = i === cursor;
+                      return <Row key={c.id + i} c={c} i={i} on={on} onHover={() => setCursor(i)} onRun={() => { try { enter(c); } catch (err) { toastError(err); } }} />;
+                    })}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-        <ul id="palette-list" ref={listRef} role="listbox" className="max-h-[50vh] overflow-y-auto py-1 scroll-thin">
-          {items.map((c, i) => {
-            const head = c.group && c.group !== lastGroup ? c.group : undefined;
-            lastGroup = c.group;
-            return (
-              <li key={c.id} role="presentation">
-                {head && <div className="px-4 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-gray-500">{head}</div>}
-                <div id={`pal-${i}`} data-i={i} role="option" aria-selected={i === cursor} onMouseMove={() => setCursor(i)} onClick={() => void enter(c).catch(toastError)}
-                  className={cx("mx-1 flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm", i === cursor ? "bg-gray-100 text-foreground" : "text-gray-700")}>
-                  <span className="flex-1 truncate">{c.title}{c.subtitle && <span className="ml-2 text-xs text-gray-500">{c.subtitle}</span>}</span>
-                  {c.shortcut && <kbd className="text-xs text-gray-500">{c.shortcut}</kbd>}
-                  {c.children && <ChevronRight size={14} className="text-gray-400" />}
-                </div>
-              </li>
-            );
-          })}
-          {items.length === 0 && (
-            <li className="px-4 py-6 text-center text-sm text-gray-500">No results. <span className="text-gray-400">Shift+Enter: Report a missing command</span></li>
-          )}
-        </ul>
       </div>
-    </div>
+    </div>,
+    document.body,
+  );
+}
+
+function Row({ c, i, on, onHover, onRun }: { c: Cmd; i: number; on: boolean; onHover: () => void; onRun: () => void }) {
+  const fallback = c.id === FALLBACK;
+  const iconTone = c.accent ? "text-pink-500" : on ? "text-fg-2" : "text-fg-4";
+  return (
+    <li id={`pal-${i}`} data-i={i} role="option" aria-selected={on} onMouseMove={onHover} onClick={onRun} className="mx-3 scroll-my-3 cursor-pointer">
+      <div className={cx("flex items-center justify-between rounded-lg px-3 py-3 transition-colors duration-150", on ? "bg-surface-hover text-foreground" : "text-fg-3")}>
+        <span className="flex min-w-0 items-center space-x-3">
+          {(c.icon || fallback) && (
+            <span className={cx("flex size-5 shrink-0 items-center justify-center transition-colors duration-150 [&>img]:size-5 [&>svg]:size-5", iconTone)}>
+              {fallback ? <MessageSquarePlus /> : c.icon}
+            </span>
+          )}
+          <span className="truncate text-lead">{c.title}</span>
+          {c.subtitle && <span className="truncate text-caption text-fg-4">{c.subtitle}</span>}
+        </span>
+        <span className="ml-3 flex shrink-0 items-center space-x-2">
+          {fallback && <span className="rounded bg-tint-pill px-1.5 py-0.5 text-micro font-semibold uppercase tracking-[.25px] text-pink-500">Issue</span>}
+          {fallback && <Keycap>Enter</Keycap>}
+          {c.chips && <span className="flex space-x-2">{c.chips.map((k, n) => <Keycap key={n}>{k}</Keycap>)}</span>}
+          {c.star && (
+            <button type="button" aria-label={c.star.on ? "Remove from favourites" : "Add to favourites"} onClick={(e) => { e.stopPropagation(); c.star!.toggle(); }}
+              className={cx("flex size-5 items-center justify-center rounded transition-colors duration-150 hover:text-foreground", c.star.on ? "text-warn" : "text-fg-4")}>
+              <Star size={16} fill={c.star.on ? "currentColor" : "none"} />
+            </button>
+          )}
+          {c.external && <ArrowUpRight size={16} className="text-fg-4" />}
+          {c.children && <ChevronRight size={20} className="text-fg-4" />}
+        </span>
+      </div>
+    </li>
   );
 }
 

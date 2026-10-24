@@ -1,153 +1,228 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useState } from "react";
+// Settings > Hosts (SPEC 11.2): every machine in the install with its capacity, state, roles and
+// notices. Filter with "/", switch list and grid, open a machine for its facts and metrics, drain,
+// maintain, adopt, edit or remove it, and add one with a single-use join command.
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { LayoutGrid, Plus, Rows3, Search, Server } from "lucide-react";
+import { Button, EmptyState, Input, Kbd, Listbox, Notice, SegmentedControl, fmtBytes, optimistic, plural, readPref, toastError, toastSuccess, writePref, type ListboxOption } from "../../kit";
 import type * as T from "../../api/types.gen";
-import { Badge, Button, Confirm, Empty, Menu, Modal, fmtBytes } from "../../ui/kit";
-import { v1 } from "../settings/client";
-import { CopyField, Field, Input, Loading, Notice, Section, Toggle, fmtDate, optimistic, useAction, useLoad } from "../settings/ui";
+import { HostRow, HostRowSkeleton, HostTile, type HostActions } from "./HostCard";
+import { AddHostDialog, EditHostDialog, RemoveHostDialog } from "./HostDialogs";
+import { HostSheet } from "./HostSheet";
+import { hostsApi, messageOf } from "./client";
 
-export const ROLES = ["control", "build", "ingress", "app", "data"];
+export { ROLES, toggleRole } from "./model";
 
-export function toggleRole(roles: string[], role: string, on: boolean): string[] {
-  const next = on ? [...new Set([...roles, role])] : roles.filter((r) => r !== role);
-  return ROLES.filter((r) => next.includes(r));
-}
+type StateFilter = "all" | "online" | "draining" | "maintenance" | "down";
+type View = "list" | "grid";
+type Dialog = { kind: "add" } | { kind: "edit"; host: T.Host } | { kind: "remove"; host: T.Host } | null;
 
-const pct = (used: number, total: number) => (total > 0 ? Math.round((used / total) * 100) : 0);
+const STATE_OPTIONS: ListboxOption<StateFilter>[] = [
+  { value: "all", label: "All states" },
+  { value: "online", label: "Online" },
+  { value: "draining", label: "Draining" },
+  { value: "maintenance", label: "Maintenance" },
+  { value: "down", label: "Offline or lost" },
+];
+const VIEW_KEY = "5050.hosts.view";
+const POLL_MS = 15000;
+
+/** In mocks mode the Hosts fixtures are registered once before the first list call. */
+const mocksReady: Promise<unknown> = import.meta.env.VITE_MOCKS === "1"
+  ? import("./mocks").then((m) => m.installHostMocks()).catch(() => undefined)
+  : Promise.resolve();
+
+const matches = (h: T.Host, query: string, filter: StateFilter) => {
+  if (filter === "online" && h.state !== "online") return false;
+  if (filter === "draining" && h.state !== "draining") return false;
+  if (filter === "maintenance" && h.state !== "maintenance") return false;
+  if (filter === "down" && !["offline", "lost", "unknown"].includes(h.state)) return false;
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = [h.name, h.publicIp, h.egressIp, h.meshIp, h.version, h.os, h.arch, h.state, ...h.roles].join(" ").toLowerCase();
+  return terms.every((t) => haystack.includes(t));
+};
+
+const isTyping = (el: EventTarget | null) => {
+  const node = el as HTMLElement | null;
+  return !!node && (node.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(node.tagName));
+};
 
 export default function HostsSettings() {
-  const { data, error, setData, reload } = useLoad(v1.hosts, []);
-  const [adding, setAdding] = useState(false);
-  const [edit, setEdit] = useState<T.Host | null>(null);
-  const [remove, setRemove] = useState<T.Host | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { const t = setInterval(reload, 15000); return () => clearInterval(t); }, [reload]);
-  if (!data) return <Loading error={error} />;
-  const replace = (h: T.Host) => setData(data.map((x) => (x.id === h.id ? h : x)));
-  const act = async (h: T.Host, patch: Partial<T.Host>, send: () => Promise<T.Host>) => {
-    const cur = data;
-    await optimistic(cur, data.map((x) => (x.id === h.id ? { ...x, ...patch } : x)), setData, async () => replace(await send()), setErr);
+  const [hosts, setHosts] = useState<T.Host[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<StateFilter>("all");
+  const [view, setView] = useState<View>(() => (readPref<string>(VIEW_KEY, "list") === "grid" ? "grid" : "list"));
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const search = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(async () => {
+    await mocksReady;
+    try {
+      setHosts(await hostsApi.list());
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(messageOf(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const t = window.setInterval(() => void load(), POLL_MS);
+    return () => clearInterval(t);
+  }, [load]);
+
+  useEffect(() => writePref(VIEW_KEY, view), [view]);
+
+  // "/" focuses the filter, as it does in the settings of the reference console.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      e.preventDefault();
+      search.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const put = (h: T.Host) => setHosts((cur) => cur?.map((x) => (x.id === h.id ? h : x)) ?? cur);
+  const patch = (id: string, p: Partial<T.Host>) => setHosts((cur) => cur?.map((x) => (x.id === id ? { ...x, ...p } : x)) ?? cur);
+  const nameOf = (id: string) => hosts?.find((h) => h.id === id)?.name ?? id;
+
+  const run = async (send: () => Promise<T.Host>, done: (h: T.Host) => string) => {
+    try {
+      const h = await send();
+      put(h);
+      toastSuccess(done(h));
+    } catch (e) {
+      toastError(e);
+    }
   };
+
+  const actions: HostActions = {
+    open: (h) => setOpenId(h.id),
+    edit: (h) => setDialog({ kind: "edit", host: h }),
+    maintenance: (h) => {
+      const on = h.state !== "maintenance";
+      void optimistic(
+        () => patch(h.id, { state: on ? "maintenance" : "online" }),
+        async () => {
+          put(await hostsApi.maintenance(h.id, on));
+          toastSuccess(on ? `${h.name} entered maintenance.` : `${h.name} left maintenance.`);
+        },
+        () => patch(h.id, { state: h.state }),
+      );
+    },
+    drain: (h) => {
+      const on = h.state !== "draining";
+      void optimistic(
+        () => patch(h.id, { state: on ? "draining" : "online" }),
+        async () => {
+          put(await hostsApi.update(h.id, { drain: on }));
+          toastSuccess(on ? `${h.name} is draining. Replicas move off it.` : `${h.name} accepts replicas again.`);
+        },
+        () => patch(h.id, { state: h.state }),
+      );
+    },
+    readopt: (h) => void run(() => hostsApi.readopt(h.id), (r) => `${r.name} was adopted again.`),
+    clearConflicts: (h) => void run(() => hostsApi.clearConflicts(h.id), (r) => `Cleared the identity conflicts on ${r.name}.`),
+    remove: (h) => setDialog({ kind: "remove", host: h }),
+  };
+
+  const visible = (hosts ?? []).filter((h) => matches(h, query, filter));
+  const sheetHost = hosts?.find((h) => h.id === openId) ?? null;
+  const filtering = query.trim() !== "" || filter !== "all";
+
+  const clearFilter = () => { setQuery(""); setFilter("all"); };
+
+  let body: ReactNode;
+  if (hosts === null) {
+    body = loadError ? null : <div className="space-y-3">{[0, 1, 2].map((i) => <HostRowSkeleton key={i} />)}</div>;
+  } else if (hosts.length === 0) {
+    body = (
+      <EmptyState icon={<Server size={24} />} title="No hosts yet"
+        body="This install runs on the control machine alone. Add a machine to spread replicas across hosts."
+        action={<Button variant="primary" icon={<Plus size={16} />} onClick={() => setDialog({ kind: "add" })}>Add host</Button>} />
+    );
+  } else if (visible.length === 0) {
+    body = (
+      <EmptyState title="No hosts match" body="Clear the filter to see every machine."
+        action={<Button variant="ghost" onClick={clearFilter}>Clear filter</Button>} />
+    );
+  } else if (view === "grid") {
+    body = <ul className="grid gap-4 sm:grid-cols-2">{visible.map((h) => <HostTile key={h.id} host={h} nameOf={nameOf} actions={actions} />)}</ul>;
+  } else {
+    body = <ul className="flex flex-col gap-3">{visible.map((h) => <HostRow key={h.id} host={h} nameOf={nameOf} actions={actions} />)}</ul>;
+  }
+
+  const online = hosts?.filter((h) => h.state === "online").length ?? 0;
+  const cpus = hosts?.reduce((n, h) => n + h.cpus, 0) ?? 0;
+  const mem = hosts?.reduce((n, h) => n + h.memBytes, 0) ?? 0;
+
   return (
-    <Section title="Hosts" description="Every machine in this install." actions={<Button variant="primary" onClick={() => setAdding(true)}>Add host</Button>}>
-      {err && <Notice kind="error">{err}</Notice>}
-      {data.length === 0 ? <Empty>No hosts.</Empty> : data.map((h) => (
-        <div key={h.id} className="rounded-xl border border-gray-200 p-4 mb-3 text-sm">
-          <div className="flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold">{h.name}</span>
-                <Badge kind={h.state === "online" ? "online" : h.state === "offline" || h.state === "lost" ? "crashed" : "deploying"}>{h.state}</Badge>
-                {h.roles.map((r) => <span key={r} className="text-xs rounded border border-gray-200 px-1.5 py-0.5">{r}</span>)}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {h.publicIp} · {h.os} {h.arch} · {h.version} · {h.replicas} replica{h.replicas === 1 ? "" : "s"} · seen {fmtDate(h.lastSeen)}
-              </div>
-            </div>
-            <Menu trigger={<Button variant="ghost" aria-label={`Actions for ${h.name}`}>Manage</Button>} items={[
-              { label: "Edit name and roles", onClick: () => setEdit(h) },
-              { label: h.state === "maintenance" ? "End maintenance" : "Start maintenance", onClick: () => act(h, { state: h.state === "maintenance" ? "online" : "maintenance" }, () => v1.maintenance(h.id, h.state !== "maintenance")) },
-              { label: h.state === "draining" ? "Stop draining" : "Drain", onClick: () => act(h, { state: h.state === "draining" ? "online" : "draining" }, () => v1.updateHost(h.id, { drain: h.state !== "draining" })) },
-              ...(h.state === "unknown" ? [{ label: "Adopt again", onClick: () => act(h, {}, () => v1.readopt(h.id)) }] : []),
-              { label: "Remove host", danger: true, onClick: () => setRemove(h) },
-            ]} />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-            <Bar label="CPU" used={h.cpuUsed} total={h.cpus} text={`${h.cpuUsed.toFixed(1)} of ${h.cpus} vCPU`} />
-            <Bar label="Memory" used={h.memUsed} total={h.memBytes} text={`${fmtBytes(h.memUsed)} of ${fmtBytes(h.memBytes)}, ${h.reservedMb} MB reserved`} />
-            {h.disks.map((d) => <Bar key={d.mount} label={`Disk ${d.mount}`} used={d.used} total={d.total} text={`${fmtBytes(d.used)} of ${fmtBytes(d.total)}`} />)}
-          </div>
-          {h.rebootRequired && <div className="mt-3"><Notice>A kernel update waits for a reboot. Start maintenance, then reboot the machine.</Notice></div>}
-          {h.warnings?.map((w) => <div key={w} className="mt-2"><Notice>{w}</Notice></div>)}
-          {!!h.unreachable?.length && <div className="mt-2"><Notice kind="error">Cannot reach {h.unreachable.map((id) => data.find((x) => x.id === id)?.name || id).join(", ")} over the private network.</Notice></div>}
-          {!!h.conflicts?.length && (
-            <div className="mt-2">
-              <Notice kind="error">
-                {h.conflicts.length} other machine{h.conflicts.length === 1 ? "" : "s"} presented this host's identity: {h.conflicts.map((c) => `${c.ip} (seen ${fmtDate(c.seenAt)})`).join(", ")}.
-              </Notice>
-              <Button onClick={() => act(h, { conflicts: [] }, () => v1.clearConflicts(h.id))}>Clear conflicts</Button>
-            </div>
-          )}
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="sr-only">Hosts</h2>
+          <p className="text-body text-fg-2">Every machine in this install. Replicas run on machines with the app role.</p>
         </div>
-      ))}
-      {adding && <AddHost onClose={() => { setAdding(false); reload(); }} />}
-      {edit && <EditHost host={edit} onClose={() => setEdit(null)} onSaved={(h) => { replace(h); setEdit(null); }} />}
-      {remove && <RemoveHost host={remove} onClose={() => setRemove(null)} onDone={() => setData(data.filter((x) => x.id !== remove.id))} />}
-    </Section>
-  );
-}
+        <Button variant="primary" icon={<Plus size={16} />} onClick={() => setDialog({ kind: "add" })}>Add host</Button>
+      </header>
 
-function Bar({ label, used, total, text }: { label: string; used: number; total: number; text: string }) {
-  const p = pct(used, total);
-  return (
-    <div>
-      <div className="flex justify-between text-xs text-gray-600 mb-1"><span>{label}</span><span>{p}%</span></div>
-      <div className="h-1.5 rounded bg-gray-100 overflow-hidden"><div className={p >= 90 ? "h-full bg-red-500" : p >= 75 ? "h-full bg-yellow-500" : "h-full bg-green-500"} style={{ width: `${Math.min(100, p)}%` }} /></div>
-      <div className="text-xs text-gray-500 mt-1">{text}</div>
-    </div>
-  );
-}
+      {loadError && (
+        <Notice tone="danger" title="Could not load hosts"
+          action={<Button size="xs" variant="outline" onClick={() => void load()}>Retry</Button>}>
+          {loadError}{hosts ? " Showing the last known list." : ""}
+        </Notice>
+      )}
 
-function AddHost({ onClose }: { onClose: () => void }) {
-  const [roles, setRoles] = useState<string[]>(["app"]);
-  const [name, setName] = useState("");
-  const [tok, setTok] = useState<T.JoinToken | null>(null);
-  const a = useAction();
-  return (
-    <Modal title="Add host" onClose={onClose} width={620} footer={tok ? <Button onClick={onClose}>Done</Button> : <>
-      <Button onClick={onClose}>Cancel</Button>
-      <Button variant="primary" disabled={!roles.length || a.busy} onClick={async () => { const r = await a.run(() => v1.joinToken({ roles, name: name.trim() || undefined })); if (r) setTok(r); }}>Create join command</Button>
-    </>}>
-      {tok ? (
+      {hosts && hosts.length > 0 && (
         <>
-          <p className="mb-2">Run this on the new machine as root. It works once and expires {fmtDate(tok.expiresAt)}.</p>
-          <CopyField value={tok.command} />
-          <p className="mt-3 text-xs text-gray-500">The host appears here when it connects.</p>
-        </>
-      ) : (
-        <>
-          <Field label="Name" hint="Optional. The machine's host name is used when empty."><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
-          <div className="text-sm font-medium mb-2">Roles</div>
-          {ROLES.filter((r) => r !== "control").map((r) => <Toggle key={r} label={r} checked={roles.includes(r)} onChange={(on) => setRoles(toggleRole(roles, r, on))} />)}
-          {a.error && <Notice kind="error">{a.error}</Notice>}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="w-full sm:w-72">
+              <Input ref={search} size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter hosts"
+                aria-label="Filter hosts" icon={<Search size={16} />} suffix={<Kbd>/</Kbd>} />
+            </div>
+            <Listbox<StateFilter> label="Filter by state" value={filter} onChange={setFilter} options={STATE_OPTIONS} width={200} />
+            <div className="ml-auto">
+              <SegmentedControl<View> label="View" size={34} value={view} onChange={setView} options={[
+                { value: "list", label: "List", icon: <Rows3 size={16} /> },
+                { value: "grid", label: "Grid", icon: <LayoutGrid size={16} /> },
+              ]} />
+            </div>
+          </div>
+          <p className="-mt-2 text-caption text-fg-3">
+            {online} of {plural(hosts.length, "host", "hosts")} online · {plural(cpus, "vCPU", "vCPU")} · {fmtBytes(mem)} memory
+            {filtering && visible.length !== hosts.length && ` · showing ${visible.length}`}
+          </p>
         </>
       )}
-    </Modal>
-  );
-}
 
-function EditHost({ host, onClose, onSaved }: { host: T.Host; onClose: () => void; onSaved: (h: T.Host) => void }) {
-  const [name, setName] = useState(host.name);
-  const [roles, setRoles] = useState(host.roles);
-  const [reserve, setReserve] = useState(String(host.reserveMb));
-  const a = useAction();
-  const reserveOk = /^\d+$/.test(reserve);
-  return (
-    <Modal title={`Edit ${host.name}`} onClose={onClose} footer={<>
-      <Button onClick={onClose}>Cancel</Button>
-      <Button variant="primary" disabled={!name.trim() || !roles.length || !reserveOk || a.busy} onClick={async () => {
-        const r = await a.run(() => v1.updateHost(host.id, { name: name.trim(), roles, reserveMb: Number(reserve) }));
-        if (r) onSaved(r);
-      }}>Save</Button>
-    </>}>
-      <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
-      <Field label="Memory kept free for the system (MB)" error={reserveOk ? null : "Enter a whole number."}><Input inputMode="numeric" value={reserve} onChange={(e) => setReserve(e.target.value)} /></Field>
-      <div className="text-sm font-medium mb-2">Roles</div>
-      {ROLES.map((r) => <Toggle key={r} label={r} disabled={r === "control"} checked={roles.includes(r)} onChange={(on) => setRoles(toggleRole(roles, r, on))} />)}
-      {a.error && <Notice kind="error">{a.error}</Notice>}
-    </Modal>
-  );
-}
+      {body}
 
-function RemoveHost({ host, onClose, onDone }: { host: T.Host; onClose: () => void; onDone: () => void }) {
-  const [force, setForce] = useState(false);
-  return (
-    <Confirm title="Remove host" danger confirm="Remove" onClose={onClose}
-      onConfirm={async () => { await v1.removeHost(host.id, force); onDone(); }}
-      body={<>
-        <p>Remove <b>{host.name}</b> from this install?</p>
-        {host.replicas > 0 && <><p className="mt-2">It still runs {host.replicas} replica{host.replicas === 1 ? "" : "s"}. Drain it first, or remove it anyway.</p>
-          <Toggle label="Remove it anyway" checked={force} onChange={setForce} /></>}
-      </>} />
+      {dialog?.kind === "add" && (
+        <AddHostDialog onClose={() => { setDialog(null); void load(); }} />
+      )}
+      {dialog?.kind === "edit" && (
+        <EditHostDialog host={dialog.host} onClose={() => setDialog(null)}
+          onSaved={(h) => { put(h); setDialog(null); toastSuccess(`Saved ${h.name}.`); }} />
+      )}
+      {dialog?.kind === "remove" && (() => {
+        const gone = dialog.host;
+        return (
+          <RemoveHostDialog host={gone} onClose={() => setDialog(null)}
+            onRemoved={() => {
+              setHosts((cur) => cur?.filter((x) => x.id !== gone.id) ?? cur);
+              if (openId === gone.id) setOpenId(null);
+              setDialog(null);
+            }} />
+        );
+      })()}
+      {sheetHost && <HostSheet host={sheetHost} nameOf={nameOf} actions={actions} onClose={() => setOpenId(null)} />}
+    </div>
   );
 }

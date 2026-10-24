@@ -14,9 +14,10 @@ describe("deployment actions", () => {
   it("an old success can roll back", () => expect(actionsFor(dep({}))).toEqual(["redeploy", "rollback"]));
   it("no rollback when the image is gone", () => expect(actionsFor(dep({ canRollback: false }))).toEqual(["redeploy"]));
   it("crashed active offers restart first", () => expect(actionsFor(dep({ status: "CRASHED", active: true }))[0]).toBe("restart"));
-  it("opens build logs for a failed build and deploy logs for a crash", () => {
-    expect(defaultTab(dep({ status: "FAILED", steps: [{ name: "build", state: "failed" }] }))).toBe("build");
-    expect(defaultTab(dep({ status: "FAILED", steps: [{ name: "build", state: "ok" }, { name: "healthcheck", state: "failed" }] }))).toBe("deploy");
+  it("opens details for a failure, build logs while building, deploy logs otherwise", () => {
+    expect(defaultTab(dep({ status: "FAILED", steps: [{ name: "build", state: "failed" }] }))).toBe("details");
+    expect(defaultTab(dep({ status: "BUILDING" }))).toBe("build");
     expect(defaultTab(dep({ status: "CRASHED" }))).toBe("deploy");
+    expect(defaultTab(dep({ status: "REMOVED" }))).toBe("deploy");
   });
 });

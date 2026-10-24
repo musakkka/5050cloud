@@ -2155,7 +2155,7 @@ the request, and rolls back with a toast on error.
 | `/` | Dashboard: project cards with a mini canvas and online summary ("3/4 online"), grid/list, search, stars, sort **Recent Activity**, **Creation Date**, **A-Z**, **New** (`Cmd+/`), Hosts card with disk bars and **Add host**, update banner, restore banner (9.17.1) | WP8a |
 | `/new` | Searchable list **GitHub Repository**, **Database**, **Template**, **Docker Image**, **Empty Project**, **Import from Railway**, **Docker Compose**. GitHub flow: repo search with **Refresh**, **Configure GitHub App**, inline **Connect GitHub**, or "Paste a public repo URL"; branch; the shared scan dialog; **Deploy Now** / **Add Variables**. Docker image input with live name validation and a registry credential picker with inline **Add credential** | WP8a |
 | `/new/template/:id` | Template detail (10.2) | WP8a |
-| `/new/import/railway` | Token input, progress, import report, then the canvas with staged changes | WP8a |
+| `/new/import` | Token input, progress, import report, then the canvas with staged changes | WP8a |
 | `/project/:pid` | Canvas (13.2), left rail Architecture, Observability, Logs, Settings, environment switcher, top bar Activity and bell | WP8a |
 | `/project/:pid/service/:sid/:tab?` | Service panel (13.3) over the canvas | WP8b |
 | `/project/:pid/volume/:vid` | Volume panel (9.12) | WP8b |

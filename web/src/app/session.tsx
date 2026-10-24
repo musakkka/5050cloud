@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { Navigate, useLocation } from "react-router-dom";
 import { api, onUnauthorized, type Me } from "../api/client";
 import { Spinner } from "../kit";
+import { ShellSkeleton } from "./Shell";
+import { AuthGate } from "../features/auth/AuthPages";
 
 interface Session { me: Me | null; ready: boolean; setMe: (m: Me | null) => void; refresh: () => Promise<void> }
 const Ctx = createContext<Session>({ me: null, ready: false, setMe: () => {}, refresh: async () => {} });
@@ -39,11 +41,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (ready && !me) api.setupStatus().then((s) => setNeedsSetup(s.needsSetup), () => setNeedsSetup(false));
   }, [ready, me]);
-  if (!ready) return <Center><Spinner /></Center>;
+  if (!ready) return <ShellSkeleton />;
   if (me) return <>{children}</>;
   if (needsSetup === null) return <Center><Spinner /></Center>;
   if (needsSetup) return <Navigate to={`/setup${loc.search}`} replace />;
-  return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
+  return <AuthGate />;
 }
 
 export function Center({ children }: { children: ReactNode }) {

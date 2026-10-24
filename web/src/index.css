@@ -4,71 +4,85 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 5050cloud dark theme tokens */
-:root {
-  --foreground: hsl(0, 0%, 100%);
-  --background: hsl(250, 24%, 9%);
-  --secondaryBg: hsl(250, 21%, 11%);
-  --blue-50: hsl(220, 55%, 10%); --blue-100: hsl(220, 55%, 13%); --blue-200: hsl(220, 62%, 25%);
-  --blue-300: hsl(220, 68%, 35%); --blue-400: hsl(220, 72%, 45%); --blue-500: hsl(220, 80%, 55%);
-  --blue-600: hsl(220, 80%, 65%); --blue-700: hsl(220, 80%, 75%); --blue-800: hsl(220, 80%, 85%);
-  --blue-900: hsl(220, 80%, 95%); --blue-950: hsl(220, 55%, 97%);
-  --gray-50: hsl(248, 21%, 13%); --gray-100: hsl(246, 18%, 15%); --gray-200: hsl(246, 11%, 22%);
-  --gray-300: hsl(246, 8%, 35%); --gray-400: hsl(246, 7%, 45%); --gray-500: hsl(246, 6%, 55%);
-  --gray-600: hsl(246, 6%, 65%); --gray-700: hsl(246, 6%, 78%); --gray-800: hsl(246, 6%, 87%);
-  --gray-900: hsl(246, 6%, 95%); --gray-950: hsl(246, 4%, 97%);
-  --red-50: hsl(1, 35%, 10%); --red-100: hsl(1, 45%, 12%); --red-200: hsl(1, 55%, 20%);
-  --red-300: hsl(1, 62%, 28%); --red-400: hsl(1, 62%, 35%); --red-500: hsl(1, 62%, 44%);
-  --red-600: hsl(1, 62%, 60%); --red-700: hsl(1, 62%, 76%); --red-800: hsl(1, 64%, 85%);
-  --red-900: hsl(1, 68%, 95%); --red-950: hsl(1, 55%, 98%);
-  --pink-50: hsl(270, 38%, 12%); --pink-100: hsl(270, 40%, 16%); --pink-200: hsl(270, 45%, 24%);
-  --pink-300: hsl(270, 50%, 32%); --pink-400: hsl(270, 55%, 43%); --pink-500: hsl(270, 60%, 52%);
-  --pink-600: hsl(270, 70%, 65%); --pink-700: hsl(270, 70%, 75%); --pink-800: hsl(270, 70%, 85%);
-  --pink-900: hsl(270, 70%, 95%); --pink-950: hsl(270, 70%, 98%);
-  --green-50: hsl(152, 15%, 10%); --green-100: hsl(152, 26%, 11%); --green-200: hsl(152, 32%, 16%);
-  --green-300: hsl(152, 38%, 24%); --green-400: hsl(152, 38%, 34%); --green-500: hsl(152, 38%, 42%);
-  --green-600: hsl(152, 38%, 60%); --green-700: hsl(152, 38%, 70%); --green-800: hsl(152, 38%, 80%);
-  --green-900: hsl(152, 38%, 91%); --green-950: hsl(152, 40%, 97%);
-  --yellow-50: hsl(44, 40%, 8%); --yellow-100: hsl(44, 40%, 10%); --yellow-200: hsl(44, 50%, 16%);
-  --yellow-300: hsl(44, 62%, 25%); --yellow-400: hsl(44, 70%, 40%); --yellow-500: hsl(44, 74%, 52%);
-  --yellow-600: hsl(44, 78%, 62%); --yellow-700: hsl(44, 78%, 72%); --yellow-800: hsl(44, 78%, 80%);
-  --yellow-900: hsl(44, 78%, 90%); --yellow-950: hsl(44, 75%, 97%);
-  color-scheme: dark;
-}
+/* Token values live in src/kit/theme.css (dark :root and html.light). */
 
 html, body, #root { height: 100%; }
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
   line-height: 26px;
+  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-* { border-color: var(--gray-200); }
+* { border-color: var(--line); }
+code, kbd, pre, samp { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+input[type="radio"], input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
+::selection { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+
+/* Focus: a 2px accent ring on every keyboard-focused control. */
+:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+.focus-ring:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 
 /* the canvas dot grid: a 24px tile with a 2px dot at 10% white */
 .dot-grid {
-  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 1a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z' fill='%23fff' fill-opacity='.1'/%3E%3C/svg%3E");
+  background-image: radial-gradient(circle at 1px 1px, var(--dot-grid) 1px, transparent 0);
+  background-size: 24px 24px;
 }
 
 .react-flow__pane { cursor: default; }
 .react-flow__node { cursor: pointer; }
 .react-flow__attribution { display: none; }
-.react-flow__edge-path { stroke: var(--gray-300); stroke-width: 1.5; stroke-dasharray: 6 6; transition: stroke 150ms, opacity 150ms; }
-.react-flow__edge-path.edge-hl { stroke: var(--pink-600); stroke-width: 2; animation: dash-flow 0.6s linear infinite; }
-.react-flow__edge-path.edge-dim { opacity: .25; }
-@keyframes dash-flow { to { stroke-dashoffset: -12; } }
 .react-flow__node-grp { cursor: default; }
 .react-flow__handle { opacity: 0; width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; }
 
+/* Scrollbars: 8px thin (panels), 12px palette list. */
+.scroll-thin { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-.scroll-thin::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--line); border-radius: 9999px; }
 .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+.scroll-palette::-webkit-scrollbar { width: 12px; }
+.scroll-palette::-webkit-scrollbar-thumb { background: var(--line); border-radius: 9999px; border: 3px solid transparent; background-clip: padding-box; }
+.scroll-palette::-webkit-scrollbar-track { background: transparent; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* Motion. Keyframe names match tailwind.config.js animation keys. */
 @keyframes panel-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 .panel-in { animation: panel-in 160ms ease-out; }
 @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 .pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 1s linear infinite; }
+@keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.shimmer {
+  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-hover) 50%, var(--surface) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 5s linear infinite;
+}
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlay-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes modal-scale-in { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
+@keyframes modal-scale-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.96); } }
+@keyframes sheet-in { from { opacity: 0; transform: translateX(1.5rem); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes pop-in-up { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes palette-push { from { opacity: .4; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes palette-pop { from { opacity: .4; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes collapsible-down { from { opacity: 0; height: 0; } to { opacity: 1; height: var(--collapsible-h, auto); } }
+@keyframes flash { from { background-color: var(--blue-100); } to { background-color: transparent; } }
+@keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

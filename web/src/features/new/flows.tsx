@@ -3,11 +3,12 @@
 // Creation flows shared by /new (new project) and the canvas New menu
 // (current environment): GitHub repo with the scan dialog, Docker image,
 // database, Docker Compose, empty service and volume.
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { ExternalLink, Github, Lock, RefreshCw } from "lucide-react";
-import { ApiError, api, type GitHubRepo, type GitHubStatus, type Import, type RegistryCredential, type ScanResult, type Service, type TemplateSummary } from "../../api/client";
-import { Button, ErrorLine, Field, Input, Modal, ServiceIcon, Spinner, Textarea, cx, toast } from "../../kit";
-import { imageError, imageName, imageRegistry, repoRef } from "./image";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Box, Braces, Cable, CircleAlert, CircleCheck, Database, Globe, HardDrive, FileUp, KeyRound, Settings2 } from "lucide-react";
+import { ApiError, api, type Import, type RegistryCredential, type ScanResult, type Service } from "../../api/client";
+import { BrandIcon, Button, Checkbox, ErrorLine, Field, Input, Modal, Select, Skeleton, Spinner, Textarea, toast } from "../../kit";
+import { PickerOverlay } from "./overlay";
+import { imageError, imageName, imageRegistry } from "./image";
 
 /** Where a flow creates things. /new makes a project on first use; the canvas uses its environment. */
 export interface Target {
@@ -31,83 +32,9 @@ function useAction() {
 
 // ---------- GitHub ----------
 
+/** Canvas entry: the GitHub step of the create picker, floating over the canvas. */
 export function GitHubFlow({ target, onClose }: { target: Target; onClose: () => void }) {
-  const [status, setStatus] = useState<GitHubStatus>();
-  const [repos, setRepos] = useState<GitHubRepo[]>();
-  const [q, setQ] = useState("");
-  const [url, setUrl] = useState("");
-  const [picked, setPicked] = useState<{ repo: string; defaultBranch?: string }>();
-  const [error, setError] = useState<unknown>();
-  const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => { api.github().then(setStatus, () => setStatus({ appConfigured: false, installations: [] })); }, []);
-  const loadRepos = (refresh = false) => {
-    setRefreshing(refresh);
-    return api.repos(q || undefined, refresh).then(setRepos, setError).finally(() => setRefreshing(false));
-  };
-  useEffect(() => {
-    if (!status?.appConfigured) return;
-    const t = setTimeout(() => void loadRepos(), 200);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, q]);
-
-  const connect = async () => {
-    try {
-      const r = await api.githubApp(location.pathname + location.search);
-      // GitHub's app manifest flow: POST the manifest as a form field to formUrl
-      const f = document.createElement("form");
-      f.method = "post"; f.action = r.formUrl;
-      const i = document.createElement("input");
-      i.type = "hidden"; i.name = "manifest"; i.value = typeof r.manifest === "string" ? r.manifest : JSON.stringify(r.manifest);
-      f.appendChild(i); document.body.appendChild(f); f.submit();
-    } catch (e) { setError(e); }
-  };
-
-  if (picked) return <ScanDialog target={target} repo={picked.repo} defaultBranch={picked.defaultBranch} onBack={() => setPicked(undefined)} onClose={onClose} />;
-  const pasted = repoRef(url);
-  return (
-    <Modal title="Deploy from GitHub" onClose={onClose} width={560}>
-      <div className="space-y-4 pb-4">
-        {!status && <Spinner />}
-        {status?.appConfigured && (
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Input aria-label="Search repositories" placeholder="Search repositories" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
-              <Button aria-label="Refresh" title="Refresh" onClick={() => void loadRepos(true)}><RefreshCw size={14} className={cx(refreshing && "spin")} />Refresh</Button>
-            </div>
-            <ul className="max-h-64 overflow-y-auto rounded-md border border-gray-200 scroll-thin">
-              {!repos && <li className="p-3"><Spinner /></li>}
-              {repos?.length === 0 && <li className="p-3 text-sm text-gray-500">No repositories. Give the GitHub App access to more of them.</li>}
-              {repos?.map((r) => (
-                <li key={r.fullName}>
-                  <button type="button" onClick={() => setPicked({ repo: r.fullName, defaultBranch: r.defaultBranch })} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-100">
-                    <Github size={14} className="text-gray-500" /><span className="flex-1 truncate">{r.fullName}</span>{r.private && <Lock size={12} className="text-gray-500" />}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {status.configureUrl && <a href={status.configureUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-foreground">Configure GitHub App<ExternalLink size={12} /></a>}
-          </div>
-        )}
-        {status && !status.appConfigured && (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 px-3 py-3 text-sm">
-            <span className="text-gray-600">Connect a GitHub App to deploy private repositories and deploy on push.</span>
-            <Button onClick={() => void connect()}><Github size={14} />Connect GitHub</Button>
-          </div>
-        )}
-        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); if (pasted) setPicked({ repo: pasted }); }}>
-          <Field label="Paste a public repo URL">
-            <div className="flex gap-2">
-              <Input placeholder="https://github.com/owner/repo" value={url} onChange={(e) => setUrl(e.target.value)} />
-              <Button type="submit" disabled={!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(pasted)}>Continue</Button>
-            </div>
-          </Field>
-        </form>
-        <ErrorLine error={error} />
-      </div>
-    </Modal>
-  );
+  return <PickerOverlay step="github" target={target} onClose={onClose} />;
 }
 
 /** The scan dialog: detected builder, start command, config files and monorepo packages to tick. */
@@ -147,47 +74,56 @@ export function ScanDialog({ target, repo, defaultBranch, onBack, onClose }: { t
     target.done({ ...t, services, variables: !deployNow && !target.canvas });
   });
 
+  const short = repo.replace(/^https:\/\/github\.com\//, "");
+  const rows: [string, ReactNode][] = scan ? [
+    ["Builder", scan.dockerfile ? "Dockerfile" : <span className="inline-flex items-center gap-1.5">{scan.provider && <BrandIcon name={scan.provider} size={14} fallback="none" />}Railpack{scan.provider ? ` (${scan.provider})` : ""}</span>],
+    ...(scan.startCommand ? [["Start command", <code key="c" className="font-mono text-[13px] text-foreground">{scan.startCommand}</code>] as [string, ReactNode]] : []),
+    ...(scan.suggestedPort ? [["Port", String(scan.suggestedPort)] as [string, ReactNode]] : []),
+    ...(scan.configFiles || []).map((c) => ["Config file", <>{c.path} <span className="text-fg-3">sets {c.sets.length} fields</span></>] as [string, ReactNode]),
+    ...(scan.envNames.length ? [["Variables", <span key="v" className="flex flex-wrap gap-1">{scan.envNames.map((n) => <code key={n} className="rounded bg-surface-hover px-1.5 py-0.5 font-mono text-caption text-foreground">{n}</code>)}</span>] as [string, ReactNode]] : []),
+  ] : [];
   return (
-    <Modal title={repo.replace(/^https:\/\/github\.com\//, "")} onClose={onClose} width={560}>
-      <div className="space-y-4 pb-2">
+    <Modal title={short} onClose={onClose} width={560}
+      description={<span className="inline-flex items-center gap-1.5"><BrandIcon name="github" size={14} mono />Deploy this repository{target.canvas ? " into the environment" : " in a new project"}</span>}
+      footerAlign="between"
+      footer={<>
+        {onBack ? <Button variant="ghost" onClick={onBack}>Back</Button> : <span />}
+        <div className="flex gap-2">
+          <Button busy={a.busy === "stage"} disabled={!!a.busy || !scan} onClick={() => void create(false)}>{target.canvas ? "Add to canvas" : "Add Variables"}</Button>
+          <Button variant="primary" busy={a.busy === "deploy"} disabled={!!a.busy || !scan} onClick={() => void create(true)}>Deploy Now</Button>
+        </div>
+      </>}>
+      <div className="space-y-5 pb-2 pt-2">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Branch">
-            {branches && branches.length ? (
-              <select value={branch} onChange={(e) => setBranch(e.target.value)} className="h-[38px] w-full rounded-md border border-gray-200 bg-background px-2 text-sm">
-                {branches.map((b) => <option key={b}>{b}</option>)}
-              </select>
-            ) : <Input value={branch} placeholder="default branch" onChange={(e) => setBranch(e.target.value)} />}
+            {branches && branches.length
+              ? <Select variant="field" value={branch} onChange={(e) => setBranch(e.target.value)} options={branches.map((b) => ({ value: b, label: b }))} />
+              : <Input value={branch} placeholder="default branch" onChange={(e) => setBranch(e.target.value)} />}
           </Field>
-          <Field label="Root directory"><Input value={rootDir} placeholder="/" onChange={(e) => setRootDir(e.target.value)} /></Field>
+          <Field label="Root directory"><Input value={rootDir} placeholder="/" mono onChange={(e) => setRootDir(e.target.value)} /></Field>
         </div>
-        {!scan && !scanErr && <div className="flex items-center gap-2 text-sm text-gray-500"><Spinner />Scanning the repository</div>}
+        {!scan && !scanErr && (
+          <div className="space-y-2 rounded-lg border border-line px-4 py-4">
+            <div className="flex items-center gap-2 text-sm text-fg-2"><Spinner size={14} />Scanning the repository</div>
+            <Skeleton h={10} w="70%" /><Skeleton h={10} w="45%" />
+          </div>
+        )}
         <ErrorLine error={scanErr} />
         {scan && (
-          <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5 rounded-md border border-gray-200 px-4 py-3 text-sm">
-            <dt className="text-gray-500">Builder</dt><dd>{scan.dockerfile ? "Dockerfile" : `Railpack${scan.provider ? ` (${scan.provider})` : ""}`}</dd>
-            {scan.startCommand && <><dt className="text-gray-500">Start command</dt><dd className="font-mono text-xs leading-5">{scan.startCommand}</dd></>}
-            {scan.suggestedPort ? <><dt className="text-gray-500">Port</dt><dd>{scan.suggestedPort}</dd></> : null}
-            {scan.configFiles?.map((c) => <Fragment key={c.path}><dt className="text-gray-500">Config file</dt><dd>{c.path} <span className="text-gray-500">sets {c.sets.length} fields</span></dd></Fragment>)}
-            {scan.envNames.length > 0 && <><dt className="text-gray-500">Variables</dt><dd className="break-words font-mono text-xs leading-5">{scan.envNames.join(", ")}</dd></>}
+          <dl className="grid grid-cols-[120px,1fr] gap-x-4 gap-y-2.5 rounded-lg border border-line px-4 py-3.5 text-sm animate-fade-in">
+            {rows.map(([k, v], i) => <Fragment key={i}><dt className="text-fg-3">{k}</dt><dd className="min-w-0 break-words text-foreground">{v}</dd></Fragment>)}
           </dl>
         )}
         {scan?.packages && scan.packages.length > 0 && (
-          <fieldset className="space-y-1">
-            <legend className="mb-1 text-sm font-medium">Packages to deploy (one service each)</legend>
+          <fieldset className="space-y-2">
+            <legend className="mb-2 text-caption font-semibold text-fg-2">Packages to deploy (one service each)</legend>
             {scan.packages.map((p) => (
-              <label key={p.rootDir} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={ticked.includes(p.rootDir)} onChange={(e) => setTicked(e.target.checked ? [...ticked, p.rootDir] : ticked.filter((x) => x !== p.rootDir))} />
-                <span className="font-medium">{p.name}</span><span className="text-gray-500">{p.rootDir}</span>
-              </label>
+              <Checkbox key={p.rootDir} checked={ticked.includes(p.rootDir)} label={p.name} description={p.rootDir}
+                onChange={(on) => setTicked(on ? [...ticked, p.rootDir] : ticked.filter((x) => x !== p.rootDir))} />
             ))}
           </fieldset>
         )}
         <ErrorLine error={a.error} />
-      </div>
-      <div className="flex flex-wrap justify-end gap-2 py-4">
-        {onBack && <Button variant="ghost" className="mr-auto" onClick={onBack}>Back</Button>}
-        <Button busy={a.busy === "stage"} disabled={!!a.busy} onClick={() => void create(false)}>{target.canvas ? "Add to canvas" : "Add Variables"}</Button>
-        <Button variant="primary" busy={a.busy === "deploy"} disabled={!!a.busy} onClick={() => void create(true)}>Deploy Now</Button>
       </div>
     </Modal>
   );
@@ -209,16 +145,14 @@ export function RegistryCredentialPicker({ server, value, onChange }: { server: 
     <div className="space-y-2">
       <Field label="Registry credential" hint="Only for private images.">
         <div className="flex gap-2">
-          <select aria-label="Registry credential" value={value} onChange={(e) => onChange(e.target.value)} className="h-[38px] flex-1 rounded-md border border-gray-200 bg-background px-2 text-sm">
-            <option value="">None (public image)</option>
-            {list?.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.username}@{c.server})</option>)}
-          </select>
+          <Select variant="field" aria-label="Registry credential" value={value} onChange={(e) => onChange(e.target.value)} className="flex-1"
+            options={[{ value: "", label: "None (public image)" }, ...(list || []).map((c) => ({ value: c.id, label: `${c.name} (${c.username}@${c.server})` }))]} />
           <Button onClick={() => setAdding((x) => !x)}>Add credential</Button>
         </div>
       </Field>
       {adding && (
-        <div className="space-y-2 rounded-md border border-gray-200 p-3">
-          <div className="text-xs text-gray-500">For {server}</div>
+        <div className="space-y-2 rounded-lg border border-line bg-surface p-3 animate-rise-in">
+          <div className="text-caption text-fg-3">For {server}</div>
           <Input aria-label="Credential name" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input aria-label="Username" placeholder="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} autoComplete="off" />
           <Input aria-label="Password or token" placeholder="Password or token" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} autoComplete="new-password" />
@@ -230,10 +164,17 @@ export function RegistryCredentialPicker({ server, value, onChange }: { server: 
   );
 }
 
-export function ImageFlow({ target, onClose }: { target: Target; onClose: () => void }) {
-  const [image, setImage] = useState("");
+/** Canvas entry: the Docker image step; with `initial` it opens the full form (registry credentials). */
+export function ImageFlow({ target, onClose, initial }: { target: Target; onClose: () => void; initial?: string }) {
+  if (initial !== undefined) return <ImageForm target={target} onClose={onClose} initial={initial} />;
+  return <PickerOverlay step="image" target={target} onClose={onClose} />;
+}
+
+/** The image form: reference, registry credential, then stage or deploy. */
+export function ImageForm({ target, onClose, initial = "" }: { target: Target; onClose: () => void; initial?: string }) {
+  const [image, setImage] = useState(initial);
   const [cred, setCred] = useState("");
-  const [touched, setTouched] = useState(false);
+  const [touched, setTouched] = useState(!!initial);
   const a = useAction();
   const err = imageError(image);
   const create = (deployNow: boolean) => a.run(deployNow ? "deploy" : "stage", async () => {
@@ -260,31 +201,9 @@ export function ImageFlow({ target, onClose }: { target: Target; onClose: () => 
 
 // ---------- Database ----------
 
+/** Canvas entry: the database step of the create picker. */
 export function DatabaseFlow({ target, onClose }: { target: Target; onClose: () => void }) {
-  const [list, setList] = useState<TemplateSummary[]>();
-  const a = useAction();
-  useEffect(() => { api.templates().then((l) => setList(l.filter((t) => t.category === "database")), a.setError); }, [a.setError]);
-  const create = (t: TemplateSummary) => a.run(t.id, async () => {
-    const tgt = await target.ensure();
-    const r = await api.createService(tgt.eid, { template: t.id, source: { type: "empty" }, deployNow: true, position: target.position });
-    target.done({ ...tgt, services: r.services });
-  });
-  return (
-    <Modal title="Add a database" onClose={onClose} width={480}>
-      <div className="space-y-2 pb-5">
-        {!list && !a.error && <Spinner />}
-        {list?.map((t) => (
-          <button type="button" key={t.id} disabled={!!a.busy} onClick={() => void create(t)}
-            className="flex w-full items-center gap-3 rounded-md border border-gray-200 px-3 py-2.5 text-left hover:border-gray-400 disabled:opacity-50">
-            <ServiceIcon icon={t.icon} size={22} />
-            <span className="flex-1"><span className="block text-sm font-medium">{t.name}</span><span className="block text-xs text-gray-500">{t.tagline}</span></span>
-            {a.busy === t.id && <Spinner />}
-          </button>
-        ))}
-        <ErrorLine error={a.error} />
-      </div>
-    </Modal>
-  );
+  return <PickerOverlay step="database" target={target} onClose={onClose} />;
 }
 
 // ---------- Docker Compose ----------
@@ -314,8 +233,12 @@ export function ComposeFlow({ target, onClose, initial = "" }: { target: Target;
   return (
     <Modal title="Import Docker Compose" onClose={onClose} width={600}>
       <div className="space-y-3 pb-2">
-        <p className="text-sm text-gray-600">Paste a docker-compose.yml or choose the file. Services, volumes and databases are staged; nothing deploys until you press Deploy.</p>
-        <input type="file" aria-label="Compose file" accept=".yml,.yaml" onChange={(e) => { const f = e.target.files?.[0]; if (f) void f.text().then(setYaml); }} className="text-sm" />
+        <p className="text-sm text-fg-2">Paste a docker-compose.yml or drop the file. Services, volumes and databases are staged; nothing deploys until you press Deploy.</p>
+        <label onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) void f.text().then(setYaml); }}
+          className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-line px-4 py-3 text-sm text-fg-2 transition-colors hover:border-fg-5 hover:bg-tint-hover">
+          <FileUp size={16} className="text-fg-3" /><span className="flex-1">Choose or drop a compose file</span><span className="text-caption text-fg-4">.yml, .yaml</span>
+          <input type="file" aria-label="Compose file" accept=".yml,.yaml" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) void f.text().then(setYaml); }} />
+        </label>
         <Textarea aria-label="Compose YAML" rows={12} value={yaml} onChange={(e) => setYaml(e.target.value)} placeholder={"services:\n  web:\n    image: nginx:1.27"} />
         <ErrorLine error={a.error} />
       </div>
@@ -326,20 +249,39 @@ export function ComposeFlow({ target, onClose, initial = "" }: { target: Target;
   );
 }
 
+const KIND_ICON: Record<string, ReactNode> = {
+  service: <Box size={14} />, variable: <Braces size={14} />, domain: <Globe size={14} />, volume: <HardDrive size={14} />,
+  database: <Database size={14} />, tcp_proxy: <Cable size={14} />, setting: <Settings2 size={14} />, key: <KeyRound size={14} />,
+};
+
+function ReportList({ title, items, tone }: { title: string; items: Import["report"]["landed"]; tone: "ok" | "warn" }) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2 text-caption font-semibold uppercase tracking-wide text-fg-4">
+        {tone === "ok" ? <CircleCheck size={14} className="text-ok-text" /> : <CircleAlert size={14} className="text-warn-icon" />}{title} ({items.length})
+      </div>
+      <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line">
+        {items.map((i, n) => (
+          <li key={n} className="flex items-start gap-3 px-3 py-2.5 text-sm animate-rise-in" style={{ animationDelay: `${Math.min(n, 12) * 25}ms`, animationFillMode: "both" }}>
+            <span className="mt-0.5 shrink-0 text-fg-3">{KIND_ICON[i.kind] || <Box size={14} />}</span>
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground">{i.name}</span>
+              <span className="ml-2 text-caption text-fg-4">{i.kind.replace("_", " ")}</span>
+              {i.detail && <span className="block text-caption text-fg-3">{i.detail}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function ImportReport({ imp }: { imp: Import }) {
   const { landed, skipped } = imp.report || { landed: [], skipped: [] };
   return (
-    <div className="space-y-4 text-sm">
-      <div>
-        <h3 className="mb-1 font-medium">Staged ({landed.length})</h3>
-        <ul className="space-y-0.5">{landed.map((i, n) => <li key={n}><span className="text-gray-500">{i.kind}</span> {i.name}{i.detail && <span className="text-gray-500">: {i.detail}</span>}</li>)}</ul>
-      </div>
-      {skipped.length > 0 && (
-        <div>
-          <h3 className="mb-1 font-medium">Skipped ({skipped.length})</h3>
-          <ul className="space-y-0.5">{skipped.map((i, n) => <li key={n}><span className="text-gray-500">{i.kind}</span> {i.name}{i.detail && <span className="text-gray-500">: {i.detail}</span>}</li>)}</ul>
-        </div>
-      )}
+    <div className="space-y-5 text-sm">
+      <ReportList title="Staged" items={landed} tone="ok" />
+      {skipped.length > 0 && <ReportList title="Skipped" items={skipped} tone="warn" />}
     </div>
   );
 }
@@ -376,9 +318,7 @@ export function VolumeFlow({ target, services, serviceId, onClose }: { target: T
     <Modal title="Attach a volume" onClose={onClose} width={440}>
       <form className="space-y-4 pb-2" onSubmit={(e) => { e.preventDefault(); void create(); }}>
         <Field label="Service">
-          <select value={sid} onChange={(e) => setSid(e.target.value)} className="h-[38px] w-full rounded-md border border-gray-200 bg-background px-2 text-sm">
-            {free.map((s) => <option key={s.id} value={s.id}>{s.config.name}</option>)}
-          </select>
+          <Select variant="field" value={sid} onChange={(e) => setSid(e.target.value)} options={free.map((s) => ({ value: s.id, label: s.config.name }))} />
         </Field>
         <Field label="Mount path" error={mount.startsWith("/") ? undefined : "The mount path starts with /."}><Input value={mount} onChange={(e) => setMount(e.target.value)} /></Field>
         <ErrorLine error={a.error} />

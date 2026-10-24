@@ -1,126 +1,140 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// Deployment view (docs/SPEC.md 13.5): Details, Build Logs, Deploy Logs,
-// Network (HTTP).
+// The deployment drawer (docs/SPEC.md 13.5): a second layer over the service
+// panel with the service / id breadcrumb, status pill, actions, timestamp,
+// domain line, and the Details, Build Logs, Deploy Logs and Network Logs tabs.
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, FileCode } from "lucide-react";
-import type { DeploymentDetail } from "../../api/types.gen";
+import { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+import { ArrowUpRight, X } from "lucide-react";
+import type { DeploymentDetail, Service } from "../../api/types.gen";
+import { IconButton, ServiceIcon, Skeleton, Tooltip, cx, toast } from "../../kit";
 import { get } from "../service/client";
 import { useEnvEvents } from "../service/events";
-import { Button, Confirm, CopyButton, ErrorLine, LabelBadge, Loading, Menu, Tabs, When, useAction, useLoad } from "../service/ui";
-import LogStream from "../logs/LogStream";
-import { ACTION_LABEL, actionsFor, defaultTab, runAction, shortId, type DepAction } from "./actions";
+import { useLoad } from "../service/ui";
+import { defaultTab, inProgress } from "./actions";
+import { fmtMinute, tzLabel } from "./format";
+import { DepMenu, StatusPill, useDepActions } from "./parts";
+import Details from "./Details";
+import LogView from "./LogView";
+import NetworkLogs from "./NetworkLogs";
 
 export type DeploymentTab = "details" | "build" | "deploy" | "network";
 
-export default function DeploymentView({ did, serviceName, tab, onTab, onBack, onOpen }: {
+const TABS: { id: DeploymentTab; label: string }[] = [
+  { id: "details", label: "Details" }, { id: "build", label: "Build Logs" }, { id: "deploy", label: "Deploy Logs" }, { id: "network", label: "Network Logs" },
+];
+
+export default function DeploymentView({ did, service, serviceName, tab, onTab, onBack, onOpen, onSettings }: {
   did: string;
+  /** The service, for the icon and the domain line. */
+  service?: Service;
   serviceName?: string;
   tab?: DeploymentTab;
   onTab?: (t: DeploymentTab) => void;
+  /** Close the drawer (back to the service panel). */
   onBack: () => void;
   /** Open another deployment (after redeploy or rollback). */
   onOpen?: (did: string) => void;
+  /** Jump to the service settings (diagnosis action). */
+  onSettings?: () => void;
 }) {
+  const { pid } = useParams();
   const dep = useLoad(() => get<DeploymentDetail>(`/deployments/${encodeURIComponent(did)}`), [did]);
   const [localTab, setLocalTab] = useState<DeploymentTab | undefined>(tab);
-  const [confirm, setConfirm] = useState<DepAction | null>(null);
-  const act = useAction();
   useEnvEvents(dep.data?.environmentId, (e) => {
     if (e.type === "deployment" && e.deployment?.id === did) void dep.reload();
   });
   useEffect(() => setLocalTab(tab), [tab]);
   const d = dep.data;
+  const reload = dep.reload;
+  const running = !!d && inProgress(d);
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => void reload(), 3000);
+    return () => clearInterval(t);
+  }, [running, reload]);
+
   const current: DeploymentTab = localTab || (d ? defaultTab(d) : "deploy");
   const setTab = (t: DeploymentTab) => { setLocalTab(t); onTab?.(t); };
+  const actions = useDepActions((a, r) => {
+    if (r && r.id !== did && (a === "redeploy" || a === "rollback") && onOpen) onOpen(r.id);
+    else void dep.reload();
+  });
 
-  const doAction = async (a: DepAction) => {
-    const nd = await runAction(did, a);
-    if (nd && nd.id !== did && onOpen) onOpen(nd.id); else await dep.reload();
-  };
+  const name = service?.config.name ?? serviceName;
+  const src = service?.config.source;
+  const domain = service?.domains.find((x) => x.status === "active") || service?.domains[0];
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b border-gray-200 pb-4">
-        <button aria-label="Back" onClick={onBack} className="text-gray-500 hover:text-foreground"><ArrowLeft size={18} /></button>
-        <h2 className="text-lg font-semibold">{serviceName ? `${serviceName} / ` : ""}{shortId(did)}</h2>
-        <CopyButton text={did} label="Copy id" />
-        {d && <LabelBadge label={d.label} />}
-        {d?.commit && <span className="truncate text-sm text-gray-600" title={d.commit.message}>{d.commit.sha.slice(0, 7)} {d.commit.message.split("\n")[0]}</span>}
-        {d && <span className="text-xs text-gray-500">via {d.trigger} <When ts={d.createdAt} /></span>}
-        <div className="ml-auto">
-          {d && <Menu label="Deployment actions" items={[
-            ...actionsFor(d).map((a) => ({
-              label: ACTION_LABEL[a], danger: a === "remove" || a === "abort",
-              onClick: () => (a === "rollback" || a === "remove" || a === "abort" ? setConfirm(a) : void act.run(() => doAction(a))),
-            })),
-            { label: "Copy id", onClick: () => void navigator.clipboard?.writeText(did) },
-          ]} />}
+      <header className="px-4 pt-6 sm:px-12 sm:pt-10">
+        <div className="flex h-[34px] min-w-0 items-center gap-3">
+          <ServiceIcon icon={service?.config.icon} image={src?.image} source={service?.kind === "cron" ? "cron" : src?.type === "image" ? "image" : src?.type === "github" ? "github" : "cli"} size={24} />
+          <button type="button" onClick={onBack} title="Back to the service"
+            className="max-w-[40%] truncate text-h3 font-semibold text-foreground transition-colors duration-150 hover:text-fg-2">{name || <Skeleton w={80} h={18} />}</button>
+          <span aria-hidden className="text-lg font-bold text-line">/</span>
+          <Tooltip content="Copy deployment id">
+            <button type="button" onClick={() => { void navigator.clipboard?.writeText(did); toast("Copied deployment id", "success"); }}
+              className="font-mono text-lg font-normal text-foreground transition-colors duration-150 hover:text-fg-2">{did.slice(0, 8)}</button>
+          </Tooltip>
+          {d && <StatusPill d={d} />}
+          <span className="flex-1" />
+          {d && <DepMenu d={d} onAction={actions.request} size={34} horizontal label="Deployment actions" />}
+          {d && <time className="hidden whitespace-nowrap text-caption text-fg-3 md:inline" title={new Date(d.createdAt > 1e12 ? d.createdAt : d.createdAt * 1000).toString()}>{fmtMinute(d.createdAt)} {tzLabel(d.createdAt)}</time>}
+          <IconButton label="Close deployment" size={34} onClick={onBack} className="text-foreground"><X size={16} /></IconButton>
         </div>
+        <div className="mt-2 flex h-5 items-center gap-1 text-sm">
+          {domain && (
+            <a href={`https://${domain.domain}`} target="_blank" rel="noreferrer"
+              className="group inline-flex min-w-0 items-center gap-1 text-foreground transition-colors duration-150 hover:text-fg-2">
+              <span className="truncate">{domain.domain}</span><ArrowUpRight size={14} className="shrink-0 text-fg-3 transition-colors group-hover:text-fg-2" />
+            </a>
+          )}
+        </div>
+        <div role="tablist" aria-label="Deployment" className="no-scrollbar -mx-4 mt-8 flex gap-4 overflow-x-auto px-4 sm:-mx-12 sm:px-12"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+            const i = TABS.findIndex((t) => t.id === current);
+            const n = (i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length;
+            setTab(TABS[n].id); tabRefs.current[n]?.focus();
+          }}>
+          {TABS.map((t, i) => (
+            <button key={t.id} ref={(n) => { tabRefs.current[i] = n; }} type="button" role="tab" aria-selected={current === t.id} tabIndex={current === t.id ? 0 : -1}
+              onClick={() => setTab(t.id)}
+              className={cx("relative whitespace-nowrap pb-3 text-sm transition-colors duration-150", current === t.id ? "text-foreground" : "text-fg-3 hover:text-fg-2")}>
+              {t.label}
+              {current === t.id && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" />}
+            </button>
+          ))}
+        </div>
+      </header>
+      <div className="border-t border-line" />
+      <div className="relative min-h-0 flex-1">
+        {!d ? (
+          dep.error ? (
+            <div role="alert" className="m-6 flex items-center gap-3 rounded-md border border-danger-line bg-danger-bg px-4 py-3 text-sm text-danger-text">
+              <span className="flex-1">Could not load this deployment. {dep.error}</span>
+              <button type="button" onClick={() => void dep.reload()} className="underline underline-offset-2">Retry</button>
+            </div>
+          ) : (
+            <div className="space-y-6 px-12 py-8" aria-busy="true">
+              <Skeleton h={44} className="rounded-md" /><Skeleton h={52} className="rounded-lg" /><Skeleton h={80} className="rounded-md" />
+            </div>
+          )
+        ) : current === "details" ? (
+          <div className="scroll-thin absolute inset-0 overflow-y-auto">
+            <Details d={d} onSettings={d.status === "FAILED" || d.status === "CRASHED" ? onSettings : undefined}
+              onRedeploy={d.status === "FAILED" || d.status === "CRASHED" ? () => actions.request(d, "redeploy") : undefined} />
+          </div>
+        ) : current === "network" ? (
+          <NetworkLogs d={d} />
+        ) : (
+          <LogView key={current} kind={current} d={d} pid={pid} />
+        )}
       </div>
-      {d?.diagnosis && <div className="mt-3 text-sm text-red-600">{d.diagnosis}</div>}
-      <ErrorLine>{act.error || dep.error}</ErrorLine>
-      <Tabs className="mt-4" value={current} onChange={(t) => setTab(t as DeploymentTab)} tabs={[
-        { id: "details", label: "Details" }, { id: "build", label: "Build Logs" }, { id: "deploy", label: "Deploy Logs" }, { id: "network", label: "Network" },
-      ]} />
-      <div className="mt-4 min-h-0 flex-1">
-        {!d ? <Loading /> :
-          current === "details" ? <Details d={d} /> :
-          current === "build" ? <LogStream source={{ kind: "build", deployment: did }} /> :
-          current === "deploy" ? <LogStream source={{ kind: "logs", environment: d.environmentId, deployment: did, type: "deploy" }} /> :
-          <div className="flex h-full flex-col">
-            <div className="mb-2 text-sm font-medium">HTTP</div>
-            <div className="min-h-0 flex-1"><LogStream http source={{ kind: "logs", environment: d.environmentId, deployment: did, type: "http" }} /></div>
-          </div>}
-      </div>
-      {confirm && (
-        <Confirm title={`${ACTION_LABEL[confirm]} deployment`} danger={confirm !== "rollback"} confirm={ACTION_LABEL[confirm]}
-          body={confirm === "rollback" ? "Restores the image and the variables this deployment ran with." :
-            confirm === "remove" ? "Stops this deployment. The service shows No deployment until you deploy again." :
-            "Stops this deployment before it finishes."}
-          onClose={() => setConfirm(null)} onConfirm={() => doAction(confirm)} />
-      )}
-    </div>
-  );
-}
-
-function Row({ k, children }: { k: string; children: React.ReactNode }) {
-  return (
-    <div className="flex gap-4 border-b border-gray-200 py-2 text-sm last:border-0">
-      <div className="w-40 shrink-0 text-gray-500">{k}</div>
-      <div className="min-w-0 flex-1 break-all">{children}</div>
-    </div>
-  );
-}
-
-function flat(obj: unknown, prefix = ""): [string, string][] {
-  if (obj === null || obj === undefined) return [];
-  if (typeof obj !== "object" || Array.isArray(obj)) return [[prefix, Array.isArray(obj) ? obj.join(", ") : String(obj)]];
-  return Object.entries(obj as Record<string, unknown>).flatMap(([k, v]) => flat(v, prefix ? `${prefix}.${k}` : k));
-}
-
-function Details({ d }: { d: DeploymentDetail }) {
-  const cfg = flat(d.config).filter(([, v]) => v !== "" && v !== undefined);
-  return (
-    <div className="overflow-y-auto">
-      {d.notices?.map((n) => <div key={n} className="mb-2 rounded-md border border-yellow-300 bg-yellow-100 px-3 py-1.5 text-xs text-yellow-700">{n}</div>)}
-      <Row k="Status">{d.label}{d.reason ? `: ${d.reason}` : ""}</Row>
-      {d.image && <Row k="Image"><span className="font-mono">{d.image}</span> <CopyButton text={d.image} /></Row>}
-      {d.digest && <Row k="Digest"><span className="font-mono">{d.digest}</span> <CopyButton text={d.digest} /></Row>}
-      {d.commit && <Row k="Commit">{d.commit.url ? <a className="underline" href={d.commit.url} target="_blank" rel="noreferrer">{d.commit.sha.slice(0, 7)}</a> : d.commit.sha.slice(0, 7)} {d.commit.message} ({d.commit.author})</Row>}
-      {d.rollbackOf && <Row k="Rollback of"><span className="font-mono">{shortId(d.rollbackOf)}</span></Row>}
-      {d.message && <Row k="Message">{d.message}</Row>}
-      <Row k="Replicas">{d.replicas.length ? d.replicas.map((r) => `${r.hostName}: ${r.state}${r.restarts ? ` (${r.restarts} restarts)` : ""}`).join(", ") : "None"}</Row>
-      <Row k="Variables">{d.variableNames.length ? <span className="font-mono">{d.variableNames.join(", ")}</span> : "None"}</Row>
-      <h4 className="mb-1 mt-6 text-sm font-medium">Config{d.configFile ? ` (config file ${d.configFile.path})` : ""}</h4>
-      {cfg.map(([k, v]) => (
-        <Row key={k} k={k}>
-          <span className="font-mono">{v}</span>
-          {d.source?.[k] && <span title={`Set by ${d.source[k]}`} className="ml-2 inline-flex items-center gap-1 text-xs text-gray-500"><FileCode size={12} />{d.source[k]}</span>}
-        </Row>
-      ))}
-      <div className="mt-4"><Button onClick={() => void navigator.clipboard?.writeText(JSON.stringify(d.config, null, 2))}>Copy config</Button></div>
+      {actions.dialog}
     </div>
   );
 }

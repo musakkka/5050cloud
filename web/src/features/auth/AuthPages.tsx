@@ -1,27 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// Owner setup, login with the TOTP step, password reset, email verification,
-// invite accept and CLI approval (SPEC 13.1, 9.15).
+// Logged-out and gated screens: owner setup, login (password, then a 2FA step), the signed-out
+// gate over the app shell, password reset, email verification, invites, CLI approval and the 404.
+// Every screen uses the same header, footer, 380px card, type scale and 42px controls.
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ArrowRight, CheckCircle2, Compass } from "lucide-react";
 import { api, type InvitePreview, type Me } from "../../api/client";
 import { Center, useSession } from "../../app/session";
-import { Button, ErrorLine, Field, Input, Logo, Spinner } from "../../kit";
+import { ShellSkeleton } from "../../app/Shell";
+import { ErrorLine, Field, Input, Spinner } from "../../kit";
+import { AuthButton, AuthCard, AuthLayout, PasswordMeter, SuccessLine } from "./AuthChrome";
 
-function Card({ title, sub, children }: { title: string; sub?: ReactNode; children: ReactNode }) {
-  return (
-    <Center>
-      <main className="w-full max-w-[400px] space-y-6">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Logo size={40} />
-          <h1 className="text-xl font-semibold">{title}</h1>
-          {sub && <p className="text-sm text-gray-600">{sub}</p>}
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-secondaryBg p-6">{children}</div>
-      </main>
-    </Center>
-  );
-}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Wraps a form submit: busy flag, error line, preventDefault. */
 function useSubmit(fn: () => Promise<void>) {
@@ -32,17 +23,45 @@ function useSubmit(fn: () => Promise<void>) {
     setBusy(true); setError(undefined);
     try { await fn(); } catch (err) { setError(err); } finally { setBusy(false); }
   };
-  return { busy, error, onSubmit };
+  return { busy, error, onSubmit, clear: () => setError(undefined) };
 }
 
 const safeNext = (n: string | null) => (n && n.startsWith("/") && !n.startsWith("//") ? n : "/");
 
-function useSignedIn() {
+/** Stores the signed-in user. Outside the gate it also follows ?next=; the gate stays on its URL. */
+function useSignedIn(gate = false) {
   const { setMe } = useSession();
   const nav = useNavigate();
   const [params] = useSearchParams();
-  return (me: Me) => { setMe(me); nav(safeNext(params.get("next")), { replace: true }); };
+  return (me: Me) => {
+    setMe(me);
+    if (!gate) nav(safeNext(params.get("next")), { replace: true });
+  };
 }
+
+/** A logged-out page: the shared frame with one card. */
+function AuthPage({ title, subtitle, children }: { title: ReactNode; subtitle?: ReactNode; children: ReactNode }) {
+  return (
+    <AuthLayout>
+      <AuthCard title={title} subtitle={subtitle}>{children}</AuthCard>
+    </AuthLayout>
+  );
+}
+
+/** Quiet text link used under forms ("Back to log in"). */
+function BackLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="inline-flex items-center justify-center gap-1.5 rounded text-xs leading-[18px] text-fg-2 transition-colors duration-200 hover:text-foreground">
+      <ArrowLeft size={12} aria-hidden />
+      {children}
+    </Link>
+  );
+}
+
+const LINK_BUTTON = "inline-flex items-center gap-1.5 rounded text-xs leading-[18px] text-fg-2 transition-colors duration-200 hover:text-foreground";
+
+// ---------------------------------------------------------------------------------------------
+// Owner setup
 
 export function SetupPage() {
   const [params] = useSearchParams();
@@ -57,71 +76,165 @@ export function SetupPage() {
   if (status === null) return <Center><Spinner /></Center>;
   if (!status) return <Navigate to="/login" replace />;
   return (
-    <Card title="Create the owner account" sub="This account owns the install. You can invite others later.">
+    <AuthPage title="Create the owner account" subtitle="This account owns the install. You can invite others later.">
       <form onSubmit={s.onSubmit} className="space-y-4">
-        {!params.get("token") && <Field label="Setup token" hint="Printed by the installer, also in the setup link."><Input required value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" /></Field>}
-        <Field label="Name"><Input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
-        <Field label="Email"><Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></Field>
-        <Field label="Password" hint="At least 10 characters."><Input required minLength={10} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" /></Field>
+        {!params.get("token") && (
+          <Field label="Setup token" hint="Printed by the installer, also in the setup link.">
+            <Input required value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} mono />
+          </Field>
+        )}
+        <Field label="Name">
+          <Input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+        </Field>
+        <Field label="Email">
+          <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" spellCheck={false} />
+        </Field>
+        <div>
+          <Field label="Password">
+            <Input required minLength={10} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+          </Field>
+          <PasswordMeter value={password} />
+        </div>
         <ErrorLine error={s.error} />
-        <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Create account</Button>
+        <AuthButton busy={s.busy}>Create account</AuthButton>
       </form>
-    </Card>
+    </AuthPage>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Login
+
+type LoginStep = "email" | "password" | "totp";
+
+/**
+ * The login card. Step 1 asks for the email (Continue stays disabled until it looks valid),
+ * step 2 for the password, and a 2FA step follows when the account has TOTP enabled.
+ */
+function LoginFlow({ gate = false }: { gate?: boolean }) {
+  const done = useSignedIn(gate);
+  const [step, setStep] = useState<LoginStep>("email");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [ticket, setTicket] = useState("");
+  const [code, setCode] = useState("");
+  const emailOk = EMAIL_RE.test(email.trim());
+  const s = useSubmit(async () => {
+    if (step === "totp") { done(await api.loginTotp(ticket, code.replace(/\s/g, ""))); return; }
+    const r = await api.login({ email: email.trim(), password });
+    if (r.needTotp && r.ticket) { setTicket(r.ticket); setStep("totp"); return; }
+    if (r.user && r.install) done({ user: r.user, install: r.install });
+  });
+
+  if (step === "totp") {
+    return (
+      <AuthCard titleId="login-title" title="Two-factor code" subtitle="Enter the 6-digit code from your authenticator app, or a recovery code.">
+        <form onSubmit={s.onSubmit} className="space-y-4">
+          <Input
+            required autoFocus inputMode="numeric" autoComplete="one-time-code" aria-label="Verification code"
+            placeholder="000000" value={code} onChange={(e) => setCode(e.target.value)}
+            className="text-center font-mono text-lg tracking-[0.3em]"
+          />
+          <ErrorLine error={s.error} />
+          <AuthButton busy={s.busy} disabled={!code.trim()}>Verify</AuthButton>
+          <div className="flex justify-center">
+            <button type="button" className={LINK_BUTTON} onClick={() => { setStep("password"); setCode(""); s.clear(); }}>
+              <ArrowLeft size={12} aria-hidden />
+              Back
+            </button>
+          </div>
+        </form>
+      </AuthCard>
+    );
+  }
+
+  if (step === "password") {
+    return (
+      <AuthCard titleId="login-title" title="Enter your password" subtitle={<>Logging in as <span className="text-foreground">{email.trim()}</span></>}>
+        <form onSubmit={s.onSubmit} className="space-y-3">
+          <Input
+            required autoFocus type="password" autoComplete="current-password" aria-label="Password"
+            placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
+          />
+          <ErrorLine error={s.error} />
+          <AuthButton busy={s.busy} disabled={!password}>Log in</AuthButton>
+          <div className="flex items-center justify-between pt-1">
+            <button type="button" className={LINK_BUTTON} onClick={() => { setStep("email"); setPassword(""); s.clear(); }}>
+              <ArrowLeft size={12} aria-hidden />
+              Use another email
+            </button>
+            <Link to="/forgot" className="rounded text-xs leading-[18px] text-fg-2 transition-colors duration-200 hover:text-foreground">Forgot password?</Link>
+          </div>
+        </form>
+      </AuthCard>
+    );
+  }
+
+  return (
+    <AuthCard titleId="login-title" title="Welcome to 5050cloud" subtitle="Deploy and run your services on hardware you control." streaks>
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (emailOk) setStep("password"); }}
+        className="space-y-3"
+      >
+        <Input
+          type="email" autoFocus autoComplete="email" aria-label="Email" placeholder="you@example.com"
+          value={email} onChange={(e) => setEmail(e.target.value)} spellCheck={false}
+        />
+        <AuthButton type="submit" disabled={!emailOk} iconRight={<ArrowRight size={16} aria-hidden />}>Continue</AuthButton>
+      </form>
+      <p className="mt-6 text-center text-xs leading-[18px] text-fg-3">New here? Ask the install owner for an invite link.</p>
+    </AuthCard>
   );
 }
 
 export function LoginPage() {
   const { me } = useSession();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [ticket, setTicket] = useState<string>();
-  const [code, setCode] = useState("");
-  const done = useSignedIn();
   const [params] = useSearchParams();
-  const s = useSubmit(async () => {
-    if (ticket) { done(await api.loginTotp(ticket, code.replace(/\s/g, ""))); return; }
-    const r = await api.login({ email, password });
-    if (r.needTotp && r.ticket) { setTicket(r.ticket); return; }
-    if (r.user && r.install) done({ user: r.user, install: r.install });
-  });
   if (me) return <Navigate to={safeNext(params.get("next"))} replace />;
-  if (ticket) return (
-    <Card title="Two-factor code" sub="Enter the 6-digit code from your authenticator app, or a recovery code.">
-      <form onSubmit={s.onSubmit} className="space-y-4">
-        <Field label="Code"><Input required autoFocus inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} /></Field>
-        <ErrorLine error={s.error} />
-        <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Verify</Button>
-        <button type="button" className="w-full text-center text-sm text-gray-500 hover:text-foreground" onClick={() => { setTicket(undefined); setCode(""); }}>Back</button>
-      </form>
-    </Card>
-  );
+  return <AuthLayout><LoginFlow /></AuthLayout>;
+}
+
+/**
+ * Shown in place of a gated page while signed out. The app shell stays behind a blurred, dimmed
+ * backdrop and the URL does not change. Escape and backdrop clicks do nothing; signing in
+ * re-renders the gated page.
+ */
+export function AuthGate() {
   return (
-    <Card title="Log in">
-      <form onSubmit={s.onSubmit} className="space-y-4">
-        <Field label="Email"><Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus /></Field>
-        <Field label="Password"><Input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>
-        <ErrorLine error={s.error} />
-        <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Log in</Button>
-        <Link to="/forgot" className="block text-center text-sm text-gray-500 hover:text-foreground">Forgot password?</Link>
-      </form>
-    </Card>
+    <>
+      <ShellSkeleton />
+      <div role="dialog" aria-modal="true" aria-labelledby="login-title" className="fixed inset-0 z-50 flex items-center justify-center bg-overlay px-5 backdrop-blur-[2px] animate-overlay-in">
+        <LoginFlow gate />
+      </div>
+    </>
   );
 }
+
+// ---------------------------------------------------------------------------------------------
+// Password reset
 
 export function ForgotPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
-  const s = useSubmit(async () => { await api.forgot(email); setSent(true); });
+  const s = useSubmit(async () => { await api.forgot(email.trim()); setSent(true); });
   return (
-    <Card title="Reset your password">
-      {sent ? <p className="text-sm text-gray-700">If an account uses {email}, a reset link is on its way. <Link className="underline" to="/login">Back to log in</Link></p> : (
+    <AuthPage title="Reset your password" subtitle="We will email a link that lets you choose a new password.">
+      {sent ? (
+        <div className="space-y-4">
+          <SuccessLine>If an account uses {email.trim()}, a reset link is on its way. Check your inbox and spam folder.</SuccessLine>
+          <BackLink to="/login">Back to log in</BackLink>
+        </div>
+      ) : (
         <form onSubmit={s.onSubmit} className="space-y-4">
-          <Field label="Email"><Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus /></Field>
+          <Field label="Email">
+            <Input required type="email" autoFocus autoComplete="email" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)} />
+          </Field>
           <ErrorLine error={s.error} />
-          <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Send reset link</Button>
+          <AuthButton busy={s.busy}>Send reset link</AuthButton>
+          <BackLink to="/login">Back to log in</BackLink>
         </form>
       )}
-    </Card>
+    </AuthPage>
   );
 }
 
@@ -137,34 +250,74 @@ export function ResetPage() {
     if (r.needTotp && r.ticket) { setTicket(r.ticket); return; }
     if (r.user && r.install) done({ user: r.user, install: r.install });
   });
-  if (ticket) return (
-    <Card title="Two-factor code" sub="Your password is changed. Enter the 6-digit code from your authenticator app, or a recovery code, to sign in.">
-      <form onSubmit={s.onSubmit} className="space-y-4">
-        <Field label="Code"><Input required autoFocus inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} /></Field>
-        <ErrorLine error={s.error} />
-        <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Verify</Button>
-      </form>
-    </Card>
-  );
+  if (ticket) {
+    return (
+      <AuthPage title="Two-factor code" subtitle="Your password is changed. Enter the 6-digit code from your authenticator app, or a recovery code, to sign in.">
+        <form onSubmit={s.onSubmit} className="space-y-4">
+          <Input
+            required autoFocus inputMode="numeric" autoComplete="one-time-code" aria-label="Verification code"
+            placeholder="000000" value={code} onChange={(e) => setCode(e.target.value)}
+            className="text-center font-mono text-lg tracking-[0.3em]"
+          />
+          <ErrorLine error={s.error} />
+          <AuthButton busy={s.busy} disabled={!code.trim()}>Verify</AuthButton>
+        </form>
+      </AuthPage>
+    );
+  }
   return (
-    <Card title="Choose a new password">
+    <AuthPage title="Choose a new password" subtitle="Pick something you do not use anywhere else.">
       <form onSubmit={s.onSubmit} className="space-y-4">
-        <Field label="New password" hint="At least 10 characters."><Input required minLength={10} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" autoFocus /></Field>
+        <div>
+          <Field label="New password">
+            <Input required minLength={10} type="password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+          </Field>
+          <PasswordMeter value={password} />
+        </div>
         <ErrorLine error={s.error} />
-        <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Set password</Button>
+        <AuthButton busy={s.busy}>Set password</AuthButton>
+        <BackLink to="/login">Back to log in</BackLink>
       </form>
-    </Card>
+    </AuthPage>
   );
 }
 
+// ---------------------------------------------------------------------------------------------
+// Verification, invites, CLI approval
+
+type VerifyState = { status: "busy" } | { status: "ok" } | { status: "error"; error: unknown };
+
 export function VerifyPage() {
   const { token = "" } = useParams();
-  const [state, setState] = useState<"busy" | "ok" | Error>("busy");
-  useEffect(() => { api.verifyEmail(token).then(() => setState("ok"), (e) => setState(e)); }, [token]);
+  const nav = useNavigate();
+  const [state, setState] = useState<VerifyState>({ status: "busy" });
+  useEffect(() => {
+    let live = true;
+    api.verifyEmail(token).then(
+      () => { if (live) setState({ status: "ok" }); },
+      (error) => { if (live) setState({ status: "error", error }); },
+    );
+    return () => { live = false; };
+  }, [token]);
   return (
-    <Card title="Email verification">
-      {state === "busy" ? <Spinner /> : state === "ok" ? <p className="text-sm">Your email is verified. <Link className="underline" to="/">Open the dashboard</Link></p> : <ErrorLine error={state} />}
-    </Card>
+    <AuthPage title="Verify your email" subtitle="Confirming the address this install uses to reach you.">
+      {state.status === "busy" && (
+        <div className="flex justify-center py-6"><Spinner size={22} /></div>
+      )}
+      {state.status === "ok" && (
+        <div className="space-y-4">
+          <div className="flex justify-center"><CheckCircle2 size={32} className="text-ok-soft" aria-hidden /></div>
+          <SuccessLine>Your email is verified.</SuccessLine>
+          <AuthButton type="button" onClick={() => nav("/")}>Open the dashboard</AuthButton>
+        </div>
+      )}
+      {state.status === "error" && (
+        <div className="space-y-4">
+          <ErrorLine error={state.error} />
+          <BackLink to="/login">Back to log in</BackLink>
+        </div>
+      )}
+    </AuthPage>
   );
 }
 
@@ -178,39 +331,92 @@ export function InvitePage() {
   const done = useSignedIn();
   useEffect(() => { api.invitePreview(token).then((x) => { setP(x); setEmail(x.email || ""); }, setErr); }, [token]);
   const s = useSubmit(async () => done(await api.acceptInvite({ token, email, name, password })));
-  if (err) return <Card title="Invite"><ErrorLine error={err} /></Card>;
+  if (err) return <AuthPage title="Invite"><ErrorLine error={err} /></AuthPage>;
   if (!p) return <Center><Spinner /></Center>;
-  if (!p.valid) return <Card title="Invite"><p className="text-sm">{p.reason || "This invite is no longer valid."}</p></Card>;
+  if (!p.valid) {
+    return (
+      <AuthPage title="This invite cannot be used" subtitle={p.reason || "This invite is no longer valid."}>
+        <BackLink to="/login">Back to log in</BackLink>
+      </AuthPage>
+    );
+  }
   return (
-    <Card title={`Join ${p.installName}`} sub={`You are invited as ${p.role}${p.projectName ? ` on ${p.projectName}` : ""}.`}>
+    <AuthPage
+      title={`Join ${p.installName}`}
+      subtitle={`You are invited as ${p.role}${p.projectName ? ` on ${p.projectName}` : ""}.`}
+    >
       <form onSubmit={s.onSubmit} className="space-y-4">
-        <Field label="Name"><Input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
-        <Field label="Email"><Input required type="email" value={email} readOnly={!!p.email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></Field>
-        <Field label="Password" hint="At least 10 characters."><Input required minLength={10} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" /></Field>
+        <Field label="Name">
+          <Input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+        </Field>
+        <Field label="Email">
+          <Input required type="email" value={email} readOnly={!!p.email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" spellCheck={false} />
+        </Field>
+        <div>
+          <Field label="Password">
+            <Input required minLength={10} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+          </Field>
+          <PasswordMeter value={password} />
+        </div>
         <ErrorLine error={s.error} />
-        <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Accept invite</Button>
+        <AuthButton busy={s.busy}>Accept invite</AuthButton>
       </form>
-    </Card>
+    </AuthPage>
   );
 }
 
-/** /cli-auth?code=WXYZ-1234, signed in: approve the terminal's login. */
+/** /cli-auth?code=WXYZ-1234, signed in: approve the terminal's login. Sits on the bare background, no chrome. */
 export function CliAuthPage() {
   const [params] = useSearchParams();
   const [code, setCode] = useState(params.get("code") || "");
+  const fromTerminal = !!params.get("code");
   const [ok, setOk] = useState(false);
   const s = useSubmit(async () => { await api.cliApprove(code.trim().toUpperCase()); setOk(true); });
   return (
-    <Card title="Approve CLI login">
-      {ok ? <p className="text-sm">Approved. You can return to your terminal.</p> : (
-        <form onSubmit={s.onSubmit} className="space-y-4">
-          {params.get("code") ? <p className="text-sm">Approve login for code <span className="font-mono font-semibold">{code}</span>?</p>
-            : <Field label="Code from your terminal"><Input required value={code} onChange={(e) => setCode(e.target.value)} placeholder="WXYZ-1234" /></Field>}
-          <p className="text-xs text-gray-500">Only approve a code you see in your own terminal right now.</p>
-          <ErrorLine error={s.error} />
-          <Button type="submit" variant="primary" className="w-full" busy={s.busy}>Approve</Button>
-        </form>
-      )}
-    </Card>
+    <main className="flex min-h-screen items-center justify-center bg-background px-5 text-foreground animate-fade-in">
+      <AuthCard titleId="cli-title" title="Approve CLI login" subtitle="Only approve a code you see in your own terminal right now.">
+        {ok ? (
+          <SuccessLine>Approved. You can return to your terminal.</SuccessLine>
+        ) : (
+          <form onSubmit={s.onSubmit} className="space-y-4">
+            {fromTerminal ? (
+              <div className="rounded-md border border-line bg-surface px-3 py-3 text-left">
+                <p className="text-xs leading-[18px] text-fg-3">Code from your terminal</p>
+                <p className="font-mono text-lg tracking-[0.2em] text-foreground">{code}</p>
+              </div>
+            ) : (
+              <Field label="Code from your terminal">
+                <Input required value={code} onChange={(e) => setCode(e.target.value)} placeholder="WXYZ-1234" mono spellCheck={false} />
+              </Field>
+            )}
+            <ErrorLine error={s.error} />
+            <AuthButton busy={s.busy} disabled={!code.trim()}>Approve login</AuthButton>
+          </form>
+        )}
+      </AuthCard>
+    </main>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Unknown routes
+
+/** The 404 page: a lucide compass, the code, one line of copy and a Go home button. */
+export function AuthNotFound() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-5 text-center text-foreground animate-fade-in">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full border border-line text-fg-2">
+        <Compass size={28} strokeWidth={1.5} aria-hidden />
+      </div>
+      <p className="mt-6 text-2xl font-semibold leading-8">404</p>
+      <p className="mt-2 text-base leading-6 text-fg-3">That page does not exist, or it moved.</p>
+      <Link
+        to="/"
+        className="mt-8 inline-flex h-[42px] items-center justify-center rounded-md border border-accent bg-accent px-6 text-sm font-medium text-accent-fg transition-colors duration-200 ease-out hover:border-accent-hover hover:bg-accent-hover active:scale-[.98] active:duration-[50ms]"
+        style={{ boxShadow: "0 4px 24px color-mix(in srgb, var(--pink-500) 27%, transparent)" }}
+      >
+        Go home
+      </Link>
+    </main>
   );
 }

@@ -110,6 +110,7 @@ export const api = {
 
   // 11.4 services
   createService: (eid: string, b: T.CreateServiceRequest) => request<T.CreateServiceResponse>(`/environments/${enc(eid)}/services`, { body: b }),
+  updateConfig: (eid: string, sid: string, b: T.UpdateServiceConfigRequest) => request<T.Service>(`${svc(eid, sid)}/config`, { method: "PATCH", body: b }),
   updateInfo: (eid: string, sid: string, b: T.UpdateServiceInfoRequest) => request<T.Service>(`${svc(eid, sid)}/info`, { method: "PATCH", body: b }),
   duplicate: (eid: string, sid: string) => request<T.Service>(`${svc(eid, sid)}/duplicate`, { method: "POST" }),
   deleteService: (eid: string, sid: string, confirm: string) => request<void>(svc(eid, sid), { method: "DELETE", body: { confirm } }),

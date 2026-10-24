@@ -22,7 +22,7 @@ describe("DomainRow", () => {
     expect(h).toContain("Waiting for DNS");
     expect(h).toContain("203.0.113.7");
     expect(h).toContain("203.0.113.8");
-    expect(h).toContain("title=\"shop.example.com\">shop ");
+    expect(h).toContain("title=\"shop.example.com\"><span class=\"truncate\">shop</span>");
     // The URL, then host and value for each of the three records.
     expect(copies(h)).toBe(1 + 3 * 2);
     expect(h).not.toContain("Retry certificate");
@@ -52,7 +52,7 @@ describe("DomainRow", () => {
   it("shows an active domain with its expiry and no retry", () => {
     const h = html({ ...base, dnsOk: true, certOk: true, status: "active", message: "", certExpiresAt: 4102444800000 });
     expect(h).toContain("Active");
-    expect(h).toContain("Certificate valid until");
+    expect(h).toContain("Certificate valid");
     expect(h).not.toContain("Retry certificate");
   });
 

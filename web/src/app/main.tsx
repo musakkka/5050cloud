@@ -3,16 +3,22 @@
 // Console entry: fonts, styles, the optional MSW mocks, then the app.
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "@fontsource/inter/400.css";
-import "@fontsource/inter/500.css";
-import "@fontsource/inter/600.css";
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource/ibm-plex-serif/400.css";
+import "@fontsource/ibm-plex-serif/500.css";
+import "@fontsource/ibm-plex-serif/600.css";
+import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/500.css";
+import "@fontsource/jetbrains-mono/600.css";
 import "@xyflow/react/dist/style.css";
 import "../index.css";
 import { applyTheme } from "../kit/theme";
+import { readPref } from "../kit";
 import App from "./App";
 
 export async function boot() {
   applyTheme();
+  document.documentElement.toggleAttribute("data-reduce-motion", !!readPref<{ reduceMotion?: boolean }>("5050.flags", {}).reduceMotion);
   // `npm run dev:mocks` answers every API call from the generated MSW fixtures.
   if (import.meta.env.VITE_MOCKS === "1") {
     const { startMocks } = await import("../api/mocks/browser");

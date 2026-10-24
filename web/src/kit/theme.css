@@ -1,7 +1,97 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 
-/* Light theme: the same token names as the dark theme in src/index.css, so every
-   Tailwind class follows. html.light is set by kit/theme.ts. */
+/* Design tokens for the console. The dark theme is the default (:root); html.light swaps every
+   value under the same names, so each Tailwind class follows the theme. Scales (gray, blue, red,
+   green, yellow, pink) feed the numbered Tailwind colours; the semantic tokens below them feed
+   surface, line, fg, tint, accent, danger, warn and ok. See reference notes for usage. */
+:root {
+  --foreground: hsl(0, 0%, 100%);
+  --background: hsl(250, 24%, 9%);
+  --secondaryBg: hsl(250, 21%, 11%);
+
+  --gray-50: hsl(248, 21%, 13%); --gray-100: hsl(246, 18%, 15%); --gray-200: hsl(246, 11%, 22%);
+  --gray-300: hsl(246, 8%, 35%); --gray-400: hsl(246, 7%, 45%); --gray-500: hsl(246, 6%, 55%);
+  --gray-600: hsl(246, 6%, 65%); --gray-700: hsl(246, 6%, 78%); --gray-800: hsl(246, 6%, 87%);
+  --gray-900: hsl(246, 6%, 95%); --gray-950: hsl(246, 4%, 97%);
+  --blue-50: hsl(220, 55%, 10%); --blue-100: hsl(220, 55%, 13%); --blue-200: hsl(220, 62%, 25%);
+  --blue-300: hsl(220, 68%, 35%); --blue-400: hsl(220, 72%, 45%); --blue-500: hsl(220, 80%, 55%);
+  --blue-600: hsl(220, 80%, 65%); --blue-700: hsl(220, 80%, 75%); --blue-800: hsl(220, 80%, 85%);
+  --blue-900: hsl(220, 80%, 95%); --blue-950: hsl(220, 55%, 97%);
+  --red-50: hsl(1, 35%, 10%); --red-100: hsl(1, 45%, 12%); --red-200: hsl(1, 55%, 20%);
+  --red-300: hsl(1, 62%, 28%); --red-400: hsl(1, 62%, 35%); --red-500: hsl(1, 62%, 44%);
+  --red-600: hsl(1, 62%, 60%); --red-700: hsl(1, 62%, 76%); --red-800: hsl(1, 64%, 85%);
+  --red-900: hsl(1, 68%, 95%); --red-950: hsl(1, 55%, 98%);
+  /* The 5050cloud accent: pink (hue 328). */
+  --pink-50: hsl(328, 38%, 12%); --pink-100: hsl(328, 40%, 16%); --pink-200: hsl(328, 45%, 24%);
+  --pink-300: hsl(328, 50%, 32%); --pink-400: hsl(328, 55%, 43%); --pink-500: hsl(328, 66%, 52%);
+  --pink-600: hsl(328, 76%, 66%); --pink-700: hsl(328, 76%, 76%); --pink-800: hsl(328, 76%, 85%);
+  --pink-900: hsl(328, 76%, 95%); --pink-950: hsl(328, 76%, 98%);
+  --green-50: hsl(152, 15%, 10%); --green-100: hsl(152, 26%, 11%); --green-200: hsl(152, 32%, 16%);
+  --green-300: hsl(152, 38%, 24%); --green-400: hsl(152, 38%, 34%); --green-500: hsl(152, 38%, 42%);
+  --green-600: hsl(152, 38%, 60%); --green-700: hsl(152, 38%, 70%); --green-800: hsl(152, 38%, 80%);
+  --green-900: hsl(152, 38%, 91%); --green-950: hsl(152, 40%, 97%);
+  --yellow-50: hsl(44, 40%, 8%); --yellow-100: hsl(44, 40%, 10%); --yellow-200: hsl(44, 50%, 16%);
+  --yellow-300: hsl(44, 62%, 25%); --yellow-400: hsl(44, 70%, 40%); --yellow-500: hsl(44, 74%, 52%);
+  --yellow-600: hsl(44, 78%, 62%); --yellow-700: hsl(44, 78%, 72%); --yellow-800: hsl(44, 78%, 80%);
+  --yellow-900: hsl(44, 78%, 90%); --yellow-950: hsl(44, 75%, 97%);
+
+  /* Surfaces */
+  --surface: #1c1a28;            /* cards, list rows */
+  --surface-hover: #211f2d;      /* card hover, inputs, kbd, icon tiles */
+  --surface-raised: #181622;     /* modals, palette, active segment, well hover */
+  --surface-input: #211f2d;
+  /* Lines */
+  --line: #33323e;               /* hairlines, inputs, tile borders */
+  --line-popover: rgba(255, 255, 255, .10);
+  --line-panel: rgba(255, 255, 255, .12);
+  --line-faint: rgba(255, 255, 255, .05);
+  /* Text */
+  --fg-2: #a1a0ab;               /* secondary */
+  --fg-3: #878593;               /* tertiary, captions */
+  --fg-4: #6c6b7b;               /* muted, idle icons, external links */
+  --fg-5: #545260;               /* breadcrumb chevrons */
+  --fg-menu: #f7f7f8;
+  /* Translucent tints over any surface */
+  --tint-active: rgba(255, 255, 255, .06);
+  --tint-hover: rgba(255, 255, 255, .03);
+  --tint-pill: rgba(255, 255, 255, .10);
+  --tint-header: rgba(255, 255, 255, .02);
+  --skeleton: rgba(255, 255, 255, .08);
+  --tooltip: #33323e;
+  --tooltip-fg: #ffffff;
+  --overlay: rgba(0, 0, 0, .8);
+  --dot-grid: rgba(255, 255, 255, .10);
+  /* Accent (ours, pink) */
+  --accent: var(--pink-500);
+  --accent-hover: var(--pink-600);
+  --accent-text: var(--pink-600);
+  --accent-muted: var(--pink-400);
+  --accent-fg: #ffffff;
+  /* Status */
+  --ok: #42946e;
+  --ok-text: #72c09c;
+  --ok-soft: #95d0b4;
+  --danger: #b62d2b;
+  --danger-bg: #221111;
+  --danger-bg-hover: #2c1111;
+  --danger-line: #4f1817;
+  --danger-text: #d85c5a;
+  --danger-soft: #e89d9c;
+  --warn: #eac153;
+  --warn-bg: #1d180c;
+  --warn-line: #241e0f;
+  --warn-icon: #dfaf2a;
+  --info: var(--blue-600);
+  --info-bg: var(--blue-50);
+  --info-line: var(--blue-200);
+
+  /* Motion */
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  --ease-out: cubic-bezier(0, 0, .2, 1);
+
+  color-scheme: dark;
+}
+
 html.light {
   --foreground: hsl(250, 20%, 12%);
   --background: hsl(240, 14%, 97%);
@@ -18,10 +108,10 @@ html.light {
   --red-300: hsl(1, 70%, 76%); --red-400: hsl(1, 66%, 64%); --red-500: hsl(1, 62%, 52%);
   --red-600: hsl(1, 62%, 42%); --red-700: hsl(1, 62%, 34%); --red-800: hsl(1, 62%, 26%);
   --red-900: hsl(1, 62%, 18%); --red-950: hsl(1, 62%, 10%);
-  --pink-50: hsl(270, 80%, 97%); --pink-100: hsl(270, 75%, 94%); --pink-200: hsl(270, 70%, 87%);
-  --pink-300: hsl(270, 65%, 77%); --pink-400: hsl(270, 60%, 64%); --pink-500: hsl(270, 58%, 52%);
-  --pink-600: hsl(270, 58%, 44%); --pink-700: hsl(270, 58%, 36%); --pink-800: hsl(270, 58%, 28%);
-  --pink-900: hsl(270, 58%, 20%); --pink-950: hsl(270, 58%, 12%);
+  --pink-50: hsl(328, 80%, 97%); --pink-100: hsl(328, 75%, 94%); --pink-200: hsl(328, 70%, 87%);
+  --pink-300: hsl(328, 65%, 77%); --pink-400: hsl(328, 60%, 64%); --pink-500: hsl(328, 64%, 50%);
+  --pink-600: hsl(328, 64%, 42%); --pink-700: hsl(328, 64%, 34%); --pink-800: hsl(328, 64%, 26%);
+  --pink-900: hsl(328, 64%, 18%); --pink-950: hsl(328, 64%, 10%);
   --green-50: hsl(152, 50%, 96%); --green-100: hsl(152, 45%, 91%); --green-200: hsl(152, 40%, 82%);
   --green-300: hsl(152, 38%, 68%); --green-400: hsl(152, 38%, 52%); --green-500: hsl(152, 45%, 40%);
   --green-600: hsl(152, 50%, 30%); --green-700: hsl(152, 50%, 24%); --green-800: hsl(152, 50%, 18%);
@@ -30,13 +120,57 @@ html.light {
   --yellow-300: hsl(44, 80%, 66%); --yellow-400: hsl(44, 78%, 52%); --yellow-500: hsl(40, 80%, 44%);
   --yellow-600: hsl(36, 80%, 34%); --yellow-700: hsl(36, 80%, 28%); --yellow-800: hsl(36, 80%, 22%);
   --yellow-900: hsl(36, 80%, 16%); --yellow-950: hsl(36, 80%, 10%);
+
+  --surface: #ffffff;
+  --surface-hover: hsl(240, 14%, 95%);
+  --surface-raised: #ffffff;
+  --surface-input: #ffffff;
+  --line: hsl(240, 10%, 88%);
+  --line-popover: rgba(0, 0, 0, .10);
+  --line-panel: rgba(0, 0, 0, .10);
+  --line-faint: rgba(0, 0, 0, .05);
+  --fg-2: hsl(240, 6%, 36%);
+  --fg-3: hsl(240, 5%, 46%);
+  --fg-4: hsl(240, 5%, 56%);
+  --fg-5: hsl(240, 6%, 70%);
+  --fg-menu: hsl(250, 20%, 12%);
+  --tint-active: rgba(0, 0, 0, .06);
+  --tint-hover: rgba(0, 0, 0, .03);
+  --tint-pill: rgba(0, 0, 0, .08);
+  --tint-header: rgba(0, 0, 0, .02);
+  --skeleton: rgba(0, 0, 0, .07);
+  --tooltip: hsl(250, 20%, 12%);
+  --tooltip-fg: #ffffff;
+  --overlay: rgba(10, 8, 20, .45);
+  --dot-grid: rgba(0, 0, 0, .12);
+  --accent-fg: #ffffff;
+  --ok: hsl(152, 45%, 36%);
+  --ok-text: hsl(152, 50%, 30%);
+  --ok-soft: hsl(152, 50%, 30%);
+  --danger: hsl(1, 62%, 46%);
+  --danger-bg: hsl(1, 80%, 97%);
+  --danger-bg-hover: hsl(1, 80%, 94%);
+  --danger-line: hsl(1, 75%, 86%);
+  --danger-text: hsl(1, 62%, 42%);
+  --danger-soft: hsl(1, 62%, 46%);
+  --warn: hsl(36, 80%, 30%);
+  --warn-bg: hsl(44, 90%, 95%);
+  --warn-line: hsl(44, 85%, 80%);
+  --warn-icon: hsl(40, 80%, 44%);
   color-scheme: light;
 }
-html.light .dot-grid {
-  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 1a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z' fill='%23000' fill-opacity='.12'/%3E%3C/svg%3E");
-}
+
 html.light .text-success { color: hsl(152, 50%, 30%); }
 
-/* Staged changes use the purple family (SPEC 13.2). */
-.staged-ring { box-shadow: 0 0 0 2px var(--pink-500); border-color: var(--pink-500) !important; }
+/* Staged changes use the accent family (SPEC 13.2). */
 .staged-strike { opacity: .45; text-decoration: line-through; }
+
+/* Dark logos (PostgreSQL blue, MySQL blue) are lifted toward white on dark surfaces so they stay legible. */
+:root { --brand-lift: 65%; }
+html.light { --brand-lift: 100%; }
+
+/* Account > Feature Flags > Reduce motion. */
+html[data-reduce-motion] *, html[data-reduce-motion] *::before, html[data-reduce-motion] *::after {
+  animation-duration: .001ms !important;
+  transition-duration: .001ms !important;
+}

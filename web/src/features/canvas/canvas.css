@@ -1,0 +1,58 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+
+/* Canvas-local styles: node hover ring, strips, reference edges, banner motion. */
+.cv {
+  --cv-ring: rgba(255, 255, 255, .06);
+  --cv-node: var(--secondaryBg);
+  --cv-line: var(--gray-200);
+  --cv-dot: var(--gray-400);
+  --cv-banner-bg: color-mix(in srgb, var(--pink-50) 52%, var(--background));
+  --cv-banner-shadow: 0 2px 8px color-mix(in srgb, var(--pink-500) 8%, transparent), 0 14px 20px color-mix(in srgb, var(--pink-500) 5%, transparent);
+}
+html.light .cv {
+  --cv-ring: color-mix(in srgb, var(--pink-500) 6%, transparent);
+  --cv-banner-bg: var(--pink-50);
+}
+
+.cv .react-flow__pane { cursor: default; }
+.cv .react-flow__pane.dragging { cursor: grabbing; }
+.cv .react-flow__node { cursor: pointer; }
+.cv .react-flow__node-grp, .cv .react-flow__node-empty { cursor: default; }
+.cv .react-flow__node:focus-visible { outline: none; }
+.cv .react-flow__node:focus-visible .cv-card { box-shadow: 0 0 0 2px var(--pink-700); }
+
+/* card and strips: the ring is instant, like the reference */
+.cv-node:hover .cv-card, .cv-node:hover .cv-strip { box-shadow: 0 0 0 4px var(--cv-ring); }
+html.light .cv-node:hover .cv-card:not(.cv-staged):not(.cv-selected) { border-color: var(--pink-200); }
+.cv-strip:hover { background: var(--gray-100); }
+
+/* reference edges: dashed, gray, never highlighted */
+.cv .react-flow__edge-path.cv-edge { stroke: var(--cv-dot); stroke-width: 1; stroke-dasharray: 5 5; animation: none; opacity: 1; }
+.cv .react-flow__edge.cv-edge-wrap:hover .cv-edge { stroke: var(--gray-500); }
+
+/* staged banner */
+@keyframes cv-banner-in { from { opacity: 0; transform: translate(-50%, -8px) scale(.98); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes cv-banner-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -8px); } }
+.cv-banner { background: var(--cv-banner-bg); box-shadow: var(--cv-banner-shadow); animation: cv-banner-in .2s cubic-bezier(0, 0, .2, 1) both; }
+.cv-banner-inline { background: var(--cv-banner-bg); box-shadow: var(--cv-banner-shadow); }
+.cv-banner.cv-leaving { animation: cv-banner-out .15s ease-in both; }
+
+/* new cards fade up once */
+@keyframes cv-node-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.cv-node { animation: cv-node-in .24s cubic-bezier(0, 0, .2, 1) both; }
+
+/* menus */
+@keyframes cv-menu-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+.cv-menu { animation: cv-menu-in .1s cubic-bezier(0, 0, .2, 1); transform-origin: top left; }
+
+/* viewport moves for the selected service and the toolbar */
+.cv-press { transition: transform .05s cubic-bezier(.4, 0, .2, 1), background-color .15s, color .15s; }
+.cv-press:active { transform: scale(.94); }
+
+/* rename chip over a dimmed canvas */
+@keyframes cv-fade { from { opacity: 0; } to { opacity: 1; } }
+.cv-dim { animation: cv-fade .15s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-node, .cv-banner, .cv-menu, .cv-dim { animation: none; }
+}

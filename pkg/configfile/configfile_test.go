@@ -50,8 +50,8 @@ func TestParseJSONAndLines(t *testing.T) {
 		t.Fatalf("decoded %+v", f.Config.Build)
 	}
 	want := map[string]int{
-		"build.builder":                               4,
-		"deploy.startCommand":                         9,
+		"build.builder":       4,
+		"deploy.startCommand": 9,
 		"environments.production.deploy.numReplicas":  22,
 		"environments.production.deploy.startCommand": 23,
 		"build.watchPatterns":                         6,

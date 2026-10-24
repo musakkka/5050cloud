@@ -20,16 +20,172 @@ RELEASE_PUBKEYS="RWS5v2vaQNNARGmod7/0v3a8ZYZGhT95PWYNvc+dXNxe3/gWarQEiKiR"
 
 DEFAULT_REPO="musakkka/5050cloud"
 
-if [ -t 1 ]; then
-	B=$(printf '\033[1m'); R=$(printf '\033[0m'); RED=$(printf '\033[31m'); YEL=$(printf '\033[33m')
-else
-	B=""; R=""; RED=""; YEL=""
-fi
-say() { printf '%s\n' "$*"; }
-step() { printf '%s==>%s %s\n' "$B" "$R" "$*"; }
-warn() { printf '%swarning:%s %s\n' "$YEL" "$R" "$*" >&2; }
-die() { printf '%serror:%s %s\n' "$RED" "$R" "$*" >&2; exit 1; }
+# ------------------------------------------------------------------ output
+# Colour and animation only on a terminal. NO_COLOR, TERM=dumb or --no-color
+# turn both off, CI turns the animation off. Piped or logged output stays
+# plain text. This block is kept identical in install/install.sh and
+# install/install-cli.sh.
+ESC=$(printf '\033')
+B=""; R=""; DIM=""; PINK=""; GRN=""; RED=""; YEL=""; CYN=""
+UI_COLOR=""; UI_ANIM=""; UI_UTF=""
+OK_MARK="*"; BAD_MARK="x"; WARN_MARK="!"; ASK_MARK="?"; PTR="->"; BAR_ON="#"; BAR_OFF="-"
+STEP_N=0; STEP_TOTAL=0; STEP_LABEL=""; STEP_SUB=""; STEP_T=0; SPIN_PID=""; STTY_SAVE=""
+START_T=$(date +%s)
+
+# shellcheck disable=SC2034
+ui_init() {
+	if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ]; then
+		UI_COLOR=1
+		B="${ESC}[1m"; R="${ESC}[0m"; DIM="${ESC}[38;5;245m"; PINK="${ESC}[38;5;205m"
+		GRN="${ESC}[38;5;78m"; RED="${ESC}[38;5;203m"; YEL="${ESC}[38;5;221m"; CYN="${ESC}[38;5;117m"
+		[ -n "${CI:-}" ] || UI_ANIM=1
+		case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+		*UTF-8* | *utf-8* | *UTF8* | *utf8*)
+			UI_UTF=1
+			OK_MARK="✓"; BAD_MARK="✗"; WARN_MARK="!"; ASK_MARK="?"; PTR="❯"; BAR_ON="▰"; BAR_OFF="▱"
+			;;
+		esac
+	fi
+}
+for a in "$@"; do [ "$a" != --no-color ] || NO_COLOR=1; done
+ui_init
+
 have() { command -v "$1" >/dev/null 2>&1; }
+fmt_time() { printf '%d:%02d' $(($1 / 60)) $(($1 % 60)); }
+rep() { # rep STRING N: STRING repeated N times
+	rep_out=""; rep_i=0
+	while [ "$rep_i" -lt "$2" ]; do rep_out="$rep_out$1"; rep_i=$((rep_i + 1)); done
+	printf '%s' "$rep_out"
+}
+bar() { # bar DONE TOTAL: a ten cell progress bar
+	bar_t=$2; [ "$bar_t" -gt 0 ] || bar_t=1
+	bar_f=$(($1 * 10 / bar_t)); [ "$bar_f" -le 10 ] || bar_f=10
+	printf '%s%s' "$(rep "$BAR_ON" "$bar_f")" "$(rep "$BAR_OFF" $((10 - bar_f)))"
+}
+
+# The spinner runs in the background and redraws one line (spinner, step
+# number, progress bar, label, elapsed time). Anything that prints while it
+# runs goes through ui_pause / ui_resume so lines never interleave.
+spin_loop() {
+	trap - HUP
+	if [ -n "$UI_UTF" ]; then set -- ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏; else set -- '|' '/' '-' "\\"; fi
+	nf=$#; i=0; el=0
+	cols=$(tput cols 2>/dev/null || echo 80)
+	label=$STEP_LABEL; [ -z "$STEP_SUB" ] || label="$label - $STEP_SUB"
+	maxl=$((cols - 34)); [ "$maxl" -ge 20 ] || maxl=20
+	label=$(printf '%s' "$label" | cut -c1-"$maxl")
+	pb=$(bar $((STEP_N - 1)) "$STEP_TOTAL")
+	while :; do
+		if [ $((i % 10)) -eq 0 ]; then el=$(($(date +%s) - START_T)); fi
+		f=""
+		eval "f=\${$((i % nf + 1))}"
+		printf '\r%s[K  %s%s%s %s[%s/%s]%s %s%s%s %s %s%s%s' "$ESC" "$PINK" "$f" "$R" "$DIM" "$STEP_N" "$STEP_TOTAL" "$R" "$PINK" "$pb" "$R" "$label" "$DIM" "$(fmt_time "$el")" "$R"
+		sleep 0.1 2>/dev/null || sleep 1
+		i=$((i + 1))
+	done
+}
+spin_start() {
+	[ -n "$UI_ANIM" ] || return 0
+	[ -z "$SPIN_PID" ] || return 0
+	printf '%s[?25l' "$ESC"
+	spin_loop &
+	SPIN_PID=$!
+}
+spin_stop() {
+	[ -n "$SPIN_PID" ] || return 0
+	kill -HUP "$SPIN_PID" 2>/dev/null || true
+	wait "$SPIN_PID" 2>/dev/null || true
+	SPIN_PID=""
+	printf '\r%s[K%s[?25h' "$ESC" "$ESC"
+}
+ui_pause() { spin_stop; }
+ui_resume() { if [ -n "$STEP_LABEL" ]; then spin_start; fi; }
+
+step_end() { # step_end ok|fail: closes the running step
+	[ -n "$STEP_LABEL" ] || return 0
+	spin_stop
+	if [ -n "$UI_ANIM" ]; then
+		t=$(($(date +%s) - STEP_T))
+		if [ "$1" = ok ]; then mark="${GRN}${OK_MARK}${R}"; else mark="${RED}${BAD_MARK}${R}"; fi
+		printf '  %s %s[%s/%s]%s %s %s%ss%s\n' "$mark" "$DIM" "$STEP_N" "$STEP_TOTAL" "$R" "$STEP_LABEL" "$DIM" "$t" "$R"
+	fi
+	STEP_LABEL=""; STEP_SUB=""
+}
+step() { # step "Label": finishes the running step and starts the next
+	step_end ok
+	STEP_N=$((STEP_N + 1)); STEP_LABEL=$1; STEP_SUB=""; STEP_T=$(date +%s)
+	if [ -n "$UI_ANIM" ]; then
+		spin_start
+	else
+		printf '%s==>%s %s[%s/%s]%s %s\n' "$B" "$R" "$DIM" "$STEP_N" "$STEP_TOTAL" "$R" "$1"
+	fi
+}
+sub() { # sub "detail": names the part of the step that is running
+	STEP_SUB=$1
+	if [ -n "$UI_ANIM" ]; then spin_stop; spin_start; else printf '    %s\n' "$1"; fi
+}
+say() { ui_pause; printf '%s\n' "$*"; ui_resume; }
+note() { ui_pause; printf '  %s%s%s\n' "$DIM" "$*" "$R"; ui_resume; }
+warn() { ui_pause; printf '  %s%s warning:%s %s\n' "$YEL" "$WARN_MARK" "$R" "$*" >&2; ui_resume; }
+die() {
+	step_end fail
+	spin_stop
+	printf '  %s%s error:%s %s\n' "$RED" "$BAD_MARK" "$R" "$*" >&2
+	printf '  %sIt is safe to run the installer again once this is fixed. Flags: --help. Docs: https://5050cloud.com/docs%s\n' "$DIM" "$R" >&2
+	exit 1
+}
+
+banner() {
+	if [ -z "$UI_COLOR" ]; then
+		printf '5050cloud installer\n'
+		return 0
+	fi
+	if [ -n "$UI_UTF" ]; then
+		printf '\n'
+		for l in 1 2 3; do
+			case $l in
+			1) a='┏━┓┏━┓┏━┓┏━┓'; b='┏━╸╻  ┏━┓╻ ╻╺┳┓'; c=205 ;;
+			2) a='┗━┓┃┃┃┗━┓┃┃┃'; b='┃  ┃  ┃ ┃┃ ┃ ┃┃'; c=206 ;;
+			*) a='┗━┛┗━┛┗━┛┗━┛'; b='┗━╸┗━╸┗━┛┗━┛╺┻┛'; c=207 ;;
+			esac
+			printf '  %s[38;5;%sm%s%s %s%s%s\n' "$ESC" "$c" "$a" "$R" "$B" "$b" "$R"
+			[ -z "$UI_ANIM" ] || sleep 0.06
+		done
+	else
+		printf '\n  %s5050cloud%s\n' "$B" "$R"
+	fi
+	printf '  %sopen-source cloud on your own servers%s\n\n' "$DIM" "$R"
+}
+
+box() { # box TITLE "label=value" ...: a framed summary
+	box_title=$1; shift
+	box_w=${#box_title}
+	for l in "$@"; do
+		v=${l#*=}
+		[ $((10 + ${#v})) -le "$box_w" ] || box_w=$((10 + ${#v}))
+	done
+	if [ -n "$UI_UTF" ]; then tl='╭'; tr_='╮'; bl='╰'; br='╯'; hz='─'; vt='│'; else tl='+'; tr_='+'; bl='+'; br='+'; hz='-'; vt='|'; fi
+	printf '  %s%s%s%s%s\n' "$PINK" "$tl" "$(rep "$hz" $((box_w + 2)))" "$tr_" "$R"
+	printf '  %s%s%s %s%s%s%s %s%s%s\n' "$PINK" "$vt" "$R" "$B$GRN" "$box_title" "$R" "$(rep ' ' $((box_w - ${#box_title})))" "$PINK" "$vt" "$R"
+	printf '  %s%s%s%s%s\n' "$PINK" "$vt" "$(rep ' ' $((box_w + 2)))" "$vt" "$R"
+	for l in "$@"; do
+		k=${l%%=*}; v=${l#*=}
+		printf '  %s%s%s %s%-9s%s %s%s %s%s%s\n' "$PINK" "$vt" "$R" "$DIM" "$k" "$R" "$v" "$(rep ' ' $((box_w - 10 - ${#v})))" "$PINK" "$vt" "$R"
+	done
+	printf '  %s%s%s%s%s\n' "$PINK" "$bl" "$(rep "$hz" $((box_w + 2)))" "$br" "$R"
+}
+
+on_exit() {
+	rc=$?
+	spin_stop
+	if [ -n "$STTY_SAVE" ]; then stty "$STTY_SAVE" 2>/dev/null || true; fi
+	if [ -n "$UI_ANIM" ]; then printf '%s[?25h' "$ESC"; fi
+	[ -z "${TMP:-}" ] || rm -rf "$TMP"
+	if [ "$rc" -eq 130 ]; then printf '\n  %sCancelled. Every step is safe to run again, so just start the installer again.%s\n' "$DIM" "$R" >&2; fi
+}
+trap on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 usage() {
 	cat <<'EOF'
@@ -50,6 +206,7 @@ Flags (each also an environment variable FIFTY_<FLAG>, for example FIFTY_VERSION
                            is still checked (test builds only)
   --railway-alias          also install the railway alias next to the binary
   --quiet                  print only errors and the installed path
+  --no-color               plain text, no colour or animation (NO_COLOR=1 does the same)
   --help                   show this help
 EOF
 }
@@ -78,6 +235,7 @@ while [ "$#" -gt 0 ]; do
 	--insecure-skip-verify) INSECURE=1 ;;
 	--railway-alias) RAILWAY_ALIAS=1 ;;
 	--quiet | -q) QUIET=1 ;;
+	--no-color) ;;
 	--help | -h) usage; exit 0 ;;
 	*) die "unknown flag $1. Run with --help for the list." ;;
 	esac
@@ -86,7 +244,11 @@ done
 
 if [ -n "$QUIET" ]; then
 	step() { :; }
+	step_end() { :; }
 	say() { :; }
+	note() { :; }
+	banner() { :; }
+	box() { :; }
 fi
 
 REPO=${REPO:-$DEFAULT_REPO}
@@ -100,7 +262,6 @@ if [ -n "$RELEASE_BASE" ] && [ -z "$RELEASE_PUBKEY" ] && [ -z "$INSECURE" ]; the
 fi
 
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT INT TERM
 
 # ------------------------------------------------------------------ download and verify
 
@@ -204,7 +365,7 @@ get_archive() {
 		base=${RELEASE_BASE:-$REPO_RELEASES/download}
 		base=${base%/}/$VERSION
 		name="5050-cli_${VERSION#v}_${os}_${arch}.tar.gz"
-		step "Downloading the 5050 CLI $VERSION for $os/$arch"
+		sub "Downloading the 5050 CLI $VERSION for $os/$arch"
 		fetch "$base/checksums.txt" "$TMP/checksums.txt" || die "cannot download $base/checksums.txt. Does release $VERSION exist?"
 		if [ -z "$INSECURE" ]; then
 			fetch "$base/checksums.txt.minisig" "$TMP/checksums.txt.minisig" || die "cannot download the release signature."
@@ -227,7 +388,11 @@ get_archive() {
 
 # ------------------------------------------------------------------ install
 
+banner
+STEP_TOTAL=2
+step "Downloading and verifying the 5050 CLI"
 get_archive
+step "Installing the 5050 CLI"
 mkdir -p "$TMP/cli"
 tar -xzf "$FILE" -C "$TMP/cli"
 [ -f "$TMP/cli/5050" ] || die "the archive has no 5050 binary."
@@ -248,14 +413,18 @@ if [ -n "$RAILWAY_ALIAS" ]; then
 		warn "$DIR/railway exists and is not our alias; leaving it alone."
 	else
 		ln -sf 5050 "$DIR/railway"
-		say "Installed the railway alias at $DIR/railway."
+		note "Installed the railway alias at $DIR/railway."
 	fi
 fi
 
+step_end ok
 if [ -n "$QUIET" ]; then
 	printf '%s\n' "$DIR/5050"
 else
-	say "Installed the 5050 CLI $VERSION to $DIR/5050."
-	case ":$PATH:" in *":$DIR:"*) ;; *) say "Add $DIR to your PATH to run it." ;; esac
-	say "Next: 5050 login https://<your console>"
+	say ""
+	box "Installed the 5050 CLI $VERSION" "Path=$DIR/5050" "Took=$(fmt_time $(($(date +%s) - START_T)))" "Next=5050 login https://<your console>"
+	case ":$PATH:" in
+	*":$DIR:"*) ;;
+	*) warn "$DIR is not on your PATH yet. Add it to run 5050 from anywhere, for example: export PATH=\"$DIR:\$PATH\"" ;;
+	esac
 fi

@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+
+/* Console surfaces: the flat terminal colour, the system monospace stack, xterm
+   overrides, and the file type badge colours. Colours here are the console's own
+   tokens (kept out of the shared theme on purpose). */
+
+.console-surface {
+  background: #131520;
+  color: #e2e4e9;
+}
+
+.console-mono,
+.console-term {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.console-term {
+  height: 100%;
+  width: 100%;
+}
+
+.console-term .xterm {
+  height: 100%;
+}
+
+.console-term .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: #33323e transparent;
+}
+
+/* Blink the block cursor once a second, stepping (xterm default is a smooth fade). */
+.console-term .xterm-cursor-blink {
+  animation-duration: 1s !important;
+  animation-timing-function: step-end !important;
+}
+
+.file-badge-dir { color: #e8a317; }
+.file-badge-py { color: #3572a5; }
+.file-badge-json { color: #f7df1e; }
+.file-badge-sh { color: #9ece6a; }
+.file-badge-md { color: #3572a5; }
+
+/* Thin resize grip used by the Files drawer and the popout. */
+.console-grip {
+  background: #545260;
+}

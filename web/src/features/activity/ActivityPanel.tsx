@@ -1,65 +1,155 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// Activity slide-over from the project top bar (9.24): the environment's feed,
-// filter by service, open a commit to see its full diff.
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+// Activity panel, docked in the project shell's 320px card: header, a multi-select category
+// filter, and the environment's feed with outcome icons and colours. Infinite scroll, rise-in
+// for live events, click opens the deployment or the commit's diff.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Activity as ActivityIcon, CircleAlert, CircleCheck, ChevronDown, Info } from "lucide-react";
 import { api, type Activity, type CommitDetail } from "../../api/client";
 import { useProject, useProjectEvents } from "../../app/project";
-import { Button, ErrorLine, Modal, RelTime, Spinner, StatusGlyph } from "../../kit";
+import { EmptyState, ErrorLine, MenuItem, Modal, Popover, RelTime, Skeleton, Spinner, cx } from "../../kit";
+
+const CATEGORIES = [
+  { id: "deploys", label: "Deploys" },
+  { id: "config", label: "Config changes" },
+  { id: "storage", label: "Storage" },
+  { id: "extensions", label: "Extensions" },
+  { id: "passwords", label: "Database passwords" },
+  { id: "autoupdates", label: "Auto-updates" },
+  { id: "variables", label: "Variables" },
+  { id: "services", label: "Services" },
+] as const;
+type Cat = (typeof CATEGORIES)[number]["id"];
+const ALL = new Set<Cat>(CATEGORIES.map((c) => c.id));
+
+/** Which filter category an event belongs to. */
+export function categoryOf(a: Pick<Activity, "kind" | "text">): Cat {
+  if (/password/i.test(a.text)) return "passwords";
+  if (/auto-?update|upgrade/i.test(a.text)) return "autoupdates";
+  if (/variable/i.test(a.text)) return "variables";
+  switch (a.kind) {
+    case "deployment": return "deploys";
+    case "commit": return "config";
+    case "backup": return "storage";
+    case "host": return "extensions";
+    default: return "services";
+  }
+}
+
+type Outcome = "good" | "bad" | "info";
+export function outcomeOf(a: Pick<Activity, "status" | "text">): Outcome {
+  const t = `${a.status || ""} ${a.text}`;
+  if (/crash|fail|error|unhealthy|offline/i.test(t)) return "bad";
+  if (/success|succeeded|ok\b|online|healthy|complete/i.test(t)) return "good";
+  return "info";
+}
+const OUTCOME = {
+  good: { icon: CircleCheck, tone: "text-ok-text", text: "text-ok-soft" },
+  bad: { icon: CircleAlert, tone: "text-danger-text", text: "text-danger-text" },
+  info: { icon: Info, tone: "text-blue-600", text: "text-foreground" },
+} as const;
 
 export function ActivityPanel({ onClose }: { onClose: () => void }) {
-  const { eid, canvas } = useProject();
-  const [service, setService] = useState("");
+  const { eid, canvas, pid, withEnv } = useProject();
+  const nav = useNavigate();
   const [items, setItems] = useState<Activity[]>();
   const [next, setNext] = useState<string>();
   const [error, setError] = useState<unknown>();
   const [commit, setCommit] = useState<string>();
+  const [cats, setCats] = useState<Set<Cat>>(new Set(ALL));
+  const [hidden, setHidden] = useState(false);
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const loading = useRef(false);
 
   useEffect(() => {
-    setItems(undefined);
-    api.activity(eid, { service: service || undefined }).then((p) => { setItems(p.items || []); setNext(p.next); }, setError);
-  }, [eid, service]);
+    setItems(undefined); setNext(undefined); setError(undefined);
+    api.activity(eid, {}).then((p) => { setItems(p.items || []); setNext(p.next); }, setError);
+  }, [eid]);
   useProjectEvents((e) => {
-    if (e.type === "activity" && e.activity && (!service || e.activity.serviceId === service)) setItems((l) => [e.activity!, ...(l || [])]);
+    if (e.type === "activity" && e.activity) {
+      const a = e.activity;
+      setItems((l) => (l && l.some((x) => x.id === a.id) ? l : [a, ...(l || [])]));
+      setFresh((f) => new Set(f).add(a.id));
+    }
   });
-  const more = () => next && api.activity(eid, { service: service || undefined, before: next }).then((p) => { setItems((l) => [...(l || []), ...(p.items || [])]); setNext(p.next); }, setError);
+  const more = useCallback(() => {
+    if (!next || loading.current) return;
+    loading.current = true;
+    api.activity(eid, { before: next }).then((p) => {
+      // a page with nothing new ends the feed (guards a server that repeats its cursor)
+      setItems((l) => {
+        const seen = new Set((l || []).map((x) => x.id));
+        const add = (p.items || []).filter((x) => !seen.has(x.id));
+        if (!add.length) setNext(undefined); else setNext(p.next);
+        return [...(l || []), ...add];
+      });
+    }, setError).finally(() => { loading.current = false; });
+  }, [eid, next]);
   const name = (id?: string) => canvas?.services.find((s) => s.id === id)?.config.name;
 
+  const visible = hidden ? [] : (items || []).filter((a) => cats.has(categoryOf(a)));
+  const short = visible.length < 6;
+  useEffect(() => { if (next && !hidden && short) more(); }, [next, hidden, short, more]);
+  const label = hidden ? "Activity hidden" : cats.size === ALL.size ? "All activity" : cats.size === 0 ? "No activity" : `${cats.size} of ${ALL.size}`;
+  const toggle = (c: Cat) => { setHidden(false); setCats((s) => { const n = new Set(s); if (n.has(c)) n.delete(c); else n.add(c); return n; }); };
+  const open = (a: Activity) => {
+    if (a.kind === "commit" && a.ref) setCommit(a.ref);
+    else if (a.kind === "deployment" && a.ref && a.serviceId) nav(withEnv(`/project/${pid}/service/${encodeURIComponent(a.serviceId)}/deployment/${encodeURIComponent(a.ref)}`));
+    else if (a.serviceId) nav(withEnv(`/project/${pid}/service/${encodeURIComponent(a.serviceId)}`));
+  };
+
   return (
-    <aside aria-label="Activity" className="panel-in fixed inset-y-0 right-0 z-[90] flex w-full max-w-[420px] flex-col border-l border-gray-200 bg-secondaryBg shadow-2xl">
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-        <h2 className="text-base font-semibold">Activity</h2>
-        <button type="button" aria-label="Close" onClick={onClose} className="text-gray-500 hover:text-foreground"><X size={18} /></button>
-      </div>
-      <div className="px-5 py-3">
-        <select aria-label="Filter by service" value={service} onChange={(e) => setService(e.target.value)} className="h-9 w-full rounded-md border border-gray-200 bg-background px-2 text-sm">
-          <option value="">All services</option>
-          {canvas?.services.map((s) => <option key={s.id} value={s.id}>{s.config.name}</option>)}
-        </select>
-      </div>
-      <div className="flex-1 overflow-y-auto px-5 pb-5 scroll-thin">
+    <section aria-label="Activity" className="flex h-full flex-col bg-background px-2 py-3">
+      <button type="button" onClick={onClose} aria-label="Close activity" className="w-full rounded-md px-3 py-2 text-left text-lead font-semibold text-foreground transition-colors duration-150 hover:bg-surface">Activity</button>
+      <div className="min-h-0 flex-1 overflow-y-auto scroll-thin p-2"
+        onScroll={(e) => { const t = e.currentTarget; if (t.scrollHeight - t.scrollTop - t.clientHeight < 160) more(); }}>
+        <div className="pb-2">
+          <Popover align="left" minWidth={220} trigger={(isOpen) => (
+            <button type="button" aria-label="Filter activity" className={cx("inline-flex h-[42px] items-center rounded-md border px-2 py-1 text-caption font-medium text-fg-2 transition-colors duration-150", isOpen ? "border-foreground" : "border-line hover:border-fg-4")}>
+              {label}<ChevronDown size={16} className="ml-2 text-fg-3" />
+            </button>
+          )}>
+            {() => (
+              <>
+                {CATEGORIES.map((c) => <MenuItem key={c.id} checkSide="left" active={!hidden && cats.has(c.id)} onClick={() => toggle(c.id)}>{c.label}</MenuItem>)}
+                <div className="-mx-1 my-1 border-t border-line" />
+                <MenuItem checkSide="left" onClick={() => setHidden(true)}>Hide all activity</MenuItem>
+              </>
+            )}
+          </Popover>
+        </div>
         <ErrorLine error={error} />
-        {!items && !error && <Spinner />}
-        {items?.length === 0 && <div className="py-8 text-center text-sm text-gray-500">No activity yet.</div>}
-        <ol className="space-y-3">
-          {items?.map((a) => (
-            <li key={a.id} className="flex gap-3 text-sm">
-              <div className="pt-0.5">{a.status ? <StatusGlyph status={a.status} size={16} /> : <span className="block h-4 w-4 rounded-full border border-gray-300" />}</div>
-              <div className="min-w-0 flex-1">
-                <div className="text-gray-800">{a.text}</div>
-                <div className="text-xs text-gray-500">
-                  {name(a.serviceId) && <>{name(a.serviceId)} · </>}{a.actor && <>{a.actor} · </>}<RelTime ts={a.ts} />
-                  {a.kind === "commit" && a.ref && <> · <button type="button" className="underline hover:text-foreground" onClick={() => setCommit(a.ref)}>View changes</button></>}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ol>
-        {next && <Button className="mt-4 w-full" onClick={() => void more()}>Load more</Button>}
+        {!items && !error && (
+          <ul className="flex flex-col gap-3">{[0, 1, 2, 3].map((i) => <li key={i} className="grid grid-cols-[auto_1fr] gap-4 p-4"><Skeleton w={20} h={20} circle /><div className="grid gap-2"><Skeleton h={14} w="70%" /><Skeleton h={14} w="90%" /><Skeleton h={12} w="40%" /></div></li>)}</ul>
+        )}
+        {items && visible.length === 0 && (
+          <EmptyState icon={<ActivityIcon size={24} />} title={hidden ? "Activity is hidden" : items.length ? "Nothing matches this filter" : "No activity yet"}
+            body={hidden ? "Pick a category to show the feed again." : items.length ? "Turn on more categories to see more events." : "Deploys, config changes and other events appear here."} />
+        )}
+        <ul className="flex flex-col gap-3">
+          {visible.map((a) => {
+            const o = OUTCOME[outcomeOf(a)];
+            const Icon = o.icon;
+            const svc = name(a.serviceId) || a.actor || a.kind;
+            return (
+              <li key={a.id} className={cx(fresh.has(a.id) && "animate-rise-in")}>
+                <button type="button" onClick={() => open(a)} className="grid w-full grid-cols-[auto_1fr] items-center gap-4 rounded-md p-4 text-left transition-colors duration-150 hover:bg-surface">
+                  <Icon size={20} className={o.tone} />
+                  <span className="grid min-w-0 gap-2">
+                    <span className="flex items-center gap-2 text-body font-semibold text-foreground"><span aria-hidden className="size-2 shrink-0 rounded-full bg-ok" /><span className="line-clamp-2">{svc}</span></span>
+                    <span className={cx("text-body", o.text)}>{a.text}</span>
+                    <RelTime ts={a.ts} className="text-caption text-fg-3" />
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {next && !hidden && <div className="flex justify-center py-3"><Spinner /></div>}
       </div>
       {commit && <CommitModal id={commit} onClose={() => setCommit(undefined)} />}
-    </aside>
+    </section>
   );
 }
 

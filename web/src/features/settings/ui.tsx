@@ -3,9 +3,10 @@
 // Small building blocks shared by the settings, account and project
 // settings screens.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { NavLink } from "react-router-dom";
-import { Check, Copy } from "lucide-react";
-import { Button, Spinner, cx } from "../../ui/kit";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { Check, Copy, type LucideIcon } from "lucide-react";
+import { useShellOptions } from "../../app/Shell";
+import { Button, Input as KitInput, Notice as KitNotice, Select as KitSelect, ShimmerCard, Switch, Textarea, cx } from "../../kit";
 
 export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
   const [data, setData] = useState<T | null>(null);
@@ -32,103 +33,152 @@ export async function optimistic<S>(cur: S, next: S, set: (s: S) => void, send: 
   try { await send(); } catch (e: any) { set(cur); onError(e?.message || String(e)); }
 }
 
-export function Page({ title, nav, children }: { title: string; nav: { to: string; label: string }[]; children: ReactNode }) {
+export interface PageNavItem { to: string; label: string; icon?: LucideIcon }
+
+/**
+ * Settings page frame. With `aside` (account) it draws the 200px nav under a 28px
+ * muted group title, which folds into a bordered grid card under 1024px. Without it
+ * (install pages, whose nav lives in the sidebar) it is the 872px column.
+ */
+export function Page({ title, nav, children, heading, aside = true, wide }: { title: string; nav: PageNavItem[]; children: ReactNode; heading?: string; aside?: boolean; wide?: boolean }) {
+  const { pathname } = useLocation();
+  useShellOptions({ width: aside || wide ? "content" : "narrow" });
+  const current = nav.find((n) => pathname === n.to || pathname.startsWith(n.to + "/"));
+  const h = heading || current?.label || title;
+  const column = (
+    <div className={cx("min-w-0 flex-1 space-y-12", !aside && !wide && "mx-auto w-full max-w-narrow")}>
+      {aside && nav.length > 0 && <MobileNav nav={nav} pathname={pathname} />}
+      <div>
+        <h1 className="text-title text-foreground">{h}</h1>
+        <hr className="mt-4 border-0 border-t border-gray-100" />
+      </div>
+      <div className="animate-rise-in space-y-12" key={pathname}>{children}</div>
+    </div>
+  );
+  if (!aside) return column;
   return (
-    <div className="h-full flex flex-col">
-      <div className="px-4 md:px-12 py-6 md:py-8 border-b border-gray-200"><h1 className="text-2xl font-semibold">{title}</h1></div>
-      <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-        <nav className="md:w-[240px] shrink-0 px-4 md:px-8 py-4 md:py-8 flex md:block gap-4 overflow-x-auto md:space-y-1">
-          {nav.map((s) => (
-            <NavLink key={s.to} to={s.to} className={({ isActive }) => cx("flex items-center md:w-full h-10 text-[15px] whitespace-nowrap", isActive ? "text-foreground font-medium" : "text-gray-600 hover:text-foreground")}>{s.label}</NavLink>
+    <div className="flex">
+      <aside className="mr-12 hidden w-[200px] shrink-0 lg:block">
+        <h2 className="mb-8 text-title text-fg-4">{title}</h2>
+        <nav className="flex flex-col gap-1" aria-label={title}>
+          {nav.map((n) => (
+            <NavLink key={n.to} to={n.to}
+              className={({ isActive }) => cx("flex h-nav items-center gap-3 rounded-lg px-3 text-body transition-colors duration-150",
+                isActive ? "bg-tint-active font-medium text-foreground" : "text-fg-2 hover:bg-tint-hover hover:text-foreground")}>
+              {({ isActive }) => (<>{n.icon && <n.icon size={16} strokeWidth={2} className={cx("shrink-0 transition-colors", isActive ? "text-accent-text" : "text-gray-300")} />}<span className="truncate">{n.label}</span></>)}
+            </NavLink>
           ))}
         </nav>
-        <div className="flex-1 min-w-0 overflow-y-auto scroll-thin px-4 md:px-6 py-6 md:py-8 max-w-[860px]">{children}</div>
-      </div>
+      </aside>
+      {column}
     </div>
   );
 }
 
-export function Section({ title, description, children, actions }: { title: string; description?: ReactNode; children: ReactNode; actions?: ReactNode }) {
+function MobileNav({ nav, pathname }: { nav: PageNavItem[]; pathname: string }) {
   return (
-    <section className="mb-10">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h2 className="text-xl font-semibold">{title}</h2>
-          {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+    <nav className="grid grid-cols-2 overflow-hidden rounded-lg border border-line sm:grid-cols-4 lg:hidden" aria-label="Sections">
+      {nav.map((n) => {
+        const on = pathname === n.to || pathname.startsWith(n.to + "/");
+        return (
+          <Link key={n.to} to={n.to} className={cx("flex h-11 items-center gap-2 border-b border-r border-gray-100 px-3 text-body transition-colors", on ? "bg-tint-active font-medium text-foreground" : "text-fg-2 hover:bg-tint-hover")}>
+            {n.icon && <n.icon size={16} className={on ? "text-accent-text" : "text-gray-300"} />}<span className="truncate">{n.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** A titled block: 20px/600 title, 32px gap to the body. */
+export function Section({ title, description, children, actions }: { title: ReactNode; description?: ReactNode; children: ReactNode; actions?: ReactNode }) {
+  return (
+    <section className="space-y-8">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-h2 text-foreground">{title}</h2>
+          {description && <p className="mt-1 max-w-3xl text-body text-fg-2">{description}</p>}
         </div>
         {actions}
       </div>
-      {children}
+      <div>{children}</div>
     </section>
   );
 }
 
-export function Field({ label, error, hint, children }: { label: string; error?: string | null; hint?: ReactNode; children: ReactNode }) {
+export function Field({ label, error, hint, children, className }: { label: ReactNode; error?: string | null; hint?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <label className="block mb-4">
-      <span className="block text-sm text-gray-700 mb-1.5 font-medium">{label}</span>
-      {children}
-      {hint && !error && <span className="block text-xs text-gray-500 mt-1">{hint}</span>}
-      {error && <span role="alert" className="block text-xs text-red-600 mt-1">{error}</span>}
-    </label>
+    <div className={cx("mb-5 w-full", className)}>
+      <label className="block">
+        <span className="mb-2 block text-caption font-semibold text-fg-2">{label}</span>
+        {children}
+      </label>
+      {hint && !error && <span className="mt-2 block text-caption text-fg-3">{hint}</span>}
+      {error && <span role="alert" className="mt-2 block text-caption text-danger-text">{error}</span>}
+    </div>
   );
 }
 
-const inputCls = "w-full h-10 px-3 rounded-md border border-gray-200 bg-transparent text-[15px] outline-none focus:border-gray-400";
+/** Two columns from md up, 24px gaps. */
+export function FormGrid({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-1 gap-x-6 md:grid-cols-2">{children}</div>;
+}
 
-export function Input(p: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...p} className={cx(inputCls, p.className)} />;
+export function Input({ size: _size, ...p }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <KitInput {...p} />;
 }
 
 export function Select({ options, ...p }: React.SelectHTMLAttributes<HTMLSelectElement> & { options: { value: string; label: string }[] }) {
-  return <select {...p} className={cx(inputCls, p.className)}>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
+  return <KitSelect variant="field" options={options} {...p} />;
 }
 
 export function TextArea(p: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...p} className={cx("w-full min-h-[90px] px-3 py-2 rounded-md border border-gray-200 bg-transparent text-sm font-mono outline-none focus:border-gray-400", p.className)} />;
+  return <Textarea {...p} className={cx("min-h-[96px]", p.className)} />;
 }
 
+/** A switch row on a raised bar (the profile "enable" row look). */
 export function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; disabled?: boolean }) {
   return (
-    <label className={cx("flex items-center gap-3 mb-3 text-sm", disabled && "opacity-50")}>
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4" />
+    <div className={cx("mb-3 flex items-center gap-3 rounded-md bg-surface-raised px-4 py-3 text-lead", disabled && "opacity-50")}>
+      <Switch size="sm" checked={checked} disabled={disabled} onChange={onChange} label={typeof label === "string" ? label : undefined} />
       <span>{label}</span>
-    </label>
+    </div>
   );
 }
 
 export function Notice({ kind = "info", children }: { kind?: "info" | "error" | "ok"; children: ReactNode }) {
-  const c = { info: "border-gray-200 bg-gray-50 text-gray-700", error: "border-red-300 bg-red-100 text-red-700", ok: "border-green-300 bg-green-50 text-green-700" }[kind];
-  return <div role={kind === "error" ? "alert" : "status"} className={cx("rounded-md border px-3 py-2 text-sm mb-4", c)}>{children}</div>;
+  return <KitNotice className="mb-4" tone={{ info: "neutral", error: "danger", ok: "ok" }[kind] as "neutral" | "danger" | "ok"}>{children}</KitNotice>;
 }
 
 export function CopyField({ value, mono = true }: { value: string; mono?: boolean }) {
   const [done, setDone] = useState(false);
   return (
-    <div className={cx("min-h-10 px-3 py-2 flex items-center justify-between gap-3 rounded-md bg-secondaryBg text-sm break-all", mono && "font-mono")}>
-      <span>{value}</span>
-      <button type="button" aria-label="Copy" onClick={() => { void navigator.clipboard?.writeText(value); setDone(true); setTimeout(() => setDone(false), 1500); }} className="text-gray-500 hover:text-foreground shrink-0">
-        {done ? <Check size={15} /> : <Copy size={15} />}
+    <div className={cx("flex min-h-[42px] items-center justify-between gap-3 break-all rounded-md bg-surface-raised px-3 py-2 text-body", mono && "font-mono")}>
+      <span className="whitespace-pre-wrap">{value}</span>
+      <button type="button" aria-label="Copy" onClick={() => { void navigator.clipboard?.writeText(value); setDone(true); setTimeout(() => setDone(false), 1500); }}
+        className="shrink-0 rounded p-1 text-fg-3 transition-colors hover:text-foreground">
+        {done ? <Check size={16} className="text-ok-text" /> : <Copy size={16} />}
       </button>
     </div>
   );
 }
 
-/** Save button with busy state and a short "Saved" note. */
+/** Save button with busy state and a short "Saved" note. Primary 34px, full width on phones. */
 export function SaveRow({ busy, saved, error, disabled, label = "Save", extra }: { busy: boolean; saved: boolean; error: string | null; disabled?: boolean; label?: string; extra?: ReactNode }) {
   return (
-    <div className="flex items-center gap-3 mt-2">
-      <Button type="submit" variant="primary" disabled={busy || disabled}>{busy && <Spinner className="text-white" />}{label}</Button>
+    <div className="mt-2 flex flex-wrap items-center gap-3">
+      <Button type="submit" variant="primary" busy={busy} disabled={disabled} className="w-full md:w-auto">{label}</Button>
       {extra}
-      {saved && !error && <span className="text-sm text-green-700">Saved</span>}
-      {error && <span role="alert" className="text-sm text-red-600">{error}</span>}
+      {saved && !error && <span role="status" className="flex animate-fade-in items-center gap-1 text-body text-ok-text"><Check size={16} />Saved</span>}
+      {error && <span role="alert" className="text-body text-danger-text">{error}</span>}
     </div>
   );
 }
 
+/** Shimmer placeholders while a section loads; the error notice on failure. */
 export function Loading({ error }: { error?: string | null }) {
   if (error) return <Notice kind="error">{error}</Notice>;
-  return <div className="py-10 flex justify-center"><Spinner /></div>;
+  return <div className="space-y-3" aria-busy="true" aria-label="Loading"><ShimmerCard h={42} /><ShimmerCard h={42} /><ShimmerCard h={110} /></div>;
 }
 
 /** Runs an async action with busy, error and saved flags for a form. */

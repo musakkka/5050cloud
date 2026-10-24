@@ -57,7 +57,7 @@ function UsageTable({ u }: { u: T.UsageResponse }) {
         </table>
       </div>
       <p className="text-sm text-gray-600 mt-4">
-        The same usage on Railway at list prices of {u.railway.pricesDate} would cost about <b>{usd(u.railway.usd)}</b>.{" "}
+        The same usage on a hosted platform at list prices of {u.railway.pricesDate} would cost about <b>{usd(u.railway.usd)}</b>.{" "}
         <a className="underline" href={u.railway.sourceUrl} target="_blank" rel="noreferrer">Source</a>
       </p>
     </>

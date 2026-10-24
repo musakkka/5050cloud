@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from "vitest";
-import { back, push, rank, redeployLabel, score, type Cmd, type Level } from "./model";
+import { back, flatten, push, rank, redeployLabel, score, searchGroups, type Cmd, type Level } from "./model";
 
 const c = (title: string, extra: Partial<Cmd> = {}): Cmd => ({ id: title, title, ...extra });
 
@@ -44,5 +44,29 @@ describe("adaptive Redeploy label", () => {
     expect(redeployLabel(svc("empty", "d1"))).toBe("Redeploy latest deployment");
     expect(redeployLabel(svc("github", "d1"))).toBe("Redeploy");
     expect(redeployLabel(svc("github"))).toBeNull();
+  });
+});
+
+describe("whole-tree search", () => {
+  const tree: Cmd[] = [
+    { ...c("Go to Logs"), group: "Project" },
+    { ...c("Project Settings"), group: "Project", children: () => [c("General", { children: () => [c("Rename project")] }), c("Webhooks")] },
+    { ...c("Go to Docs"), group: "General" },
+  ];
+  it("flattens every level with breadcrumb paths", () => {
+    const hits = flatten(tree);
+    expect(hits.map((h) => h.path.join(" > "))).toContain("Project > Project Settings > General");
+    expect(hits).toHaveLength(6);
+  });
+  it("groups matches under breadcrumb headers, best group first", () => {
+    const groups = searchGroups(tree, "log");
+    expect(groups[0].header).toBe("Project");
+    expect(groups[0].hits[0].cmd.title).toBe("Go to Logs");
+    const nested = searchGroups(tree, "rename");
+    expect(nested[0].header).toBe("Project \u203a Project Settings \u203a General");
+  });
+  it("matches by parent breadcrumb below direct titles and returns nothing for gibberish", () => {
+    expect(searchGroups(tree, "webhooks")[0].hits[0].cmd.title).toBe("Webhooks");
+    expect(searchGroups(tree, "zzzzq")).toEqual([]);
   });
 });

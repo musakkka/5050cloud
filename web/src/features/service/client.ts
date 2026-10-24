@@ -9,7 +9,17 @@ export class ApiError extends Error {
   }
 }
 
+// `npm run dev:mocks`: richer fixtures for the service panel and deployment drawer
+// (deployment/mocks.ts). The import is compiled out of production builds.
+const mocksReady: Promise<unknown> = import.meta.env.VITE_MOCKS === "1"
+  ? Promise.all([
+      import("../deployment/mocks").then((m) => m.installServiceMocks()),
+      import("../service-settings/mocks").then((m) => m.installSettingsMocks()),
+    ]).catch(() => undefined)
+  : Promise.resolve();
+
 export async function req<T>(method: string, path: string, body?: unknown, raw?: BodyInit): Promise<T> {
+  await mocksReady;
   const headers: Record<string, string> = { Accept: "application/json" };
   if (method !== "GET") headers["X-5050-CSRF"] = "1";
   let payload: BodyInit | undefined = raw;

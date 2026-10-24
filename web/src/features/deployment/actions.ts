@@ -28,15 +28,10 @@ export const ACTION_LABEL: Record<DepAction, string> = {
   redeploy: "Redeploy", rollback: "Rollback", restart: "Restart", abort: "Abort", remove: "Remove",
 };
 
-/** The tab the deployment view opens on (13.5). */
+/** The tab the deployment drawer opens on: Details for a failure (steps and diagnosis), Build Logs while building, else Deploy Logs. */
 export function defaultTab(d: Deployment): "details" | "build" | "deploy" {
-  if (d.status === "FAILED") {
-    const failed = d.steps.find((s) => s.state === "failed");
-    if (!failed || ["queued", "fetch", "build", "push"].includes(failed.name)) return "build";
-    return "deploy";
-  }
-  if (d.status === "BUILDING" || d.status === "QUEUED") return "build";
-  if (d.status === "CRASHED" || d.status === "DEPLOYING") return "deploy";
+  if (d.status === "FAILED") return "details";
+  if (d.status === "BUILDING" || d.status === "QUEUED" || d.status === "WAITING") return "build";
   return "deploy";
 }
 

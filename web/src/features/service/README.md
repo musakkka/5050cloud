@@ -7,7 +7,7 @@ exports of `routes.tsx`: `ServiceRoute`, `VolumeRoute`, `LogExplorer`,
 | Directory | What |
 |---|---|
 | `service/` | Panel header and tabs, route components, fetch client (`client.ts`, CSRF header), events hook, shared UI primitives |
-| `deployment/` | Deployments tab (active, in progress with steps, history, Show Skipped, actions by state, rollback confirm) and the deployment view (Details, Build Logs, Deploy Logs, Network > HTTP) |
+| `deployment/` | Deployments tab (meta row, active/running/failed card with step list, no-deployment card with Deploy, history with Hide Skipped, kebab actions with confirms) and the deployment drawer stacked over the panel (Details with steps, diagnosis, variables, origin and Pretty/Code config; Build and Deploy Logs with filter tags, view options, line pane, live tail; Network Logs with HTTP, DNS and Flow). `mocks.ts` holds richer MSW fixtures for `npm run dev:mocks` |
 | `logs/` | Live log view (SSE tail, pause on scroll with Resume, columns, side panel with filter-on-click, View in Context, dropped-lines warning, host notices) and the Log Explorer |
 | `variables/` | Variables tab, Raw Editor parser (`.env` and JSON) with preview, `${{` autocomplete, seal, reveal, Heroku import, shared variables, database reference buttons |
 | `metrics/` | Metrics tab (synced cursors, deploy markers, Shift+drag zoom with Back, ranges, custom range, Sum/Replica, monitors, Postgres extras) and Observability |

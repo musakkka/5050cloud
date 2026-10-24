@@ -27,17 +27,171 @@ UNIT_DIR=/etc/systemd/system
 TCP_PROXY_RANGE="20000-29999"
 
 # ------------------------------------------------------------------ output
+# Colour and animation only on a terminal. NO_COLOR, TERM=dumb or --no-color
+# turn both off, CI turns the animation off. Piped or logged output stays
+# plain text. This block is kept identical in install/install.sh and
+# install/install-cli.sh.
+ESC=$(printf '\033')
+B=""; R=""; DIM=""; PINK=""; GRN=""; RED=""; YEL=""; CYN=""
+UI_COLOR=""; UI_ANIM=""; UI_UTF=""
+OK_MARK="*"; BAD_MARK="x"; WARN_MARK="!"; ASK_MARK="?"; PTR="->"; BAR_ON="#"; BAR_OFF="-"
+STEP_N=0; STEP_TOTAL=0; STEP_LABEL=""; STEP_SUB=""; STEP_T=0; SPIN_PID=""; STTY_SAVE=""
+START_T=$(date +%s)
 
-if [ -t 1 ]; then
-	B=$(printf '\033[1m'); R=$(printf '\033[0m'); RED=$(printf '\033[31m'); YEL=$(printf '\033[33m')
-else
-	B=""; R=""; RED=""; YEL=""
-fi
-say() { printf '%s\n' "$*"; }
-step() { printf '%s==>%s %s\n' "$B" "$R" "$*"; }
-warn() { printf '%swarning:%s %s\n' "$YEL" "$R" "$*" >&2; }
-die() { printf '%serror:%s %s\n' "$RED" "$R" "$*" >&2; exit 1; }
+# shellcheck disable=SC2034
+ui_init() {
+	if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ]; then
+		UI_COLOR=1
+		B="${ESC}[1m"; R="${ESC}[0m"; DIM="${ESC}[38;5;245m"; PINK="${ESC}[38;5;205m"
+		GRN="${ESC}[38;5;78m"; RED="${ESC}[38;5;203m"; YEL="${ESC}[38;5;221m"; CYN="${ESC}[38;5;117m"
+		[ -n "${CI:-}" ] || UI_ANIM=1
+		case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+		*UTF-8* | *utf-8* | *UTF8* | *utf8*)
+			UI_UTF=1
+			OK_MARK="✓"; BAD_MARK="✗"; WARN_MARK="!"; ASK_MARK="?"; PTR="❯"; BAR_ON="▰"; BAR_OFF="▱"
+			;;
+		esac
+	fi
+}
+for a in "$@"; do [ "$a" != --no-color ] || NO_COLOR=1; done
+ui_init
+
 have() { command -v "$1" >/dev/null 2>&1; }
+fmt_time() { printf '%d:%02d' $(($1 / 60)) $(($1 % 60)); }
+rep() { # rep STRING N: STRING repeated N times
+	rep_out=""; rep_i=0
+	while [ "$rep_i" -lt "$2" ]; do rep_out="$rep_out$1"; rep_i=$((rep_i + 1)); done
+	printf '%s' "$rep_out"
+}
+bar() { # bar DONE TOTAL: a ten cell progress bar
+	bar_t=$2; [ "$bar_t" -gt 0 ] || bar_t=1
+	bar_f=$(($1 * 10 / bar_t)); [ "$bar_f" -le 10 ] || bar_f=10
+	printf '%s%s' "$(rep "$BAR_ON" "$bar_f")" "$(rep "$BAR_OFF" $((10 - bar_f)))"
+}
+
+# The spinner runs in the background and redraws one line (spinner, step
+# number, progress bar, label, elapsed time). Anything that prints while it
+# runs goes through ui_pause / ui_resume so lines never interleave.
+spin_loop() {
+	trap - HUP
+	if [ -n "$UI_UTF" ]; then set -- ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏; else set -- '|' '/' '-' "\\"; fi
+	nf=$#; i=0; el=0
+	cols=$(tput cols 2>/dev/null || echo 80)
+	label=$STEP_LABEL; [ -z "$STEP_SUB" ] || label="$label - $STEP_SUB"
+	maxl=$((cols - 34)); [ "$maxl" -ge 20 ] || maxl=20
+	label=$(printf '%s' "$label" | cut -c1-"$maxl")
+	pb=$(bar $((STEP_N - 1)) "$STEP_TOTAL")
+	while :; do
+		if [ $((i % 10)) -eq 0 ]; then el=$(($(date +%s) - START_T)); fi
+		f=""
+		eval "f=\${$((i % nf + 1))}"
+		printf '\r%s[K  %s%s%s %s[%s/%s]%s %s%s%s %s %s%s%s' "$ESC" "$PINK" "$f" "$R" "$DIM" "$STEP_N" "$STEP_TOTAL" "$R" "$PINK" "$pb" "$R" "$label" "$DIM" "$(fmt_time "$el")" "$R"
+		sleep 0.1 2>/dev/null || sleep 1
+		i=$((i + 1))
+	done
+}
+spin_start() {
+	[ -n "$UI_ANIM" ] || return 0
+	[ -z "$SPIN_PID" ] || return 0
+	printf '%s[?25l' "$ESC"
+	spin_loop &
+	SPIN_PID=$!
+}
+spin_stop() {
+	[ -n "$SPIN_PID" ] || return 0
+	kill -HUP "$SPIN_PID" 2>/dev/null || true
+	wait "$SPIN_PID" 2>/dev/null || true
+	SPIN_PID=""
+	printf '\r%s[K%s[?25h' "$ESC" "$ESC"
+}
+ui_pause() { spin_stop; }
+ui_resume() { if [ -n "$STEP_LABEL" ]; then spin_start; fi; }
+
+step_end() { # step_end ok|fail: closes the running step
+	[ -n "$STEP_LABEL" ] || return 0
+	spin_stop
+	if [ -n "$UI_ANIM" ]; then
+		t=$(($(date +%s) - STEP_T))
+		if [ "$1" = ok ]; then mark="${GRN}${OK_MARK}${R}"; else mark="${RED}${BAD_MARK}${R}"; fi
+		printf '  %s %s[%s/%s]%s %s %s%ss%s\n' "$mark" "$DIM" "$STEP_N" "$STEP_TOTAL" "$R" "$STEP_LABEL" "$DIM" "$t" "$R"
+	fi
+	STEP_LABEL=""; STEP_SUB=""
+}
+step() { # step "Label": finishes the running step and starts the next
+	step_end ok
+	STEP_N=$((STEP_N + 1)); STEP_LABEL=$1; STEP_SUB=""; STEP_T=$(date +%s)
+	if [ -n "$UI_ANIM" ]; then
+		spin_start
+	else
+		printf '%s==>%s %s[%s/%s]%s %s\n' "$B" "$R" "$DIM" "$STEP_N" "$STEP_TOTAL" "$R" "$1"
+	fi
+}
+sub() { # sub "detail": names the part of the step that is running
+	STEP_SUB=$1
+	if [ -n "$UI_ANIM" ]; then spin_stop; spin_start; else printf '    %s\n' "$1"; fi
+}
+say() { ui_pause; printf '%s\n' "$*"; ui_resume; }
+note() { ui_pause; printf '  %s%s%s\n' "$DIM" "$*" "$R"; ui_resume; }
+warn() { ui_pause; printf '  %s%s warning:%s %s\n' "$YEL" "$WARN_MARK" "$R" "$*" >&2; ui_resume; }
+die() {
+	step_end fail
+	spin_stop
+	printf '  %s%s error:%s %s\n' "$RED" "$BAD_MARK" "$R" "$*" >&2
+	printf '  %sIt is safe to run the installer again once this is fixed. Flags: --help. Docs: https://5050cloud.com/docs%s\n' "$DIM" "$R" >&2
+	exit 1
+}
+
+banner() {
+	if [ -z "$UI_COLOR" ]; then
+		printf '5050cloud installer\n'
+		return 0
+	fi
+	if [ -n "$UI_UTF" ]; then
+		printf '\n'
+		for l in 1 2 3; do
+			case $l in
+			1) a='┏━┓┏━┓┏━┓┏━┓'; b='┏━╸╻  ┏━┓╻ ╻╺┳┓'; c=205 ;;
+			2) a='┗━┓┃┃┃┗━┓┃┃┃'; b='┃  ┃  ┃ ┃┃ ┃ ┃┃'; c=206 ;;
+			*) a='┗━┛┗━┛┗━┛┗━┛'; b='┗━╸┗━╸┗━┛┗━┛╺┻┛'; c=207 ;;
+			esac
+			printf '  %s[38;5;%sm%s%s %s%s%s\n' "$ESC" "$c" "$a" "$R" "$B" "$b" "$R"
+			[ -z "$UI_ANIM" ] || sleep 0.06
+		done
+	else
+		printf '\n  %s5050cloud%s\n' "$B" "$R"
+	fi
+	printf '  %sopen-source cloud on your own servers%s\n\n' "$DIM" "$R"
+}
+
+box() { # box TITLE "label=value" ...: a framed summary
+	box_title=$1; shift
+	box_w=${#box_title}
+	for l in "$@"; do
+		v=${l#*=}
+		[ $((10 + ${#v})) -le "$box_w" ] || box_w=$((10 + ${#v}))
+	done
+	if [ -n "$UI_UTF" ]; then tl='╭'; tr_='╮'; bl='╰'; br='╯'; hz='─'; vt='│'; else tl='+'; tr_='+'; bl='+'; br='+'; hz='-'; vt='|'; fi
+	printf '  %s%s%s%s%s\n' "$PINK" "$tl" "$(rep "$hz" $((box_w + 2)))" "$tr_" "$R"
+	printf '  %s%s%s %s%s%s%s %s%s%s\n' "$PINK" "$vt" "$R" "$B$GRN" "$box_title" "$R" "$(rep ' ' $((box_w - ${#box_title})))" "$PINK" "$vt" "$R"
+	printf '  %s%s%s%s%s\n' "$PINK" "$vt" "$(rep ' ' $((box_w + 2)))" "$vt" "$R"
+	for l in "$@"; do
+		k=${l%%=*}; v=${l#*=}
+		printf '  %s%s%s %s%-9s%s %s%s %s%s%s\n' "$PINK" "$vt" "$R" "$DIM" "$k" "$R" "$v" "$(rep ' ' $((box_w - 10 - ${#v})))" "$PINK" "$vt" "$R"
+	done
+	printf '  %s%s%s%s%s\n' "$PINK" "$bl" "$(rep "$hz" $((box_w + 2)))" "$br" "$R"
+}
+
+on_exit() {
+	rc=$?
+	spin_stop
+	if [ -n "$STTY_SAVE" ]; then stty "$STTY_SAVE" 2>/dev/null || true; fi
+	if [ -n "$UI_ANIM" ]; then printf '%s[?25h' "$ESC"; fi
+	[ -z "${TMP:-}" ] || rm -rf "$TMP"
+	if [ "$rc" -eq 130 ]; then printf '\n  %sCancelled. Every step is safe to run again, so just start the installer again.%s\n' "$DIM" "$R" >&2; fi
+}
+trap on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 usage() {
 	cat <<'EOF'
@@ -72,7 +226,12 @@ Flags (each also an environment variable FIFTY_<FLAG>, for example FIFTY_DOMAIN)
   --uninstall [--purge] [--yes]   remove 5050cloud (--purge also deletes data)
   --force                    continue on an operating system that is not supported
   --yes                      answer yes to every question
+  --dry-run                  walk through the installer without changing anything
+  --no-color                 plain text, no colour or animation (NO_COLOR=1 does the same)
   --help                     show this help
+
+Run from a terminal, the installer asks a few questions. Piped (curl | sudo sh),
+in CI or with --yes it asks nothing and uses the flags and defaults.
 EOF
 }
 
@@ -111,6 +270,7 @@ UNINSTALL=$(env_or UNINSTALL)
 PURGE=$(env_or PURGE)
 FORCE=$(env_or FORCE)
 YES=$(env_or YES)
+DRY_RUN=$(env_or DRY_RUN)
 BINARIES_CHANGED=""
 
 need_arg() { if [ "$#" -lt 2 ] || [ -z "$2" ]; then die "$1 needs a value."; fi; }
@@ -147,6 +307,8 @@ while [ "$#" -gt 0 ]; do
 	--purge) PURGE=1 ;;
 	--force) FORCE=1 ;;
 	--yes | -y) YES=1 ;;
+	--dry-run) DRY_RUN=1 ;;
+	--no-color) ;;
 	--help | -h) usage; exit 0 ;;
 	*) die "unknown flag $1. Run with --help for the list." ;;
 	esac
@@ -175,27 +337,126 @@ fi
 # Guided setup only when a person runs the script from a terminal; piped
 # into sh, stdin is the script itself and nothing is asked.
 INTERACTIVE=""
+WIZARD_DONE=""
 if [ -t 0 ] && [ -t 1 ] && [ -z "$YES" ]; then
 	INTERACTIVE=1
 fi
+tty_raw() { # single key reads; fails when stdin is not a real terminal
+	STTY_SAVE=$(stty -g 2>/dev/null) || { STTY_SAVE=""; return 1; }
+	stty -icanon -echo min 1 time 0 2>/dev/null || { STTY_SAVE=""; return 1; }
+}
+tty_restore() {
+	if [ -n "$STTY_SAVE" ]; then stty "$STTY_SAVE" 2>/dev/null || true; fi
+	STTY_SAVE=""
+}
+key() { # prints up, down, enter, quit, eof, num1..num9 or other
+	k=$(dd bs=1 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n')
+	case "$k" in
+	1b)
+		stty min 0 time 1 2>/dev/null || true
+		k2=$(dd bs=1 count=2 2>/dev/null | od -An -tx1 | tr -d ' \n')
+		stty min 1 time 0 2>/dev/null || true
+		case "$k2" in 5b41 | 4f41) echo up ;; 5b42 | 4f42) echo down ;; *) echo other ;; esac
+		;;
+	0a | 0d) echo enter ;;
+	6b) echo up ;;
+	6a) echo down ;;
+	71 | 03) echo quit ;;
+	3[1-9]) echo "num${k#3}" ;;
+	"") echo eof ;;
+	*) echo other ;;
+	esac
+}
+choose() { # choose VAR "Question" option...: arrow keys or digits, Enter to pick; VAR gets the number
+	c_var=$1; c_q=$2; shift 2
+	c_n=$#; c_sel=1
+	ui_pause
+	printf '\n  %s%s%s %s%s%s\n' "$PINK" "$ASK_MARK" "$R" "$B" "$c_q" "$R"
+	if ! tty_raw; then
+		c_i=1
+		for o in "$@"; do printf '    %s) %s\n' "$c_i" "$o"; c_i=$((c_i + 1)); done
+		printf '  Pick a number [1]: '
+		read -r c_ans || c_ans=""
+		case "$c_ans" in [1-9]) if [ "$c_ans" -le "$c_n" ]; then c_sel=$c_ans; fi ;; esac
+		eval "$c_var=\$c_sel"
+		return 0
+	fi
+	printf '%s[?25l' "$ESC"
+	c_first=1
+	while :; do
+		if [ -z "$c_first" ]; then printf '%s[%dA' "$ESC" "$c_n"; fi
+		c_first=""
+		c_i=1
+		for o in "$@"; do
+			if [ "$c_i" -eq "$c_sel" ]; then
+				printf '\r%s[K    %s%s %s%s\n' "$ESC" "$PINK" "$PTR" "$o" "$R"
+			else
+				printf '\r%s[K      %s%s%s\n' "$ESC" "$DIM" "$o" "$R"
+			fi
+			c_i=$((c_i + 1))
+		done
+		c_k=$(key)
+		case "$c_k" in
+		up) if [ "$c_sel" -gt 1 ]; then c_sel=$((c_sel - 1)); fi ;;
+		down) if [ "$c_sel" -lt "$c_n" ]; then c_sel=$((c_sel + 1)); fi ;;
+		num*) if [ "${c_k#num}" -le "$c_n" ]; then c_sel=${c_k#num}; fi ;;
+		enter | eof) break ;;
+		quit) tty_restore; printf '%s[?25h' "$ESC"; exit 130 ;;
+		esac
+	done
+	tty_restore
+	printf '%s[?25h' "$ESC"
+	eval "$c_var=\$c_sel"
+	ui_resume
+}
 ask() { # ask VAR "question" default
 	if [ -z "$INTERACTIVE" ]; then return 0; fi
-	printf '%s%s%s [%s]: ' "$B" "$2" "$R" "$3"
+	ui_pause
+	printf '\n  %s%s%s %s%s%s' "$PINK" "$ASK_MARK" "$R" "$B" "$2" "$R"
+	if [ -n "$3" ]; then printf ' %s(%s)%s' "$DIM" "$3" "$R"; fi
+	printf '\n  %s%s%s ' "$PINK" "$PTR" "$R"
 	read -r ans || ans=""
 	[ -n "$ans" ] || ans=$3
 	eval "$1=\$ans"
+	ui_resume
 }
-confirm() { # confirm "question" -> 0 for yes
+# shellcheck disable=SC2034
+yesno() { # yesno VAR "question" y|n: VAR becomes 1 for yes, empty for no
+	if [ -z "$INTERACTIVE" ]; then return 0; fi
+	ui_pause
+	if [ "$3" = y ]; then yn_hint="Y/n"; else yn_hint="y/N"; fi
+	printf '\n  %s%s%s %s%s%s %s[%s]%s\n  %s%s%s ' "$PINK" "$ASK_MARK" "$R" "$B" "$2" "$R" "$DIM" "$yn_hint" "$R" "$PINK" "$PTR" "$R"
+	read -r ans || ans=""
+	case "$ans" in
+	y | Y | yes | YES | Yes) yn_v=1 ;;
+	n | N | no | NO | No) yn_v="" ;;
+	*) if [ "$3" = y ]; then yn_v=1; else yn_v=""; fi ;;
+	esac
+	eval "$1=\$yn_v"
+	ui_resume
+}
+confirm() { # confirm "question" -> 0 for yes (default no)
 	if [ -n "$YES" ]; then return 0; fi
 	if [ -z "$INTERACTIVE" ]; then return 1; fi
-	printf '%s%s%s [y/N]: ' "$B" "$1" "$R"
-	read -r ans || ans=""
-	case "$ans" in y | Y | yes | YES) return 0 ;; esac
-	return 1
+	yes_v=""
+	yesno yes_v "$1" n
+	[ -n "$yes_v" ]
 }
 
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT INT TERM
+
+# run_logged DESCRIPTION CMD...: runs CMD with its output kept in a log; the
+# log is shown when CMD fails (and always in plain mode, as before).
+run_logged() {
+	rl_what=$1; shift
+	if "$@" >"$TMP/run.log" 2>&1; then
+		if [ -z "$UI_ANIM" ] && [ -s "$TMP/run.log" ]; then cat "$TMP/run.log"; fi
+		return 0
+	fi
+	ui_pause
+	tail -n 20 "$TMP/run.log" >&2 || true
+	die "$rl_what failed (output above)."
+}
 
 # ------------------------------------------------------------------ download and verify
 
@@ -288,7 +549,7 @@ get_release() {
 		base=${RELEASE_BASE:-$REPO_RELEASES/download}
 		base=${base%/}/$VERSION
 		name=$(printf '%s' "$name_tpl" | sed "s/@V@/${VERSION#v}/")
-		step "Downloading 5050cloud $VERSION"
+		sub "Downloading 5050cloud $VERSION"
 		fetch "$base/checksums.txt" "$TMP/checksums.txt" || die "cannot download $base/checksums.txt. Does release $VERSION exist?"
 		fetch "$base/checksums.txt.minisig" "$TMP/checksums.txt.minisig" || die "cannot download the release signature."
 		fetch "$base/$name" "$TMP/$name" || die "cannot download $base/$name."
@@ -316,7 +577,9 @@ install_cli() {
 	os=$(uname -s | tr '[:upper:]' '[:lower:]')
 	case "$os" in linux | darwin) ;; *) die "the CLI installer supports Linux and macOS." ;; esac
 	arch=$(detect_arch)
+	step "Downloading and verifying the 5050 CLI"
 	get_release "5050-cli_@V@_${os}_${arch}.tar.gz"
+	step "Installing the 5050 CLI"
 	mkdir -p "$TMP/cli"
 	tar -xzf "$RELEASE_FILE" -C "$TMP/cli"
 	if [ "$(id -u)" = 0 ] || [ -w /usr/local/bin ]; then
@@ -326,9 +589,10 @@ install_cli() {
 		mkdir -p "$dest"
 	fi
 	cp "$TMP/cli/5050" "$dest/5050.new" && chmod 0755 "$dest/5050.new" && mv "$dest/5050.new" "$dest/5050"
-	say "Installed the 5050 CLI $VERSION to $dest/5050."
-	case ":$PATH:" in *":$dest:"*) ;; *) say "Add $dest to your PATH to run it." ;; esac
-	say "Next: 5050 login https://<your console>"
+	step_end ok
+	say ""
+	box "Installed the 5050 CLI $VERSION" "Path=$dest/5050" "Took=$(fmt_time $(($(date +%s) - START_T)))" "Next=5050 login https://<your console>"
+	case ":$PATH:" in *":$dest:"*) ;; *) warn "$dest is not on your PATH yet. Add it to run 5050 from anywhere." ;; esac
 }
 
 # ------------------------------------------------------------------ uninstall
@@ -361,9 +625,13 @@ uninstall() {
 			docker network ls --format '{{.Name}}' 2>/dev/null | grep '^5050-' | xargs -r docker network rm >/dev/null 2>&1 || true
 		fi
 		rm -rf "$DATA_DIR" "$ETC_DIR" /etc/sysctl.d/90-5050.conf
-		say "Removed 5050cloud and its data."
+		step_end ok
+		say ""
+		box "5050cloud was removed" "Data=deleted" "Took=$(fmt_time $(($(date +%s) - START_T)))"
 	else
-		say "Removed 5050cloud. App containers, $DATA_DIR and $ETC_DIR were kept (use --purge to delete them)."
+		step_end ok
+		say ""
+		box "5050cloud was removed" "Kept=app containers, $DATA_DIR, $ETC_DIR" "Delete=run again with --purge" "Took=$(fmt_time $(($(date +%s) - START_T)))"
 	fi
 }
 
@@ -411,7 +679,7 @@ preflight() {
 
 	# Time sync.
 	if ! systemctl is-active --quiet systemd-timesyncd && ! systemctl is-active --quiet chrony && ! systemctl is-active --quiet chronyd; then
-		step "Turning on time sync"
+		sub "Turning on time sync"
 		systemctl enable --now systemd-timesyncd >/dev/null 2>&1 || timedatectl set-ntp true >/dev/null 2>&1 ||
 			die "no time sync is running and systemd-timesyncd could not be started. Install chrony and run again."
 	fi
@@ -459,23 +727,23 @@ preflight() {
 # ------------------------------------------------------------------ packages and system
 
 install_packages() {
-	step "Installing packages"
+	sub "Installing base packages"
 	export DEBIAN_FRONTEND=noninteractive
-	apt-get update -qq
-	apt-get install -y -qq ca-certificates curl git iptables openssl >/dev/null
+	run_logged "updating the package index" apt-get update -qq
+	run_logged "installing base packages" apt-get install -y -qq ca-certificates curl git iptables openssl
 	dv=$(docker version --format '{{.Server.Version}}' 2>/dev/null || true)
 	if [ -n "$dv" ] && [ "${dv%%.*}" -ge 24 ] 2>/dev/null; then
-		say "Docker $dv is already installed."
+		note "Docker $dv is already installed."
 		return 0
 	fi
-	step "Installing Docker Engine"
+	sub "Installing Docker Engine"
 	install -m 0755 -d /etc/apt/keyrings
 	fetch "https://download.docker.com/linux/$OS_ID/gpg" /etc/apt/keyrings/docker.asc
 	chmod a+r /etc/apt/keyrings/docker.asc
 	printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/%s %s stable\n' \
 		"$(dpkg --print-architecture)" "$OS_ID" "$OS_CODENAME" >/etc/apt/sources.list.d/docker.list
-	apt-get update -qq
-	apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin >/dev/null
+	run_logged "updating the package index" apt-get update -qq
+	run_logged "installing Docker Engine" apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 	DOCKER_FRESH=1
 }
 
@@ -515,7 +783,7 @@ setup_data_disk() {
 		warn "Docker already has containers, so its data stays where it is. Only 5050cloud state moves to $disk."
 		KEEP_DOCKER_ROOT=1
 	fi
-	step "Formatting $disk as the data disk"
+	sub "Formatting $disk as the data disk"
 	mkfs.ext4 -q -L 5050data "$disk"
 	uuid=$(blkid -s UUID -o value "$disk")
 	mkdir -p /data
@@ -567,7 +835,7 @@ PY
 }
 
 configure_system() {
-	step "Tuning the kernel"
+	sub "Tuning the kernel"
 	conntrack=$((MEM_MB * 32768 / 1024))
 	[ "$conntrack" -ge 131072 ] || conntrack=131072
 	cat >/etc/sysctl.d/90-5050.conf <<EOF
@@ -585,7 +853,7 @@ EOF
 	sysctl -q -p /etc/sysctl.d/90-5050.conf >/dev/null 2>&1 || warn "some kernel settings could not be applied; see sysctl -p /etc/sysctl.d/90-5050.conf"
 
 	if [ -z "$NO_SWAP" ] && [ "$MEM_MB" -lt 8192 ] && [ -z "$(swapon --noheadings 2>/dev/null)" ]; then
-		step "Adding a 2 GB swap file"
+		sub "Adding a 2 GB swap file"
 		fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
 		chmod 600 /swapfile
 		mkswap /swapfile >/dev/null
@@ -604,7 +872,7 @@ EOF
 	fi
 
 	if [ -n "$FIREWALL" ]; then
-		step "Adding firewall rules"
+		sub "Adding firewall rules"
 		have nft || apt-get install -y -qq nftables >/dev/null
 		cat >/etc/nftables-5050.conf <<EOF
 table inet fifty_filter {
@@ -654,7 +922,7 @@ install_binaries() {
 	[ "$(readlink "$INSTALL_DIR/current" 2>/dev/null || true)" = "$rel" ] || BINARIES_CHANGED=1
 	if [ "$(cat "$rel/.sha256" 2>/dev/null || true)" != "$sum" ]; then
 		BINARIES_CHANGED=1
-		step "Unpacking $VERSION"
+		sub "Unpacking $VERSION"
 		mkdir -p "$INSTALL_DIR/releases"
 		rm -rf "$rel.tmp"
 		mkdir -p "$rel.tmp"
@@ -758,16 +1026,16 @@ init_control() {
 	detect_public_ip
 	sslip=$(printf '%s' "$PUBLIC_IP" | tr . -).sslip.io
 	if [ -f "$ETC_DIR/config.json" ]; then
-		say "Already initialised ($ETC_DIR/config.json); keeping the existing configuration."
+		note "Already initialised ($ETC_DIR/config.json); keeping the existing configuration."
 		CONSOLE_DOMAIN=$(sed -n 's/.*"consoleDomain": *"\([^"]*\)".*/\1/p' "$ETC_DIR/config.json")
 		return 0
 	fi
 	if [ -z "$DOMAIN" ]; then
-		ask DOMAIN "Base domain for your apps (needs a wildcard A record to $PUBLIC_IP; Enter keeps the free sslip.io name)" "$sslip"
+		ask DOMAIN "Base domain for your apps (wildcard A record to $PUBLIC_IP; Enter keeps the free sslip.io name)" "$sslip"
 	fi
 	[ -n "$DOMAIN" ] || DOMAIN=$sslip
 	[ -n "$CONSOLE_DOMAIN" ] || CONSOLE_DOMAIN=console-$(rand4).$DOMAIN
-	if [ -n "$INTERACTIVE" ]; then
+	if [ -n "$INTERACTIVE" ] && [ -z "$WIZARD_DONE" ]; then
 		ask CONSOLE_DOMAIN "Console address" "$CONSOLE_DOMAIN"
 		[ -n "$ACME_EMAIL" ] || ask ACME_EMAIL "Email for certificate notices (optional)" ""
 	fi
@@ -788,21 +1056,21 @@ init_control() {
 		--setup-url-file "$ETC_DIR/setup-url.txt" --join-token-file "$ETC_DIR/local-join-token"
 	[ -z "$ACME_EMAIL" ] || set -- "$@" --acme-email "$ACME_EMAIL"
 	[ -z "$RELEASE_BASE" ] || set -- "$@" --release-base "${RELEASE_BASE%/}"
-	step "Initialising the control plane"
+	sub "Initialising the control plane"
 	if [ -n "$RESTORE" ]; then
 		[ -z "$S3_ENDPOINT" ] || export FIFTY_S3_ENDPOINT="$S3_ENDPOINT"
 		[ -z "$S3_REGION" ] || export FIFTY_S3_REGION="$S3_REGION"
 		[ -z "$S3_ACCESS_KEY" ] || export FIFTY_S3_ACCESS_KEY="$S3_ACCESS_KEY"
 		[ -z "$S3_SECRET_KEY" ] || export FIFTY_S3_SECRET_KEY="$S3_SECRET_KEY"
-		"$INSTALL_DIR/current/5050d" restore-state --from "$RESTORE" --recovery-key "$RECOVERY_KEY" "$@"
+		run_logged "restoring the control host" "$INSTALL_DIR/current/5050d" restore-state --from "$RESTORE" --recovery-key "$RECOVERY_KEY" "$@"
 	else
-		"$INSTALL_DIR/current/5050d" init "$@"
+		run_logged "initialising the control plane" "$INSTALL_DIR/current/5050d" init "$@"
 	fi
 	umask 022
 }
 
 start_control() {
-	step "Starting 5050cloud"
+	sub "Starting the control plane"
 	if [ -n "$BINARIES_CHANGED" ] && systemctl is-active --quiet 5050d.service; then
 		systemctl restart 5050d.service
 	fi
@@ -825,7 +1093,7 @@ start_control() {
 }
 
 wait_console() {
-	step "Waiting for the console certificate (up to 120 s)"
+	sub "Waiting for the console certificate (up to 120 s)"
 	i=0
 	while [ "$i" -lt 120 ]; do
 		if curl -fsS --max-time 3 "https://$CONSOLE_DOMAIN/readyz" >/dev/null 2>&1; then
@@ -835,49 +1103,59 @@ wait_console() {
 			return 0 # a Let's Encrypt staging certificate is the expected result
 		fi
 		i=$((i + 3))
+		sub "Waiting for the console certificate (${i} s of 120)"
 		sleep 3
 	done
 	return 1
 }
 
 print_done() {
+	step_end ok
 	setup=$(cat "$ETC_DIR/setup-url.txt" 2>/dev/null || true)
 	# On a re-run the owner usually exists and the link no longer works.
 	if [ -n "$setup" ] && curl -fsS --max-time 5 http://127.0.0.1:5050/api/v1/setup 2>/dev/null | grep -q '"needsSetup":false'; then
 		setup=""
 		rm -f "$ETC_DIR/setup-url.txt"
 	fi
-	say ""
-	say "${B}5050cloud $VERSION is ready.${R}"
-	say ""
-	if [ -n "$setup" ]; then
-		say "  Open this link to create your account (valid 24 hours, works once):"
-		say "  $setup"
-		say ""
-	fi
 	if [ -f "$RECOVERY_KEY_FILE" ]; then
-		if [ -t 1 ]; then
-			say "  Recovery key (decrypts your backups; store it somewhere safe, it is shown only here"
-			say "  and in Settings > Backups to the owner; also saved to $RECOVERY_KEY_FILE, 0600;"
-			say "  move it off this machine and delete the file):"
-			say "  $(cat "$RECOVERY_KEY_FILE")"
-		else
-			say "  Recovery key saved to $RECOVERY_KEY_FILE (0600). Move it off this machine and delete the file."
-		fi
-		say ""
+		if [ -t 1 ]; then recovery=$(cat "$RECOVERY_KEY_FILE"); else recovery=""; fi
+	else
+		recovery=""
 	fi
-	say "  Next: deploy something from the console, or install the CLI on your laptop:"
-	say "  curl -fsSL https://5050cloud.com/install.sh | sh -s -- --cli"
+	summary "$setup" "$recovery"
+}
+
+# summary SETUP_URL RECOVERY_KEY: the closing box and what to do next.
+summary() {
+	took=$(fmt_time $(($(date +%s) - START_T)))
+	if [ -n "$1" ]; then login="Open the setup link below"; else login="Sign in with your owner account"; fi
+	printf '\n'
+	box "5050cloud $VERSION is ready." "Console=https://$CONSOLE_DOMAIN" "Login=$login" "Apps=*.${DOMAIN:-your domain}" "Took=$took" "Logs=journalctl -u 5050d -f"
+	printf '\n'
+	if [ -n "$1" ]; then
+		printf '  %sOpen this link to create your account (valid 24 hours, works once):%s\n' "$B" "$R"
+		printf '  %s%s%s\n\n' "$CYN" "$1" "$R"
+	fi
+	if [ -n "$2" ]; then
+		printf '  %sRecovery key%s (decrypts your backups; store it somewhere safe, it is shown only here\n' "$B" "$R"
+		printf '  and in Settings > Backups to the owner; also saved to %s, 0600;\n' "$RECOVERY_KEY_FILE"
+		printf '  move it off this machine and delete the file):\n'
+		printf '  %s%s%s\n\n' "$YEL" "$2" "$R"
+	elif [ -f "$RECOVERY_KEY_FILE" ]; then
+		printf '  Recovery key saved to %s (0600). Move it off this machine and delete the file.\n\n' "$RECOVERY_KEY_FILE"
+	fi
+	printf '  %sNext%s: deploy something from the console, or install the CLI on your laptop:\n' "$B" "$R"
+	printf '  %scurl -fsSL https://5050cloud.com/install.sh | sh -s -- --cli%s\n\n' "$CYN" "$R"
 }
 
 # ------------------------------------------------------------------ join
 
 join_host() {
 	if [ -f "$ETC_DIR/agent.json" ]; then
-		say "This host already joined ($ETC_DIR/agent.json)."
+		note "This host already joined ($ETC_DIR/agent.json)."
 	else
 		detect_public_ip
-		step "Joining $JOIN"
+		sub "Joining $JOIN"
 		set -- join --url "$JOIN" --token "$TOKEN" --public-ip "$PUBLIC_IP"
 		[ -z "$CA_PIN" ] || set -- "$@" --ca-pin "$CA_PIN"
 		if [ -n "$ROLES" ]; then
@@ -888,7 +1166,7 @@ join_host() {
 			fi
 		fi
 		out=$("$INSTALL_DIR/agent/5050-agent" "$@") || die "joining failed: $out"
-		say "$out" | grep -v '^Start the agent' || true
+		printf '%s\n' "$out" | grep -v '^Start the agent' || true
 		reg=$(printf '%s\n' "$out" | sed -n 's/^registry-address: //p')
 		if [ -n "$reg" ] && have python3; then
 			python3 - /etc/docker/daemon.json "$reg" <<'PY'
@@ -910,33 +1188,149 @@ PY
 		fi
 	fi
 	systemctl enable --now 5050-agent.service >/dev/null
-	say ""
-	say "${B}This host joined the install.${R} It shows up under Hosts in the console within a minute."
+	step_end ok
+	printf '\n'
+	box "This host joined the install." "Console=$JOIN" "Roles=${ROLES:-app}" "Took=$(fmt_time $(($(date +%s) - START_T)))"
+	printf '\n  It shows up under Hosts in the console within a minute.\n\n'
+}
+
+# ------------------------------------------------------------------ wizard
+
+need_root() {
+	[ -z "$DRY_RUN" ] || return 0
+	[ "$(id -u)" = 0 ] || die "run the installer as root: sudo sh install.sh"
+}
+
+wizard_server() {
+	[ -n "$INTERACTIVE" ] || return 0
+	if [ -f "$ETC_DIR/config.json" ]; then
+		note "Found an existing installation. Its configuration is kept."
+		return 0
+	fi
+	if [ -n "$DRY_RUN" ] && [ -z "$PUBLIC_IP" ]; then PUBLIC_IP=203.0.113.10; else detect_public_ip; fi
+	sslip=$(printf '%s' "$PUBLIC_IP" | tr . -).sslip.io
+	if [ -z "$DOMAIN" ]; then
+		ask DOMAIN "Base domain for your apps (wildcard A record to $PUBLIC_IP; Enter keeps the free sslip.io name)" "$sslip"
+	fi
+	[ -n "$DOMAIN" ] || DOMAIN=$sslip
+	[ -n "$CONSOLE_DOMAIN" ] || CONSOLE_DOMAIN=console-$(rand4).$DOMAIN
+	ask CONSOLE_DOMAIN "Console address" "$CONSOLE_DOMAIN"
+	[ -n "$ACME_EMAIL" ] || ask ACME_EMAIL "Email for certificate notices (optional)" ""
+	if [ -z "$FIREWALL" ] && ! { have ufw && ufw status 2>/dev/null | grep -q 'Status: active'; }; then
+		yesno FIREWALL "Block inbound traffic except SSH, web and WireGuard ports?" n
+	fi
+	WIZARD_DONE=1
+	fw=off; [ -z "$FIREWALL" ] || fw=on
+	printf '\n'
+	box "Ready to install" "Console=https://$CONSOLE_DOMAIN" "Apps=*.$DOMAIN" "Server IP=$PUBLIC_IP" "Email=${ACME_EMAIL:-none}" "Firewall=$fw"
+	go=""
+	yesno go "Start the installation?" y
+	if [ -z "$go" ]; then
+		say ""
+		say "Nothing was changed."
+		exit 0
+	fi
+	printf '\n'
+}
+
+wizard_join() {
+	[ -n "$INTERACTIVE" ] || return 0
+	[ -n "$JOIN" ] || ask JOIN "Console URL of the install to join (for example https://console.example.com)" ""
+	[ -n "$TOKEN" ] || ask TOKEN "Join token (console: Hosts > Add host)" ""
+	[ -n "$JOIN" ] || die "a console URL is needed to join. Pass --join URL."
+	[ -n "$TOKEN" ] || die "--join needs --token. Create one in the console under Hosts > Add host."
+	printf '\n'
+}
+
+wizard_mode() {
+	[ -n "$INTERACTIVE" ] || return 0
+	if [ -n "$CLI_ONLY$UNINSTALL$JOIN$RESTORE$DOMAIN$ARCHIVE$RELEASE_BASE$VERSION" ]; then return 0; fi
+	mode=1
+	choose mode "What would you like to do?" \
+		"Install 5050cloud on this server" \
+		"Join this server to an existing install (worker host)" \
+		"Install only the 5050 command line tool" \
+		"Uninstall 5050cloud from this server"
+	case "$mode" in
+	2) need_root; wizard_join ;;
+	3) CLI_ONLY=1 ;;
+	4)
+		UNINSTALL=1
+		yesno PURGE "Also delete all data (apps, volumes, backups on this machine)?" n
+		;;
+	*) need_root ;;
+	esac
+}
+
+# dry_run walks through the screens with made up values and changes nothing.
+dry_run() {
+	STEP_TOTAL=8
+	VERSION=${VERSION:-v0.0.0-preview}
+	[ -n "$PUBLIC_IP" ] || PUBLIC_IP=203.0.113.10
+	[ -n "$DOMAIN" ] || DOMAIN=$(printf '%s' "$PUBLIC_IP" | tr . -).sslip.io
+	[ -n "$CONSOLE_DOMAIN" ] || CONSOLE_DOMAIN=console-demo.$DOMAIN
+	note "Dry run: nothing on this machine is changed."
+	for ph in "Checking this server|Reading the operating system|Checking memory, disk and ports" \
+		"Installing packages and Docker|Installing base packages|Installing Docker Engine" \
+		"Preparing storage and Docker|Looking for a blank data disk|Writing the Docker settings" \
+		"Tuning the system|Tuning the kernel|Adding a 2 GB swap file" \
+		"Installing 5050cloud $VERSION|Downloading 5050cloud $VERSION|Unpacking $VERSION" \
+		"Setting up the control plane|Initialising the control plane" \
+		"Starting services|Starting the control plane" \
+		"Waiting for the HTTPS certificate|Waiting for the console certificate (6 s of 120)"; do
+		oldifs=$IFS; IFS='|'
+		# shellcheck disable=SC2086
+		set -- $ph
+		IFS=$oldifs
+		step "$1"; shift
+		for d in "$@"; do sub "$d"; sleep 1; done
+	done
+	step_end ok
+	summary "https://$CONSOLE_DOMAIN/setup?token=preview" "preview-recovery-key-not-real"
 }
 
 # ------------------------------------------------------------------ main
 
-if [ -n "$CLI_ONLY" ]; then
-	install_cli
-	exit 0
-fi
-if [ -n "$UNINSTALL" ]; then
+banner
+wizard_mode
+if [ -n "$UNINSTALL" ] && [ -z "$DRY_RUN" ]; then
+	STEP_TOTAL=1; [ -z "$PURGE" ] || STEP_TOTAL=2
 	uninstall
 	exit 0
 fi
+if [ -n "$CLI_ONLY" ] && [ -z "$DRY_RUN" ]; then
+	STEP_TOTAL=2
+	install_cli
+	exit 0
+fi
+need_root
+if [ -n "$JOIN" ]; then wizard_join; elif [ -z "$RESTORE" ]; then wizard_server; fi
+if [ -n "$DRY_RUN" ]; then
+	dry_run
+	exit 0
+fi
 
+if [ -n "$JOIN" ]; then STEP_TOTAL=6; else STEP_TOTAL=8; fi
+step "Checking this server"
 preflight
+step "Installing packages and Docker"
 install_packages
+step "Preparing storage and Docker"
 setup_data_disk
 configure_docker
+step "Tuning the system"
 configure_system
+step "Installing 5050cloud ${VERSION:-}"
 install_binaries
 if [ -n "$JOIN" ]; then
 	join_host
 	exit 0
 fi
+step "Setting up the control plane"
 init_control
+step "Starting services"
 start_control
+step "Waiting for the HTTPS certificate"
 if ! wait_console; then
 	warn "no certificate for $CONSOLE_DOMAIN within 120 s. The usual cause is that ports 80 and 443 are not reachable from the internet, or the domain does not point at $PUBLIC_IP."
 	warn "open ports 80 and 443 (or use --domain with a wildcard A record to $PUBLIC_IP); the certificate is retried automatically."

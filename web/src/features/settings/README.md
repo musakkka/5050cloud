@@ -33,4 +33,4 @@ fixtures, small helpers).
 - Per-host metrics charts on Settings > Hosts (`/hosts/{id}/metrics`).
 - Adopt mode screens for unknown replicas after a restore (`/restore/unknown-replicas`).
 - Raw editor and sharing to services on Shared Variables.
-- Registry cap, build timeout and Railway alias settings on Settings > General.
+- Registry cap, build timeout and provided-variable alias settings on Settings > General.
