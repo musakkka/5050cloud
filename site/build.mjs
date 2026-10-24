@@ -105,6 +105,12 @@ function sidebarHtml(pages, current) {
 }
 
 // The theme is applied before first paint so nothing flashes (K9).
+// Visitor counts: GoatCounter (no cookies, no personal data), on the live
+// site only. GOATCOUNTER= (empty) turns it off; a code picks another account.
+const GOATCOUNTER = process.env.GOATCOUNTER ?? '5050clooud';
+const ANALYTICS = GOATCOUNTER
+  ? `<script>if(/^(www\\.)?5050cloud\\.com$/.test(location.hostname)){var g=document.createElement('script');g.async=true;g.src='https://gc.zgo.at/count.js';g.dataset.goatcounter='https://${GOATCOUNTER}.goatcounter.com/count';document.head.appendChild(g);}</script>`
+  : '';
 const THEME_BOOT = `<script>(function(){var d=document.documentElement;d.classList.add('js');var t=null;try{t=localStorage.getItem('5050site.theme');}catch(e){}var m=/[?&]theme=(light|dark)/.exec(location.search);if(m)t=m[1];if(t==='light'||t==='dark')d.setAttribute('data-theme',t);})();</script>`;
 
 // The 5050cloud lockup, as in the console (web/src/kit/Logo.tsx): one tile
@@ -154,6 +160,7 @@ ${og ? `<meta property="og:image" content="${ORIGIN}/og/${og}">
 <link rel="preload" href="${r('/fonts/ibm-plex-serif-latin-500.woff2')}" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${r('/style.css')}">
 ${THEME_BOOT}
+${ANALYTICS}
 ${head}
 </head>
 <body class="${bodyClass}" data-root="${r('/')}">
