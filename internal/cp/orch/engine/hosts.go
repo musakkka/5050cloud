@@ -192,7 +192,12 @@ func (o *Orchestrator) CreateJoinToken(ctx context.Context, req api.CreateJoinTo
 	if err != nil {
 		return api.JoinToken{}, err
 	}
-	return api.JoinToken{Command: hub.JoinCommand(o.o.PublicURL, tok, roles), Token: tok, ExpiresAt: exp}, nil
+	cmd := hub.JoinCommand(o.o.PublicURL, tok, roles)
+	if inst, err := o.cfg.Install(ctx); err == nil && inst.Private {
+		// Without the flag the new host would keep its ports open.
+		cmd += " --private"
+	}
+	return api.JoinToken{Command: cmd, Token: tok, ExpiresAt: exp}, nil
 }
 
 // UpdateHost changes a host's name, roles, drain flag or reserve.

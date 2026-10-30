@@ -10,7 +10,7 @@ import { useState, type ReactNode } from "react";
 import {
   AlertTriangle, ArrowRight, ChevronRight, CircleCheck, Clock, Cloud, CloudAlert, Copy, Check, Globe, Info, Pencil, Plus, RotateCw, Terminal, Trash2, Waypoints, Zap,
 } from "lucide-react";
-import type { Canvas, Domain, TCPProxy } from "../../api/types.gen";
+import type { Canvas, Domain, Install, TCPProxy } from "../../api/types.gen";
 import { del, get, patch, post } from "../service/client";
 import { useLoad } from "../service/ui";
 import { Button, Confirm, IconButton, Notice, Tooltip, cx, toastError } from "../../kit";
@@ -39,8 +39,11 @@ export default function Networking() {
 
 type Adding = null | "generate" | "custom" | "tcp";
 
+const NO_TCP_ON_PRIVATE = "TCP proxies cannot work on a private host, because it has no open ports. Use 5050 connect to reach this service from your machine.";
+
 function PublicNetworking() {
   const { svc, base } = useSettings();
+  const isPrivate = useLoad(() => get<Install>("/install"), []).data?.private;
   const domains = useLoad(() => get<Domain[]>(`${base}/domains`), [base], 15000);
   const [proxies, setProxies] = useState<TCPProxy[]>(svc.tcpProxies || []);
   const [adding, setAdding] = useState<Adding>(null);
@@ -79,9 +82,10 @@ function PublicNetworking() {
         <div className={cx("flex flex-wrap gap-2", (list.length > 0 || proxies.length > 0) && "mt-4")}>
           <Button variant="accent-outline" icon={<Zap size={16} />} onClick={() => setAdding("generate")}>Generate Domain</Button>
           <Button variant="accent-outline" icon={<Plus size={16} />} onClick={() => setAdding("custom")}>Custom Domain</Button>
-          <Button variant="accent-outline" icon={<Plus size={16} />} onClick={() => setAdding("tcp")}>TCP Proxy</Button>
+          {!isPrivate && <Button variant="accent-outline" icon={<Plus size={16} />} onClick={() => setAdding("tcp")}>TCP Proxy</Button>}
         </div>
       )}
+      {isPrivate && <div className="mt-3 text-caption text-fg-2">{NO_TCP_ON_PRIVATE}</div>}
       {removing && (
         <Confirm title="Remove domain" danger confirm="Delete"
           body={<>Stop serving this service on <b className="text-foreground">{removing.domain}</b>? Visitors get an error until you add it again.</>}
@@ -262,6 +266,10 @@ function PublicAccess() {
   const st = useFieldState("networking.publicAccess");
   const on = !!cfg.networking.publicAccess;
   const live = svc.tcpProxies[0];
+  const isPrivate = useLoad(() => get<Install>("/install"), []).data?.private;
+  if (isPrivate) {
+    return <SettingField title="Public Access" keywords="public access tcp proxy database url internet"><div className="text-sm text-fg-2">{NO_TCP_ON_PRIVATE}</div></SettingField>;
+  }
   return (
     <SettingField title="Public Access" keywords="public access tcp proxy database url internet" staged={st.staged} locked={st.locked}
       description={<>Adds a public host and port and sets <Code>DATABASE_PUBLIC_URL</Code></>}>

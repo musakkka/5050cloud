@@ -354,7 +354,7 @@ func (c *Core) Install(ctx context.Context) (api.Install, error) {
 		PublicIP: s.PublicIP, ACMEEmail: s.ACMEEmail, TrustedProxies: s.TrustedProxies,
 		RegistryCapPct: s.RegistryCapPct, BuildTimeoutMin: s.BuildTimeoutMin,
 		RailwayAliases: c.railwayAliases(ctx, c.st.Reader), RequireTOTP: s.RequireTOTP,
-		ReadOnly: c.st.ReadOnly(), CloudflareRanges: cfranges.All(),
+		ReadOnly: c.st.ReadOnly(), CloudflareRanges: cfranges.All(), Private: c.file.Private,
 	}
 	if s.OldConsoleDomain != "" && s.OldConsoleUntil > c.Now() {
 		in.OldConsoleDomain, in.OldConsoleUntil = s.OldConsoleDomain, s.OldConsoleUntil
@@ -398,12 +398,18 @@ func (c *Core) UpdateInstall(ctx context.Context, a Actor, req api.UpdateInstall
 			if !config.ValidDomain(d) {
 				return fail.Validation("baseDomain", "The base domain %q is not a valid domain name.", d)
 			}
+			if c.file.Private && config.IPNameDomain(d) {
+				return fail.Validation("baseDomain", "%s", config.PrivateNameMessage(d))
+			}
 			s.BaseDomain = d
 		}
 		if req.ConsoleDomain != nil {
 			d := lower(trim(*req.ConsoleDomain))
 			if !config.ValidDomain(d) {
 				return fail.Validation("consoleDomain", "The console domain %q is not a valid domain name.", d)
+			}
+			if c.file.Private && config.IPNameDomain(d) {
+				return fail.Validation("consoleDomain", "%s", config.PrivateNameMessage(d))
 			}
 			if d != s.ConsoleDomain {
 				var used int

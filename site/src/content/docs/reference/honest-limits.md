@@ -52,6 +52,12 @@ Metrics are kept 30 days. Logs are kept 7 days on each host.
 
 IPv4 only; containers have no IPv6. Ubuntu 24.04 is the tested OS.
 
+## Private mode is not a guarantee
+
+[Private mode](/docs/guides/private-mode) leaves no inbound port open, which removes one way in and only that one. A bug in an app you deploy, a stolen Cloudflare, GitHub or cloud account, or a compromised dependency can still get in. It also makes Cloudflare a hard dependency: if the tunnel is down, your apps and console are too.
+
+What to do: follow the account protections in the guide, keep backups off the machine, and keep treating the host as something that can be broken into.
+
 ## You own the machines
 
 You own the hardware and the OS. Security updates are automated; reboots are yours. See [Upgrading and host maintenance](/docs/guides/upgrading).

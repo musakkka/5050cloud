@@ -271,3 +271,65 @@ func TestCaddyConsoleBeatsDuplicateServiceRoute(t *testing.T) {
 		t.Error("the service route took the console name")
 	}
 }
+
+func TestCaddyPrivate(t *testing.T) {
+	in := testIngress()
+	in.Private = true
+	in.ACMEPrimary = false
+	in.ACMEPrimaryAddr = "100.96.0.1:80"
+	in.ACMEEmail = "ops@example.com"
+	in.Certificates = []proto.CertBundle{{Domain: "x.example.com", CertPEM: "c", KeyPEM: "k"}}
+	b, errs := renderCaddy(testParams, in)
+	if len(errs) != 0 {
+		t.Fatal(errs)
+	}
+	var cfg struct {
+		Apps map[string]json.RawMessage `json:"apps"`
+	}
+	if err := json.Unmarshal(b, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := cfg.Apps["tls"]; ok {
+		t.Errorf("a private host must order and load no certificates: %s", cfg.Apps["tls"])
+	}
+	var h struct {
+		Servers map[string]struct {
+			Listen    []string `json:"listen"`
+			Automatic any      `json:"automatic_https"`
+			Trusted   struct {
+				Ranges []string `json:"ranges"`
+			} `json:"trusted_proxies"`
+			Headers []string `json:"client_ip_headers"`
+			Routes  []struct {
+				Handle []struct {
+					StatusCode any `json:"status_code"`
+				} `json:"handle"`
+			} `json:"routes"`
+		} `json:"servers"`
+	}
+	if err := json.Unmarshal(cfg.Apps["http"], &h); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.Servers) != 1 {
+		t.Fatalf("servers = %v, want only plain HTTP", h.Servers)
+	}
+	s := h.Servers["http"]
+	if len(s.Listen) != 1 || s.Listen[0] != "127.0.0.1:80" {
+		t.Errorf("listen = %v, want loopback only", s.Listen)
+	}
+	if len(s.Trusted.Ranges) == 0 || s.Trusted.Ranges[0] != "127.0.0.1/32" {
+		t.Errorf("trusted = %v, want loopback first so the visitor's scheme and address survive", s.Trusted.Ranges)
+	}
+	if len(s.Headers) == 0 || s.Headers[0] != "Cf-Connecting-Ip" {
+		t.Errorf("client ip headers = %v", s.Headers)
+	}
+	if strings.Contains(string(cfg.Apps["http"]), "\"Location\"") {
+		t.Error("a private host must not redirect to HTTPS: the tunnel already speaks plain HTTP here, it would loop")
+	}
+	if !strings.Contains(string(cfg.Apps["http"]), "\"X-Forwarded-For\"") {
+		t.Error("a private host must replace X-Forwarded-For, or every visitor looks like 127.0.0.1 to the rate limits")
+	}
+	if strings.Contains(string(cfg.Apps["http"]), "acme-challenge") {
+		t.Error("a private host must not forward ACME challenges")
+	}
+}

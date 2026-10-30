@@ -390,6 +390,7 @@ func (o *Orchestrator) ingressFor(ctx context.Context, host hub.HostRow, members
 		Upstreams:           append([]proto.UpstreamSet{}, out.Upstreams...),
 		StreamCloseDelaySec: streamCloseDelaySec,
 		TrustedProxies:      inst.TrustedProxies,
+		Private:             inst.Private,
 	}
 	if !ing.ACMEPrimary {
 		ing.ACMEPrimaryAddr = addr

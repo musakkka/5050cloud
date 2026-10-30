@@ -10,7 +10,7 @@ Work through this list before you put real traffic on a 5050cloud install.
 1. Use a non-burstable VM size with enough RAM for every service plus about 1 GB for 5050cloud itself.
 2. Attach a blank data disk before installing; the installer uses it for all state (`--data-disk auto`). See [Install options](/docs/reference/install-options).
 3. Keep unattended security updates on (the default). Plan reboots: see [Upgrading and host maintenance](/docs/guides/upgrading).
-4. Open only the ports you need, with your cloud firewall or `--firewall`. See [Firewall](/docs/guides/firewall).
+4. Open only the ports you need, with your cloud firewall or `--firewall`. See [Firewall](/docs/guides/firewall). For no open ports at all, see [Private mode](/docs/guides/private-mode).
 
 ## Backups
 

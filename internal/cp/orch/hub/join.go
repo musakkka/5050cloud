@@ -173,6 +173,8 @@ func (h *Hub) serveJoin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, api.CodeInternal, "The host could not be joined because of an internal error. Try again.")
 		return
 	}
+	// Every other host needs the new peer in its mesh and firewall now.
+	h.MarkDirty()
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }

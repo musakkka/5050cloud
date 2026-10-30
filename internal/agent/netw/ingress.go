@@ -282,6 +282,9 @@ func (g *Ingress) Apply(ctx context.Context, in proto.Ingress, tcp []proto.TCPPr
 	t, uerrs := upstreamTable(in.Upstreams)
 	errs = append(errs, uerrs...)
 	g.ups.replace(t)
+	if in.Private {
+		tcp = nil // a TCP proxy would be a public listener
+	}
 	if err := g.tcp.apply(tcp); err != nil {
 		errs = append(errs, err)
 	}

@@ -4,6 +4,7 @@ package netw
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -339,6 +340,7 @@ func newTestNet(t *testing.T) (*Net, *fakeIPT, *fakeDocker, *fakeMesh) {
 	d := newFakeDocker()
 	m := &fakeMesh{}
 	n.ipt = ipt
+	n.nft = func(context.Context, string, ...string) error { return errors.New("no such set") }
 	n.resolve = fakeResolve
 	n.newDock = func() (dockerAPI, error) { return d, nil }
 	n.newMesh = func() (meshDriver, error) { return m, nil }

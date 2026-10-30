@@ -411,6 +411,9 @@ type Ingress struct {
 	StreamCloseDelaySec int `json:"streamCloseDelaySec"`
 	// TrustedProxies are CIDRs whose X-Forwarded-For Caddy trusts (9.11).
 	TrustedProxies []string `json:"trustedProxies,omitempty"`
+	// Private: a Cloudflare tunnel terminates TLS. Caddy serves plain HTTP on
+	// loopback only, orders no certificates and runs no TCP proxies.
+	Private bool `json:"private,omitempty"`
 }
 
 type Route struct {

@@ -43,11 +43,16 @@ export function generalFromInstall(i: T.Install): GeneralForm {
   return { name: i.name, baseDomain: i.baseDomain, consoleDomain, acmeEmail: i.acmeEmail || "", trustedProxies: i.trustedProxies.join("\n") };
 }
 
-export function checkGeneral(f: GeneralForm): Errors<keyof GeneralForm> {
+const IP_NAME = /(^|\.)(sslip|nip)\.io\.?$/i;
+const privateName = (d: string) => `${d.trim()} cannot be used on a private host, because sslip.io and nip.io names point straight at the server and nothing listens there. Use a domain you control in Cloudflare.`;
+
+export function checkGeneral(f: GeneralForm, isPrivate = false): Errors<keyof GeneralForm> {
   const e: Errors<keyof GeneralForm> = {};
   if (!f.name.trim()) e.name = "Enter a name for this install.";
   if (!isHostname(f.baseDomain)) e.baseDomain = "Enter a domain such as apps.example.com.";
   if (!isHostname(f.consoleDomain)) e.consoleDomain = "Enter a domain such as console.example.com.";
+  if (isPrivate && IP_NAME.test(f.baseDomain.trim())) e.baseDomain = privateName(f.baseDomain);
+  if (isPrivate && IP_NAME.test(f.consoleDomain.trim())) e.consoleDomain = privateName(f.consoleDomain);
   if (f.acmeEmail.trim() && !isEmail(f.acmeEmail)) e.acmeEmail = "Enter a valid email address.";
   const bad = splitList(f.trustedProxies).filter((c) => !isCIDR(c));
   if (bad.length) e.trustedProxies = `Not an IP range: ${bad.join(", ")}.`;

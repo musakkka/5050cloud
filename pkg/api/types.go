@@ -339,6 +339,8 @@ type Install struct {
 	BaseDomain    string `json:"baseDomain"` // e.g. "203-0-113-7.sslip.io" or "apps.example.com"
 	PublicIP      string `json:"publicIp"`
 	ACMEEmail     string `json:"acmeEmail,omitempty"`
+	// Private: no inbound ports; public traffic arrives through a Cloudflare tunnel.
+	Private bool `json:"private,omitempty"`
 	// OldConsoleDomain keeps answering until OldConsoleUntil (Unix ms) after
 	// the console domain changed.
 	OldConsoleDomain string `json:"oldConsoleDomain,omitempty"`

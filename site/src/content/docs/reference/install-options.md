@@ -36,6 +36,11 @@ Piped into `sh`, it asks nothing. Downloaded and run from a terminal (`{{INSTALL
 | `--no-swap` | swap when RAM < 8 GB | Skip the 2 GB swap file |
 | `--no-auto-updates` | updates on | Skip unattended OS security updates |
 | `--firewall` | off | Drop inbound traffic except TCP 22, 80, 443, the TCP proxy range 20000 to 29999 and UDP 51820, all from anywhere. See [Firewall](/docs/guides/firewall) |
+| `--private` | off | Open no inbound ports: public traffic comes through a Cloudflare tunnel and SSH is turned off. Needs `--domain` and a token. See [Private mode](/docs/guides/private-mode) |
+| `--tunnel-token TOKEN` | none | Cloudflare tunnel token. Prefer `FIFTY_TUNNEL_TOKEN` or the guided setup, which keep it out of your shell history |
+| `--keep-ssh-from CIDR` | SSH off | With `--private`: keep SSH, reachable only from this IPv4 range |
+| `--no-ssh-hardening` | hardening on | Leave SSH settings alone. Otherwise passwords are turned off when an account has a key, and root login when another account with a key can use sudo |
+| `--no-audit-log` | audit log on | Skip `auditd` and its rules |
 | `--join URL --token T` | none | Join an existing install as a worker host |
 | `--roles app,ingress,data,build` | `app` | Shown in the join command for reference; a joining host takes its roles from the join token |
 | `--ca-pin sha256:HEX` | none | Pin the console certificate when it uses an internal CA. The internal CA fallback is later work, so this has no effect in 0.1.0 |
@@ -64,6 +69,8 @@ Ubuntu 24.04 (amd64, arm64) is tested. Ubuntu 22.04 and Debian 12 install with a
 - Merges Docker settings into `/etc/docker/daemon.json` (`live-restore`, log rotation at 20 MB x 3).
 - Writes kernel settings to `/etc/sysctl.d/90-5050.conf`.
 - Verifies the release signature and checksum, unpacks it into `/opt/5050/releases/<version>/` and links `/usr/local/bin/5050d`, `5050-agent` and `5050`.
+- Writes `/etc/ssh/sshd_config.d/10-5050-hardening.conf`, when that cannot lock anyone out: see `--no-ssh-hardening`.
+- Installs `auditd` with rules in `/etc/audit/rules.d/5050.rules`, which record changes to accounts, SSH, the firewall, Docker settings, systemd units and `/etc/5050`. Logs stay in `/var/log/audit`.
 - Creates `/etc/5050/` (config, master key, host key, all 0600) and the systemd units.
 
 ## Uninstall

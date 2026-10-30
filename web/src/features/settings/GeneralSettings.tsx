@@ -37,7 +37,7 @@ function InstallForm() {
   const a = useAction();
   useEffect(() => { if (data) { const g = generalFromInstall(data); setF(g); setBefore(g); } }, [data]);
   if (!f || !before || !data) return <Loading error={error} />;
-  const errs = checkGeneral(f);
+  const errs = checkGeneral(f, data.private);
   const set = (k: keyof GeneralForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault(); setShown(true);

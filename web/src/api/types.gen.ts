@@ -415,6 +415,10 @@ export interface Install {
   publicIp: string;
   acmeEmail?: string;
   /**
+   * Private: no inbound ports; public traffic arrives through a Cloudflare tunnel.
+   */
+  private?: boolean;
+  /**
    * OldConsoleDomain keeps answering until OldConsoleUntil (Unix ms) after
    * the console domain changed.
    */

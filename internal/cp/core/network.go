@@ -84,6 +84,17 @@ func dnsLabel(name string) (label string, apex bool) {
 // domainView fills DNS instructions and the certificate state.
 func (c *Core) domainView(ctx context.Context, d domainRow, in installSettings, generated string) api.Domain {
 	out := d.Domain
+	if c.file.Private {
+		// Cloudflare holds the certificate; nothing here can check the name,
+		// and the DNS answer is a tunnel, not this host's address.
+		out.DNSOK, out.CertOK, out.Status = true, true, "active"
+		if out.Kind == "custom" {
+			out.Message = "Add " + out.Domain + " as a public hostname of your Cloudflare tunnel, pointing at http://localhost:80."
+		} else {
+			out.Message = "Served through your Cloudflare tunnel."
+		}
+		return out
+	}
 	if out.Kind == "generated" {
 		out.DNSOK = true
 	} else {
@@ -240,6 +251,9 @@ func (c *Core) CreateDomain(ctx context.Context, a Actor, envID, sid string, req
 		}
 		if isIPLiteral(name) {
 			return api.Domain{}, fail.Validation("domain", "%q is an IP address. Use a domain name.", req.Domain)
+		}
+		if c.file.Private && config.IPNameDomain(name) {
+			return api.Domain{}, fail.Validation("domain", "%s", config.PrivateNameMessage(name))
 		}
 		if c.reservedDomain(ctx, name) {
 			return api.Domain{}, fail.Validation("domain", "%q belongs to this install (the console or the base domain), so it cannot be used as a custom domain. Use a generated domain or a name you own elsewhere.", name)
@@ -420,7 +434,7 @@ func publicLookup(ctx context.Context, name string) (a4, a6 []string) {
 // checkDomain resolves a custom domain and records whether it points here.
 func (c *Core) checkDomain(ctx context.Context, id string) {
 	d, err := c.domainByID(ctx, c.st.Reader, id)
-	if err != nil || d.Kind != "custom" {
+	if err != nil || d.Kind != "custom" || c.file.Private {
 		return
 	}
 	in, _ := c.installRow(ctx, c.st.Reader)
@@ -511,6 +525,9 @@ func (c *Core) envProxies(ctx context.Context, q store.Querier, envID, base stri
 
 // CreateTCPProxy picks a free host port in 20000-29999.
 func (c *Core) CreateTCPProxy(ctx context.Context, a Actor, envID, sid string, req api.CreateTCPProxyRequest) (api.TCPProxy, error) {
+	if c.file.Private {
+		return api.TCPProxy{}, fail.Validation("targetPort", "TCP proxies cannot work on a private host, because it has no open ports. Use `5050 connect` to reach a service from your machine.")
+	}
 	if req.TargetPort < 1 || req.TargetPort > 65535 {
 		return api.TCPProxy{}, fail.Validation("targetPort", "The target port must be between 1 and 65535.")
 	}

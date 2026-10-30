@@ -25,6 +25,11 @@ ETC_DIR=/etc/5050
 DATA_DIR=/var/lib/5050
 UNIT_DIR=/etc/systemd/system
 TCP_PROXY_RANGE="20000-29999"
+# cloudflared for --private. Bump the version and both sums together.
+CLOUDFLARED_VERSION=2026.10.1
+CLOUDFLARED_SHA256_AMD64=3bfc539f45d2620c71debb7a86be0efa737ed5ccbad9eb85c787116900e5c586
+CLOUDFLARED_SHA256_ARM64=2c65dfabf616c40efc7545d107d7a57ad5e21377e2964b7e88af19a238074a46
+TUNNEL_METRICS=127.0.0.1:20241
 
 # ------------------------------------------------------------------ output
 # Colour and animation only on a terminal. NO_COLOR, TERM=dumb or --no-color
@@ -216,6 +221,13 @@ Flags (each also an environment variable FIFTY_<FLAG>, for example FIFTY_DOMAIN)
   --no-swap                  do not add a 2 GB swap file
   --no-auto-updates          do not turn on unattended security updates
   --firewall                 drop inbound traffic except SSH, 80, 443 and WireGuard
+  --private                  open no inbound ports: public traffic comes through a Cloudflare
+                             tunnel and SSH is turned off. Needs --domain and --tunnel-token
+  --tunnel-token TOKEN       Cloudflare tunnel token (prefer FIFTY_TUNNEL_TOKEN or the guided
+                             setup, so it stays out of your shell history)
+  --keep-ssh-from CIDR       with --private: keep SSH, reachable only from this IPv4 range
+  --no-ssh-hardening         do not turn off SSH passwords and root login
+  --no-audit-log             do not install auditd and its rules
   --join URL --token T       join an existing install as a worker host
   --roles app,ingress,data,build   roles of a joining host (default app)
   --ca-pin sha256:HEX        pin the console certificate when it uses an internal CA
@@ -254,6 +266,12 @@ DATA_DISK=$(env_or DATA_DISK)
 NO_SWAP=$(env_or NO_SWAP)
 NO_AUTO_UPDATES=$(env_or NO_AUTO_UPDATES)
 FIREWALL=$(env_or FIREWALL)
+PRIVATE=$(env_or PRIVATE)
+TUNNEL_TOKEN=$(env_or TUNNEL_TOKEN)
+unset FIFTY_TUNNEL_TOKEN # no child process needs it
+KEEP_SSH_FROM=$(env_or KEEP_SSH_FROM)
+NO_SSH_HARDENING=$(env_or NO_SSH_HARDENING)
+NO_AUDIT_LOG=$(env_or NO_AUDIT_LOG)
 JOIN=$(env_or JOIN)
 TOKEN=$(env_or TOKEN)
 ROLES=$(env_or ROLES)
@@ -291,6 +309,11 @@ while [ "$#" -gt 0 ]; do
 	--no-swap) NO_SWAP=1 ;;
 	--no-auto-updates) NO_AUTO_UPDATES=1 ;;
 	--firewall) FIREWALL=1 ;;
+	--private) PRIVATE=1 ;;
+	--tunnel-token) need_arg "$@"; TUNNEL_TOKEN=$2; shift ;;
+	--keep-ssh-from) need_arg "$@"; KEEP_SSH_FROM=$2; shift ;;
+	--no-ssh-hardening) NO_SSH_HARDENING=1 ;;
+	--no-audit-log) NO_AUDIT_LOG=1 ;;
 	--join) need_arg "$@"; JOIN=$2; shift ;;
 	--token) need_arg "$@"; TOKEN=$2; shift ;;
 	--roles) need_arg "$@"; ROLES=$2; shift ;;
@@ -417,6 +440,17 @@ ask() { # ask VAR "question" default
 	printf '\n  %s%s%s ' "$PINK" "$PTR" "$R"
 	read -r ans || ans=""
 	[ -n "$ans" ] || ans=$3
+	eval "$1=\$ans"
+	ui_resume
+}
+ask_secret() { # ask_secret VAR "question": like ask, without echoing the answer
+	if [ -z "$INTERACTIVE" ]; then return 0; fi
+	ui_pause
+	printf '\n  %s%s%s %s%s%s\n  %s%s%s ' "$PINK" "$ASK_MARK" "$R" "$B" "$2" "$R" "$PINK" "$PTR" "$R"
+	stty -echo 2>/dev/null || true
+	read -r ans || ans=""
+	stty echo 2>/dev/null || true
+	printf '\n'
 	eval "$1=\$ans"
 	ui_resume
 }
@@ -597,6 +631,23 @@ install_cli() {
 
 # ------------------------------------------------------------------ uninstall
 
+# remove_private undoes --private, so uninstalling cannot leave a machine with
+# no way in.
+remove_private() {
+	if [ -f "$ETC_DIR/private" ] || [ -f "$UNIT_DIR/5050-tunnel.service" ]; then
+		systemctl disable --now 5050-tunnel.service >/dev/null 2>&1 || true
+		rm -f "$UNIT_DIR/5050-tunnel.service" "$ETC_DIR/tunnel-token" "$ETC_DIR/tunnel-token.prev"
+	fi
+	[ -f "$ETC_DIR/private" ] || return 0
+	if [ -f "$ETC_DIR/ssh-closed" ]; then
+		systemctl enable --now ssh.service >/dev/null 2>&1 || systemctl enable --now sshd.service >/dev/null 2>&1 || true
+		rm -f "$ETC_DIR/ssh-closed"
+	fi
+	systemctl disable --now 5050-firewall.service >/dev/null 2>&1 || true
+	rm -f "$UNIT_DIR/5050-firewall.service" /etc/nftables-5050.conf "$ETC_DIR/private"
+	nft delete table inet fifty_filter 2>/dev/null || true
+}
+
 uninstall() {
 	[ "$(id -u)" = 0 ] || die "run the uninstaller as root (sudo)."
 	if [ -n "$PURGE" ] && [ -z "$YES" ]; then
@@ -609,6 +660,7 @@ uninstall() {
 		rm -f "$UNIT_DIR/$u.service"
 		rm -rf "$UNIT_DIR/$u.service.d"
 	done
+	remove_private
 	systemctl daemon-reload || true
 	if have docker; then
 		docker ps -aq --filter label=5050.infra 2>/dev/null | xargs -r docker rm -f >/dev/null 2>&1 || true
@@ -702,11 +754,11 @@ preflight() {
 
 	# Host firewalls.
 	if have ufw && ufw status 2>/dev/null | grep -q 'Status: active'; then
-		[ -z "$FIREWALL" ] || die "--firewall cannot run next to an active ufw. Turn one of them off."
+		[ -z "$FIREWALL$PRIVATE" ] || die "--firewall and --private cannot run next to an active ufw. Turn one of them off."
 		warn "ufw is active. Allow 80/tcp, 443/tcp, 51820/udp and $TCP_PROXY_RANGE/tcp: ufw allow 80/tcp; ufw allow 443/tcp; ufw allow 51820/udp; ufw allow ${TCP_PROXY_RANGE%-*}:${TCP_PROXY_RANGE#*-}/tcp"
 	fi
 	if have firewall-cmd && firewall-cmd --state >/dev/null 2>&1; then
-		[ -z "$FIREWALL" ] || die "--firewall cannot run next to an active firewalld. Turn one of them off."
+		[ -z "$FIREWALL$PRIVATE" ] || die "--firewall and --private cannot run next to an active firewalld. Turn one of them off."
 		warn "firewalld is active. Open 80/tcp, 443/tcp, 51820/udp and $TCP_PROXY_RANGE/tcp."
 	fi
 
@@ -871,7 +923,11 @@ EOF
 		printf 'Unattended-Upgrade::Automatic-Reboot "false";\n' >/etc/apt/apt.conf.d/52-5050-no-reboot
 	fi
 
-	if [ -n "$FIREWALL" ]; then
+	[ -n "$NO_SSH_HARDENING" ] || harden_ssh
+	[ -n "$NO_AUDIT_LOG" ] || setup_audit_log
+
+	# --private closes the ports later, once the tunnel is proven to work.
+	if [ -n "$FIREWALL" ] && [ -z "$PRIVATE" ]; then
 		sub "Adding firewall rules"
 		have nft || apt-get install -y -qq nftables >/dev/null
 		cat >/etc/nftables-5050.conf <<EOF
@@ -888,12 +944,18 @@ table inet fifty_filter {
 		iifname "wg5050" accept
 		iifname "docker0" accept
 		iifname "br-*" accept
+		iifname "f5-*" accept
 	}
 }
 EOF
 		nft list table inet fifty_filter >/dev/null 2>&1 && nft delete table inet fifty_filter
 		nft -f /etc/nftables-5050.conf
-		cat >"$UNIT_DIR/5050-firewall.service" <<'EOF'
+		firewall_unit
+	fi
+}
+
+firewall_unit() {
+	cat >"$UNIT_DIR/5050-firewall.service" <<'EOF'
 [Unit]
 Description=5050cloud host firewall
 Before=network-pre.target
@@ -907,9 +969,71 @@ ExecStart=/usr/sbin/nft -f /etc/nftables-5050.conf
 [Install]
 WantedBy=multi-user.target
 EOF
-		systemctl daemon-reload
-		systemctl enable 5050-firewall.service >/dev/null 2>&1
+	systemctl daemon-reload
+	systemctl enable 5050-firewall.service >/dev/null 2>&1
+}
+
+# has_ssh_key USER_HOME: the home has a non-empty authorized_keys.
+has_ssh_key() { grep -qsE '^[^#[:space:]]' "$1/.ssh/authorized_keys"; }
+
+# harden_ssh turns off password and root logins, but only what cannot lock
+# anyone out: passwords stay when no account has a key, and root stays (with a
+# key) when no other account with a key can use sudo.
+harden_ssh() {
+	[ -d /etc/ssh/sshd_config.d ] && [ -x /usr/sbin/sshd ] || return 0
+	keys=""; admin=""
+	if has_ssh_key /root; then keys=1; fi
+	for h in /home/*; do
+		has_ssh_key "$h" || continue
+		keys=1
+		if id -nG "$(basename "$h")" 2>/dev/null | grep -qwE 'sudo|admin|wheel'; then admin=1; fi
+	done
+	if [ -z "$keys" ]; then
+		warn "no account has an SSH key, so SSH passwords stay on. Add a key and run the installer again to turn them off."
+		return 0
 	fi
+	if [ -n "$admin" ]; then root=no; else root=prohibit-password; fi
+	f=/etc/ssh/sshd_config.d/10-5050-hardening.conf
+	cat >"$f" <<EOF
+# Written by the 5050cloud installer. Delete this file and reload ssh to undo it.
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin $root
+MaxAuthTries 3
+EOF
+	if ! /usr/sbin/sshd -t >/dev/null 2>&1; then
+		rm -f "$f"
+		warn "sshd rejected the hardening settings, so they were not applied."
+		return 0
+	fi
+	systemctl try-reload-or-restart ssh.service >/dev/null 2>&1 || systemctl try-reload-or-restart sshd.service >/dev/null 2>&1 || true
+}
+
+# setup_audit_log records changes to accounts, SSH, the firewall and this
+# install's settings. Logs stay on the host, in /var/log/audit.
+setup_audit_log() {
+	sub "Turning on the security audit log"
+	if ! apt-get install -y -qq auditd >/dev/null 2>&1; then
+		warn "auditd could not be installed, so changes to accounts and settings are not audited."
+		return 0
+	fi
+	mkdir -p /etc/audit/rules.d
+	cat >/etc/audit/rules.d/5050.rules <<EOF
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/sudoers -p wa -k identity
+-w /etc/sudoers.d -p wa -k identity
+-w /etc/ssh/sshd_config -p wa -k sshd
+-w /etc/ssh/sshd_config.d -p wa -k sshd
+-w /etc/nftables-5050.conf -p wa -k firewall
+-w $ETC_DIR -p wa -k 5050
+-w /etc/docker -p wa -k docker
+-w $UNIT_DIR -p wa -k units
+-a always,exit -F path=/usr/bin/sudo -F perm=x -k sudo
+EOF
+	systemctl enable --now auditd >/dev/null 2>&1 || true
+	augenrules --load >/dev/null 2>&1 || warn "the audit rules could not be loaded (this happens in some containers)."
 }
 
 # ------------------------------------------------------------------ binaries and units
@@ -1003,7 +1127,7 @@ resolve_a() {
 # certificate authority is asked. A wrong record would spend its failed-
 # validation allowance and end in a timeout.
 check_domain_dns() {
-	[ -z "$SKIP_DNS_CHECK" ] || return 0
+	[ -z "$SKIP_DNS_CHECK$PRIVATE" ] || return 0
 	case "$DOMAIN" in *.sslip.io | *.nip.io) return 0 ;; esac
 	have dig || have nslookup || have getent || { warn "no DNS lookup tool found; not checking $DOMAIN."; return 0; }
 	probe=x$(rand4).$DOMAIN
@@ -1028,6 +1152,7 @@ init_control() {
 	if [ -f "$ETC_DIR/config.json" ]; then
 		note "Already initialised ($ETC_DIR/config.json); keeping the existing configuration."
 		CONSOLE_DOMAIN=$(sed -n 's/.*"consoleDomain": *"\([^"]*\)".*/\1/p' "$ETC_DIR/config.json")
+		[ -n "$DOMAIN" ] || DOMAIN=$(sed -n 's/.*"baseDomain": *"\([^"]*\)".*/\1/p' "$ETC_DIR/config.json")
 		return 0
 	fi
 	if [ -z "$DOMAIN" ]; then
@@ -1037,7 +1162,7 @@ init_control() {
 	[ -n "$CONSOLE_DOMAIN" ] || CONSOLE_DOMAIN=console-$(rand4).$DOMAIN
 	if [ -n "$INTERACTIVE" ] && [ -z "$WIZARD_DONE" ]; then
 		ask CONSOLE_DOMAIN "Console address" "$CONSOLE_DOMAIN"
-		[ -n "$ACME_EMAIL" ] || ask ACME_EMAIL "Email for certificate notices (optional)" ""
+		[ -n "$ACME_EMAIL$PRIVATE" ] || ask ACME_EMAIL "Email for certificate notices (optional)" ""
 	fi
 	check_domain_dns
 	acme=$ACME_CA
@@ -1055,6 +1180,7 @@ init_control() {
 		--acme-ca "$acme" --recovery-key-file "$RECOVERY_KEY_FILE" \
 		--setup-url-file "$ETC_DIR/setup-url.txt" --join-token-file "$ETC_DIR/local-join-token"
 	[ -z "$ACME_EMAIL" ] || set -- "$@" --acme-email "$ACME_EMAIL"
+	[ -z "$PRIVATE" ] || set -- "$@" --private
 	[ -z "$RELEASE_BASE" ] || set -- "$@" --release-base "${RELEASE_BASE%/}"
 	sub "Initialising the control plane"
 	if [ -n "$RESTORE" ]; then
@@ -1148,6 +1274,257 @@ summary() {
 	printf '  %scurl -fsSL https://5050cloud.com/install.sh | sh -s -- --cli%s\n\n' "$CYN" "$R"
 }
 
+# ------------------------------------------------------------------ private host
+
+ipv4_cidr() { # ipv4_cidr VALUE: VALUE is a.b.c.d/n with every part in range
+	printf '%s' "$1" | awk -F'[./]' 'NF == 5 && /^[0-9.\/]+$/ { for (i = 1; i <= 4; i++) if ($i > 255) exit 1; if ($5 > 32) exit 1; ok = 1 } END { exit !ok }'
+}
+
+# check_private runs before anything changes, so a refused install leaves the
+# machine as it was.
+check_private() {
+	cfg=$ETC_DIR/config.json
+	# A closed host stays closed when the installer runs again without the flag.
+	if [ -f "$ETC_DIR/private" ] || grep -qs '"private": *true' "$cfg"; then PRIVATE=1; fi
+	if [ -z "$PRIVATE" ]; then
+		[ -z "$KEEP_SSH_FROM$TUNNEL_TOKEN" ] || die "--keep-ssh-from and --tunnel-token only work together with --private."
+		return 0
+	fi
+	[ -z "$RESTORE" ] || die "--private cannot be combined with --restore yet. Restore first on a normal install, or install fresh with --private."
+	if [ -z "$JOIN" ] && [ -f "$cfg" ] && ! grep -qs '"private": *true' "$cfg"; then
+		die "this server is already installed as a normal host, and turning that into a private host is not supported yet. Install on a fresh server with --private."
+	fi
+	if [ -z "$JOIN" ]; then
+		if [ ! -f "$cfg" ]; then
+			[ -n "$DOMAIN" ] || die "--private needs --domain, a domain you control in Cloudflare with a wildcard route to your tunnel."
+		fi
+		for d in "$DOMAIN" "$CONSOLE_DOMAIN"; do
+			case "$d" in
+			*.sslip.io | sslip.io | *.nip.io | nip.io)
+				die "$d cannot be used on a private host, because sslip.io and nip.io names point straight at the server and nothing listens there. Use a domain you control in Cloudflare."
+				;;
+			esac
+		done
+		[ -n "$TUNNEL_TOKEN" ] || [ -f "$ETC_DIR/tunnel-token" ] ||
+			die "--private needs a tunnel token, from Cloudflare Zero Trust under Networks, Tunnels. Pass FIFTY_TUNNEL_TOKEN or --tunnel-token. Nothing was changed."
+	else
+		case ",$ROLES," in
+		*,ingress,*)
+			[ -n "$TUNNEL_TOKEN" ] || [ -f "$ETC_DIR/tunnel-token" ] ||
+				die "a private host with the ingress role needs --tunnel-token, because public traffic reaches it through a tunnel. Nothing was changed."
+			;;
+		esac
+	fi
+	if [ -n "$KEEP_SSH_FROM" ]; then
+		ipv4_cidr "$KEEP_SSH_FROM" || die "--keep-ssh-from needs an IPv4 range such as 203.0.113.7/32, and $KEEP_SSH_FROM is not one."
+		[ "${KEEP_SSH_FROM#*/}" -ge 8 ] || die "--keep-ssh-from $KEEP_SSH_FROM would open SSH to too much of the internet. Use a range of /8 or smaller."
+	fi
+	return 0
+}
+
+install_tunnel() {
+	case "$ARCH" in
+	amd64) want=$CLOUDFLARED_SHA256_AMD64 ;;
+	*) want=$CLOUDFLARED_SHA256_ARM64 ;;
+	esac
+	bin=$INSTALL_DIR/cloudflared-$CLOUDFLARED_VERSION
+	if [ ! -x "$bin" ]; then
+		sub "Downloading cloudflared $CLOUDFLARED_VERSION"
+		fetch "https://github.com/cloudflare/cloudflared/releases/download/$CLOUDFLARED_VERSION/cloudflared-linux-$ARCH" "$TMP/cloudflared" ||
+			die "cannot download cloudflared $CLOUDFLARED_VERSION. Nothing was closed."
+		[ "$(sha256_of "$TMP/cloudflared")" = "$want" ] ||
+			die "the SHA-256 of cloudflared does not match the one in this installer, so it was not installed. Nothing was closed."
+		install -m 0755 "$TMP/cloudflared" "$bin"
+	fi
+	ln -sfn "$bin" "$INSTALL_DIR/cloudflared"
+	# The token reaches cloudflared as a credential file, never on its command line.
+	cat >"$UNIT_DIR/5050-tunnel.service" <<EOF
+[Unit]
+Description=5050cloud Cloudflare tunnel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=$INSTALL_DIR/cloudflared --no-autoupdate tunnel --metrics $TUNNEL_METRICS run --token-file \${CREDENTIALS_DIRECTORY}/token
+LoadCredential=token:$ETC_DIR/tunnel-token
+DynamicUser=yes
+NoNewPrivileges=yes
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+	systemctl daemon-reload
+}
+
+tunnel_start() {
+	sub "Starting the tunnel"
+	f=$ETC_DIR/tunnel-token
+	token_changed=""
+	if [ -n "$TUNNEL_TOKEN" ] && [ "$(cat "$f" 2>/dev/null || true)" != "$TUNNEL_TOKEN" ]; then
+		[ ! -f "$f" ] || cp -p "$f" "$f.prev"
+		(umask 077; printf '%s\n' "$TUNNEL_TOKEN" >"$f")
+		token_changed=1
+	fi
+	systemctl enable --now 5050-tunnel.service >/dev/null 2>&1 || true
+	[ -z "$token_changed" ] || systemctl restart 5050-tunnel.service
+}
+
+# tunnel_undo puts the tunnel back as it was: the previous token on a host that
+# had one, otherwise stopped, with no token left on disk.
+tunnel_undo() {
+	f=$ETC_DIR/tunnel-token
+	if [ -f "$f.prev" ]; then
+		mv "$f.prev" "$f"
+		systemctl restart 5050-tunnel.service >/dev/null 2>&1 || true
+	elif [ ! -f "$ETC_DIR/private" ]; then
+		systemctl disable --now 5050-tunnel.service >/dev/null 2>&1 || true
+		rm -f "$f"
+	fi
+}
+
+tunnel_connected() { curl -fsS --max-time 3 "http://$TUNNEL_METRICS/ready" >/dev/null 2>&1; }
+
+# console_answers fetches the console by its public name. Only this host's
+# Caddy logs the random probe, so a stale record pointing at some other server
+# cannot pass. Caddy has no public listener, so the request came by the tunnel.
+console_answers() {
+	if [ -n "$JOIN" ]; then
+		curl -fsS --max-time 8 "${JOIN%/}/readyz" >/dev/null 2>&1
+		return
+	fi
+	probe=$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 20)
+	curl -fsS --max-time 8 "https://$CONSOLE_DOMAIN/readyz?fifty_probe=$probe" >/dev/null 2>&1 &&
+		grep -qs "$probe" "$DATA_DIR/caddy/logs/access.log"
+}
+
+wait_for() { # wait_for SECONDS COMMAND
+	wf_i=0
+	while [ "$wf_i" -lt "$1" ]; do
+		if "$2"; then return 0; fi
+		sleep 3
+		wf_i=$((wf_i + 3))
+	done
+	return 1
+}
+
+NOT_CLOSED="Nothing was closed: SSH and every other port are as they were."
+
+# verify_private is the lockout guard. It runs before any port closes.
+verify_private() {
+	if [ -f "$ETC_DIR/tunnel-token" ]; then
+		sub "Waiting for the tunnel to connect (up to 90 s)"
+		if ! wait_for 90 tunnel_connected; then
+			tunnel_undo
+			die "the Cloudflare tunnel did not connect within 90 s, which usually means the token is wrong. $NOT_CLOSED Check the token in Cloudflare Zero Trust under Networks, Tunnels, then run the installer again. Details: journalctl -u 5050-tunnel"
+		fi
+	fi
+	if [ -n "$JOIN" ]; then
+		sub "Checking that the console answers"
+		wait_for 60 console_answers || {
+			tunnel_undo
+			die "the console at $JOIN did not answer from this host within 60 s. $NOT_CLOSED"
+		}
+		return 0
+	fi
+	sub "Checking the console through the tunnel (up to 180 s)"
+	wait_for 180 console_answers || {
+		tunnel_undo
+		die "the tunnel is connected, but https://$CONSOLE_DOMAIN/readyz did not reach this host within 180 s. $NOT_CLOSED In Cloudflare, give the tunnel public hostnames $CONSOLE_DOMAIN and *.$DOMAIN pointing at http://localhost:80, then run the installer again."
+	}
+}
+
+private_firewall_conf() {
+	ssh_rule=""
+	[ -z "$KEEP_SSH_FROM" ] || ssh_rule="tcp dport 22 ip saddr $KEEP_SSH_FROM accept"
+	# The forward chain matters as much as input: Docker publishes ports by
+	# forwarding, past the input chain.
+	cat <<EOF
+table inet fifty_filter
+delete table inet fifty_filter
+table inet fifty_filter {
+	set wg_peers {
+		type ipv4_addr
+	}
+	chain input {
+		type filter hook input priority 0; policy drop;
+		ct state established,related accept
+		iifname "lo" accept
+		icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert } accept
+		udp dport 51820 ip saddr @wg_peers accept
+		$ssh_rule
+		iifname "wg5050" accept
+		iifname "docker0" accept
+		iifname "br-*" accept
+		iifname "f5-*" accept
+	}
+	chain forward {
+		type filter hook forward priority -10; policy drop;
+		ct state established,related accept
+		iifname "wg5050" accept
+		iifname "docker0" accept
+		iifname "br-*" accept
+		iifname "f5-*" accept
+	}
+}
+EOF
+}
+
+close_ports() {
+	sub "Loading the firewall"
+	have nft || run_logged "installing nftables" apt-get install -y -qq nftables
+	private_firewall_conf >/etc/nftables-5050.conf.new
+	nft -c -f /etc/nftables-5050.conf.new || {
+		rm -f /etc/nftables-5050.conf.new
+		die "the firewall rules were not valid. $NOT_CLOSED"
+	}
+	mv /etc/nftables-5050.conf.new /etc/nftables-5050.conf
+	nft -f /etc/nftables-5050.conf
+	firewall_unit
+	# Loading the table emptied the peer set; the agent fills it when it starts.
+	systemctl restart 5050-agent.service
+	sub "Checking the console with the firewall on"
+	if ! wait_for 60 console_answers; then
+		nft delete table inet fifty_filter 2>/dev/null || true
+		systemctl disable 5050-firewall.service >/dev/null 2>&1 || true
+		rm -f /etc/nftables-5050.conf
+		die "the console stopped answering once the firewall was on, so the firewall was removed again. SSH was not touched."
+	fi
+	if [ -n "$KEEP_SSH_FROM" ]; then
+		if [ -f "$ETC_DIR/ssh-closed" ]; then
+			systemctl enable --now ssh.service >/dev/null 2>&1 || systemctl enable --now sshd.service >/dev/null 2>&1 || true
+			rm -f "$ETC_DIR/ssh-closed"
+		fi
+	else
+		sub "Turning off SSH"
+		for u in ssh.socket ssh.service sshd.service; do
+			systemctl disable --now "$u" >/dev/null 2>&1 || true
+		done
+		: >"$ETC_DIR/ssh-closed"
+	fi
+	: >"$ETC_DIR/private"
+	rm -f "$ETC_DIR/tunnel-token.prev"
+}
+
+print_private() {
+	printf '  %sThis host now has no open inbound ports.%s\n' "$B" "$R"
+	if [ -n "$KEEP_SSH_FROM" ]; then
+		printf '  SSH stays on, reachable only from %s.\n' "$KEEP_SSH_FROM"
+	else
+		printf '  SSH is off. An SSH session you have open now keeps working until you close it;\n'
+		printf '  a new one cannot be opened.\n'
+	fi
+	printf '\n  %sHow to get back in without SSH:%s\n' "$B" "$R"
+	printf '  - Apps: the console shell (a service, then Shell) or 5050 ssh opens a shell inside a\n'
+	printf '    running service. It does not reach the host itself.\n'
+	printf '  - The host: your cloud provider'"'"'s serial console or run-command, for example\n'
+	printf '    az vm run-command invoke or the AWS and Hetzner web consoles. Test it now.\n'
+	printf '  - To turn SSH back on from there: systemctl enable --now ssh, and\n'
+	printf '    nft add rule inet fifty_filter input tcp dport 22 ip saddr YOUR_IP accept\n'
+	printf '\n  Guide: https://5050cloud.com/docs/guides/private-mode\n\n'
+}
+
 # ------------------------------------------------------------------ join
 
 join_host() {
@@ -1209,18 +1586,24 @@ wizard_server() {
 	fi
 	if [ -n "$DRY_RUN" ] && [ -z "$PUBLIC_IP" ]; then PUBLIC_IP=203.0.113.10; else detect_public_ip; fi
 	sslip=$(printf '%s' "$PUBLIC_IP" | tr . -).sslip.io
-	if [ -z "$DOMAIN" ]; then
+	[ -n "$PRIVATE" ] || yesno PRIVATE "Make this a private host, with no open ports and traffic through a Cloudflare tunnel?" n
+	if [ -n "$PRIVATE" ]; then
+		[ -n "$DOMAIN" ] || ask DOMAIN "Your domain in Cloudflare, for apps and the console" ""
+		[ -n "$TUNNEL_TOKEN" ] || ask_secret TUNNEL_TOKEN "Cloudflare tunnel token (it stays hidden as you type)"
+		[ -n "$KEEP_SSH_FROM" ] || ask KEEP_SSH_FROM "Keep SSH for one IPv4 range, such as 203.0.113.7/32? (Enter turns SSH off)" ""
+		[ -n "$DOMAIN" ] || die "a private host needs a domain you control in Cloudflare. Pass --domain."
+	elif [ -z "$DOMAIN" ]; then
 		ask DOMAIN "Base domain for your apps (wildcard A record to $PUBLIC_IP; Enter keeps the free sslip.io name)" "$sslip"
 	fi
 	[ -n "$DOMAIN" ] || DOMAIN=$sslip
 	[ -n "$CONSOLE_DOMAIN" ] || CONSOLE_DOMAIN=console-$(rand4).$DOMAIN
 	ask CONSOLE_DOMAIN "Console address" "$CONSOLE_DOMAIN"
-	[ -n "$ACME_EMAIL" ] || ask ACME_EMAIL "Email for certificate notices (optional)" ""
-	if [ -z "$FIREWALL" ] && ! { have ufw && ufw status 2>/dev/null | grep -q 'Status: active'; }; then
+	[ -n "$ACME_EMAIL$PRIVATE" ] || ask ACME_EMAIL "Email for certificate notices (optional)" ""
+	if [ -z "$FIREWALL$PRIVATE" ] && ! { have ufw && ufw status 2>/dev/null | grep -q 'Status: active'; }; then
 		yesno FIREWALL "Block inbound traffic except SSH, web and WireGuard ports?" n
 	fi
 	WIZARD_DONE=1
-	fw=off; [ -z "$FIREWALL" ] || fw=on
+	fw=off; [ -z "$FIREWALL" ] || fw=on; [ -z "$PRIVATE" ] || fw="no open ports"
 	printf '\n'
 	box "Ready to install" "Console=https://$CONSOLE_DOMAIN" "Apps=*.$DOMAIN" "Server IP=$PUBLIC_IP" "Email=${ACME_EMAIL:-none}" "Firewall=$fw"
 	go=""
@@ -1244,7 +1627,7 @@ wizard_join() {
 
 wizard_mode() {
 	[ -n "$INTERACTIVE" ] || return 0
-	if [ -n "$CLI_ONLY$UNINSTALL$JOIN$RESTORE$DOMAIN$ARCHIVE$RELEASE_BASE$VERSION" ]; then return 0; fi
+	if [ -n "$CLI_ONLY$UNINSTALL$JOIN$RESTORE$DOMAIN$PRIVATE$ARCHIVE$RELEASE_BASE$VERSION" ]; then return 0; fi
 	mode=1
 	choose mode "What would you like to do?" \
 		"Install 5050cloud on this server" \
@@ -1305,12 +1688,14 @@ if [ -n "$CLI_ONLY" ] && [ -z "$DRY_RUN" ]; then
 fi
 need_root
 if [ -n "$JOIN" ]; then wizard_join; elif [ -z "$RESTORE" ]; then wizard_server; fi
+[ -n "$DRY_RUN" ] || check_private
 if [ -n "$DRY_RUN" ]; then
 	dry_run
 	exit 0
 fi
 
 if [ -n "$JOIN" ]; then STEP_TOTAL=6; else STEP_TOTAL=8; fi
+[ -z "$PRIVATE" ] || STEP_TOTAL=$((STEP_TOTAL + 1))
 step "Checking this server"
 preflight
 step "Installing packages and Docker"
@@ -1324,12 +1709,34 @@ step "Installing 5050cloud ${VERSION:-}"
 install_binaries
 if [ -n "$JOIN" ]; then
 	join_host
+	if [ -n "$PRIVATE" ]; then
+		step "Closing inbound ports"
+		if [ -n "$TUNNEL_TOKEN" ] || [ -f "$ETC_DIR/tunnel-token" ]; then
+			install_tunnel
+			tunnel_start
+		fi
+		verify_private
+		close_ports
+		step_end ok
+		print_private
+	fi
 	exit 0
 fi
 step "Setting up the control plane"
 init_control
 step "Starting services"
 start_control
+if [ -n "$PRIVATE" ]; then
+	step "Connecting the Cloudflare tunnel"
+	install_tunnel
+	tunnel_start
+	verify_private
+	step "Closing inbound ports"
+	close_ports
+	print_done
+	print_private
+	exit 0
+fi
 step "Waiting for the HTTPS certificate"
 if ! wait_console; then
 	warn "no certificate for $CONSOLE_DOMAIN within 120 s. The usual cause is that ports 80 and 443 are not reachable from the internet, or the domain does not point at $PUBLIC_IP."

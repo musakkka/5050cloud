@@ -29,6 +29,13 @@ describe("install general form", () => {
     expect(Object.keys(e).sort()).toEqual(["acmeEmail", "baseDomain", "consoleDomain", "name", "trustedProxies"]);
     expect(e.trustedProxies).toBe("Not an IP range: 10.0.0.0/40.");
   });
+  it("refuses sslip.io and nip.io names on a private host only", () => {
+    const f = { ...generalFromInstall(install), baseDomain: "1-2-3-4.sslip.io", consoleDomain: "c.1.2.3.4.nip.io" };
+    expect(checkGeneral(f).baseDomain).toBeUndefined();
+    const e = checkGeneral(f, true);
+    expect(e.baseDomain).toContain("cannot be used on a private host");
+    expect(e.consoleDomain).toContain("cannot be used on a private host");
+  });
   it("checks CIDRs", () => {
     expect(isCIDR("192.168.1.0/24")).toBe(true);
     expect(isCIDR("256.1.1.1")).toBe(false);

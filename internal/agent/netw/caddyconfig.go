@@ -124,6 +124,9 @@ func normalizeRoutes(in proto.Ingress) ([]normRoute, []error) {
 			errs = append(errs, fmt.Errorf("the route for %s asks for TLS mode %q, which is not acme, internal or off; using acme", r.Domain, r.TLS))
 			t = "acme"
 		}
+		if in.Private {
+			t = "off"
+		}
 		seen[r.Domain] = true
 		out = append(out, normRoute{Route: r, tls: t})
 	}
@@ -131,7 +134,7 @@ func normalizeRoutes(in proto.Ingress) ([]normRoute, []error) {
 	return out, errs
 }
 
-func proxyHandler(r normRoute, p caddyParams, delaySec int) obj {
+func proxyHandler(r normRoute, p caddyParams, delaySec int, private bool) obj {
 	h := obj{
 		"handler": "reverse_proxy",
 		"load_balancing": obj{
@@ -144,6 +147,11 @@ func proxyHandler(r normRoute, p caddyParams, delaySec int) obj {
 		"headers": obj{"request": obj{"set": obj{
 			"X-Real-Ip": []string{"{http.vars.client_ip}"},
 		}}},
+	}
+	if private {
+		// Caddy would append cloudflared's 127.0.0.1, and the control plane
+		// and most apps read the last entry as the visitor.
+		h["headers"].(obj)["request"].(obj)["set"].(obj)["X-Forwarded-For"] = []string{"{http.vars.client_ip}"}
 	}
 	if r.UpstreamName == "" {
 		// The console on the control host: 5050d listens on loopback only.
@@ -227,7 +235,7 @@ func renderCaddy(p caddyParams, in proto.Ingress) ([]byte, []error) {
 	}
 	var tlsRoutes, httpRoutes []obj
 	var redirect, acmeDomains, internalDomains []string
-	if !in.ACMEPrimary && in.ACMEPrimaryAddr != "" {
+	if !in.Private && !in.ACMEPrimary && in.ACMEPrimaryAddr != "" {
 		if _, _, err := net.SplitHostPort(in.ACMEPrimaryAddr); err != nil {
 			errs = append(errs, fmt.Errorf("the ACME primary address %q is not host:port, so challenges are not forwarded", in.ACMEPrimaryAddr))
 		} else {
@@ -239,7 +247,7 @@ func renderCaddy(p caddyParams, in proto.Ingress) ([]byte, []error) {
 		}
 	}
 	for _, r := range routes {
-		h := proxyHandler(r, p, delay)
+		h := proxyHandler(r, p, delay, in.Private)
 		switch r.tls {
 		case "off", "pending":
 			// "pending" is a custom domain whose DNS does not point here
@@ -282,6 +290,12 @@ func renderCaddy(p caddyParams, in proto.Ingress) ([]byte, []error) {
 		"logs":            logs,
 		"errors":          unavailableRoutes(),
 	}
+	if in.Private {
+		// cloudflared connects over loopback: it is the only client here, and
+		// the Cloudflare edge has already set the visitor's address and scheme.
+		http["listen"] = []string{"127.0.0.1:" + strconv.Itoa(p.HTTPPort)}
+		in.TrustedProxies = append([]string{"127.0.0.1/32"}, in.TrustedProxies...)
+	}
 	if len(in.TrustedProxies) > 0 {
 		var ranges []string
 		for _, c := range in.TrustedProxies {
@@ -295,6 +309,9 @@ func renderCaddy(p caddyParams, in proto.Ingress) ([]byte, []error) {
 			for _, s := range []obj{https, http} {
 				s["trusted_proxies"] = obj{"source": "static", "ranges": ranges}
 				s["client_ip_headers"] = []string{"X-Forwarded-For"}
+				if in.Private {
+					s["client_ip_headers"] = []string{"Cf-Connecting-Ip", "X-Forwarded-For"}
+				}
 			}
 		}
 	}
@@ -320,7 +337,7 @@ func renderCaddy(p caddyParams, in proto.Ingress) ([]byte, []error) {
 		sort.Strings(automate)
 		certs["automate"] = automate
 	}
-	if !in.ACMEPrimary && len(in.Certificates) > 0 {
+	if !in.Private && !in.ACMEPrimary && len(in.Certificates) > 0 {
 		bundles := append([]proto.CertBundle{}, in.Certificates...)
 		sort.Slice(bundles, func(i, j int) bool { return bundles[i].Domain < bundles[j].Domain })
 		var pems []obj
@@ -342,7 +359,11 @@ func renderCaddy(p caddyParams, in proto.Ingress) ([]byte, []error) {
 		tls["automation"] = obj{"policies": policies}
 	}
 
-	apps := obj{"http": obj{"servers": obj{"https": https, "http": http}}}
+	servers := obj{"https": https, "http": http}
+	if in.Private {
+		delete(servers, "https")
+	}
+	apps := obj{"http": obj{"servers": servers}}
 	if len(tls) > 0 {
 		apps["tls"] = tls
 	}

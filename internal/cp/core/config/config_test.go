@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -95,5 +96,23 @@ func TestKeys(t *testing.T) {
 	_ = os.WriteFile(short, []byte("abc"), 0o600)
 	if _, _, err := EnsureKey(short); err == nil {
 		t.Fatal("a short key file must fail")
+	}
+}
+
+func TestPrivateRefusesIPNames(t *testing.T) {
+	f := &File{PublicIP: "203.0.113.7", Private: true}
+	f.Defaults()
+	if err := f.Validate(); err == nil || !strings.Contains(err.Error(), "cannot be used on a private host") {
+		t.Fatalf("the sslip.io default must be refused: %v", err)
+	}
+	f = &File{PublicIP: "203.0.113.7", Private: true, BaseDomain: "example.com"}
+	f.Defaults()
+	if err := f.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	for d, want := range map[string]bool{"a.sslip.io": true, "sslip.io": true, "a.NIP.io.": true, "notsslip.io": false, "sslip.io.example.com": false} {
+		if IPNameDomain(d) != want {
+			t.Errorf("IPNameDomain(%q) != %v", d, want)
+		}
 	}
 }

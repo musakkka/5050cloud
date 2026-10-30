@@ -64,6 +64,10 @@ Skip the last line if you do not use TCP proxies. ufw's rules sit next to the ag
 
 Hosts need HTTPS out to GitHub (releases and repositories), Docker registries, Let's Encrypt and your backups bucket. Joined hosts need HTTPS to the console domain. Hosts with replicas of one environment need UDP 51820 to each other.
 
+## Option D: no open ports at all
+
+[Private mode](/docs/guides/private-mode) goes further than any of these: nothing is open, not even SSH or the web ports, and public traffic comes through a Cloudflare tunnel. It uses the same nftables table as `--firewall`.
+
 ## Check from outside
 
 From your laptop, for a host at `203.0.113.10`:
@@ -92,3 +96,4 @@ UDP checks with `nc` cannot always tell open from filtered. **Settings**, **Host
 - [Ports and firewall reference](/docs/reference/ports-firewall)
 - [Add a host](/docs/guides/add-a-host)
 - [Cloudflare in front](/docs/guides/behind-cloudflare)
+- [Private mode](/docs/guides/private-mode)

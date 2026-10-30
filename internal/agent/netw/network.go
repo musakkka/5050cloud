@@ -39,6 +39,7 @@ type Options struct {
 type Net struct {
 	o       Options
 	ipt     iptables
+	nft     func(ctx context.Context, stdin string, args ...string) error
 	keys    keyStore
 	dns     *privateDNS
 	resolve hostResolver
@@ -71,6 +72,7 @@ func newNet(o Options) *Net {
 	n := &Net{
 		o:        o,
 		ipt:      newExecIPTables(nil),
+		nft:      execNft,
 		keys:     keyStore{path: filepath.Join(o.DataDir, "wg.key")},
 		dns:      newPrivateDNS(defaultSockets(), newForwarder(), o.Logger),
 		resolve:  lookupIPv4,
@@ -109,7 +111,7 @@ func (n *Net) Apply(ctx context.Context, host proto.HostConfig, mesh proto.Mesh,
 	if err := n.applyFirewallLocked(ctx, spec); err != nil {
 		errs = append(errs, err)
 	}
-	if err := n.applyMeshLocked(mesh); err != nil {
+	if err := n.applyMeshLocked(ctx, mesh); err != nil {
 		errs = append(errs, err)
 	}
 	gateways := map[string]string{}
@@ -166,9 +168,12 @@ func (n *Net) meshDriverLocked() (meshDriver, error) {
 	return d, nil
 }
 
-func (n *Net) applyMeshLocked(m proto.Mesh) error {
+func (n *Net) applyMeshLocked(ctx context.Context, m proto.Mesh) error {
 	if !m.Enabled {
 		n.peers = map[string]string{}
+		if err := n.syncPeerSet(ctx, nil); err != nil {
+			return err
+		}
 		d, err := n.meshDriverLocked()
 		if err != nil {
 			return nil //nolint:nilerr // no mesh support and no mesh wanted
@@ -192,6 +197,9 @@ func (n *Net) applyMeshLocked(m proto.Mesh) error {
 			peers[p.Key.String()] = p.HostID
 		}
 		n.peers = peers
+	}
+	if err := n.syncPeerSet(ctx, mp.Peers); err != nil {
+		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }

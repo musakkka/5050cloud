@@ -217,3 +217,25 @@ func TestDomainNamesAreRefused(t *testing.T) {
 	d.add("taken.example.org", 200)
 	d.owner.do("PATCH", "/api/v1/install", api.UpdateInstallRequest{ConsoleDomain: ptr("taken.example.org")}, nil, 422)
 }
+
+func TestPrivateInstallRefusesWhatCannotWork(t *testing.T) {
+	d := newDomainEnv(t)
+	d.c.File().Private = true
+	for _, name := range []string{"app.203-0-113-7.sslip.io", "a.1.2.3.4.nip.io"} {
+		d.add(name, 422)
+	}
+	d.owner.do("PATCH", "/api/v1/install", api.UpdateInstallRequest{BaseDomain: ptr("203-0-113-7.sslip.io")}, nil, 422)
+	d.owner.do("PATCH", "/api/v1/install", api.UpdateInstallRequest{ConsoleDomain: ptr("c.1.2.3.4.nip.io")}, nil, 422)
+	d.owner.do("POST", "/api/v1/environments/"+d.eid+"/services/"+d.sid+"/tcp-proxies", api.CreateTCPProxyRequest{TargetPort: 5432}, nil, 422)
+
+	// A custom name is active at once: the DNS answer is a tunnel, and Cloudflare holds the certificate.
+	dom := d.add("shop.example.com", 200)
+	if dom.Status != "active" || !strings.Contains(dom.Message, "public hostname") || len(dom.DNS) != 0 {
+		t.Errorf("domain %+v", dom)
+	}
+	var in api.Install
+	d.owner.do("GET", "/api/v1/install", nil, &in, 200)
+	if !in.Private {
+		t.Error("the console needs to know the install is private")
+	}
+}

@@ -64,6 +64,17 @@ func TestJoinAndConnect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if strings.Contains(jt.Command, "--private") {
+		t.Errorf("a normal install's join command has --private: %s", jt.Command)
+	}
+	inst, _ := cfg.Install(ctx)
+	inst.Private = true
+	cfg.SetInstall(inst)
+	if pj, err := o.CreateJoinToken(ctx, api.CreateJoinTokenRequest{Name: "p"}); err != nil || !strings.HasSuffix(pj.Command, " --private") {
+		t.Errorf("a private install's join command lacks --private: %s, %v", pj.Command, err)
+	}
+	inst.Private = false
+	cfg.SetInstall(inst)
 	facts := proto.Facts{Version: "0.1.0", Arch: "amd64", OS: "ubuntu 24.04", CPUs: 2, MemBytes: 4 << 30, PublicIP: "203.0.113.7", WireGuard: true}
 	body, _ := json.Marshal(proto.JoinRequest{Token: jt.Token, Hostname: "one", Facts: facts, MachineID: "m1", WGPublicKey: "wgkey1"})
 	resp, err := http.Post(srv.URL+"/api/agent/v1/join", "application/json", bytes.NewReader(body))

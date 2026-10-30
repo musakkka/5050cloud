@@ -30,6 +30,7 @@ func cmdInit(ctx context.Context, args []string, stdout io.Writer) error {
 	fs.StringVar(&f.ConsoleDomain, "console-domain", env("CONSOLE_DOMAIN", ""), "console domain (default console-<4 random>.<base domain>)")
 	fs.StringVar(&f.ACMEEmail, "acme-email", env("ACME_EMAIL", ""), "email for certificate notices")
 	fs.StringVar(&f.ACMECA, "acme-ca", env("ACME_CA", "production"), "ACME directory: staging, production or a URL")
+	fs.BoolVar(&f.Private, "private", env("PRIVATE", "") != "", "no inbound ports: public traffic comes through a Cloudflare tunnel, Caddy serves plain HTTP on loopback")
 	fs.StringVar(&f.InstallName, "name", env("NAME", ""), "install name")
 	fs.StringVar(&f.ReleaseBase, "release-base", env("RELEASE_BASE", ""), "release download base URL")
 	keyPath := fs.String("master-key", env("MASTER_KEY", ""), "master key path (default next to config.json)")

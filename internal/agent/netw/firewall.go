@@ -255,7 +255,8 @@ func renderRules(s firewallSpec) ruleSet {
 			f.add(chainIsolate, "-s "+host32(a)+" -d "+mesh+" -j RETURN")
 		}
 	}
-	f.add(chainIsolate, "-s "+pod+" -d "+meta+" -j DROP")
+	// Every forwarded container, also on bridges 5050cloud did not make.
+	f.add(chainIsolate, "-d "+meta+" -j DROP")
 	f.add(chainIsolate, "-s "+pod+" -d "+mesh+" -j DROP")
 	// Hosts of the mesh (ingress, TCP proxy, health checks) reach replicas.
 	f.add(chainIsolate, "-s "+mesh+" -d "+pod+" -i "+MeshInterface+" -j ACCEPT")

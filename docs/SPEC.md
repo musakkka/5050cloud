@@ -252,6 +252,9 @@ Flags (each also readable from an environment variable `FIFTY_<FLAG>` in upper s
 | `--no-swap` | swap on when RAM < 8 GB and no swap exists | Skip the 2 GB swap file |
 | `--no-auto-updates` | unattended security updates on | Skip OS security updates |
 | `--firewall` | off | Add nftables rules that drop inbound except SSH, 80, 443, WireGuard from peers |
+| `--private` | off | No inbound ports: public traffic through a Cloudflare tunnel (`--tunnel-token`, `--domain`), Caddy on loopback with plain HTTP and no ACME, default-deny nftables with UDP 51820 only from peers, SSH off unless `--keep-ssh-from CIDR`. Refuses sslip.io, nip.io and TCP proxies. Verifies the tunnel and console before closing anything |
+| `--no-ssh-hardening` | hardening on | Leave SSH settings alone (hardening never removes the only way in) |
+| `--no-audit-log` | auditd on | Skip the auditd rules |
 | `--join URL --token T` | none | Join an existing install as a worker host |
 | `--roles app,ingress,data,build` | `app` for joins | Roles for a joining host. `ingress` on a join makes it a second public entry point (9.2.1) |
 | `--ca-pin sha256:...` | none | Pin the console certificate when it uses Caddy's internal CA (the fallback in 4.2 step 9). Unrelated to agent mTLS, which v0.1 does not have |

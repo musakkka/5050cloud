@@ -35,7 +35,9 @@ type File struct {
 	PublicIP      string `json:"publicIp"`
 	BaseDomain    string `json:"baseDomain"`
 	ConsoleDomain string `json:"consoleDomain"`
-	ACMEEmail     string `json:"acmeEmail,omitempty"`
+	// Private: no inbound ports, public traffic comes through a Cloudflare tunnel.
+	Private   bool   `json:"private,omitempty"`
+	ACMEEmail string `json:"acmeEmail,omitempty"`
 	// ACMECA is "staging", "production" or a directory URL.
 	ACMECA        string `json:"acmeCa,omitempty"`
 	MasterKeyPath string `json:"masterKeyPath"`
@@ -104,6 +106,13 @@ func (f *File) Validate() error {
 			return fmt.Errorf("the %s %q is not a valid domain name", d.name, d.v)
 		}
 	}
+	if f.Private {
+		for _, d := range []string{f.BaseDomain, f.ConsoleDomain} {
+			if IPNameDomain(d) {
+				return errors.New(PrivateNameMessage(d))
+			}
+		}
+	}
 	if _, _, err := net.SplitHostPort(f.Listen); err != nil {
 		return fmt.Errorf("the listen address %q must be host:port", f.Listen)
 	}
@@ -131,6 +140,24 @@ func (f *File) StatePath() string { return filepath.Join(f.DataDir, "state.db") 
 
 // SslipDomain returns "<dashed ip>.sslip.io".
 func SslipDomain(ip string) string { return strings.ReplaceAll(ip, ".", "-") + ".sslip.io" }
+
+// IPNameDomain reports whether d is a name that resolves to an IP address by
+// its spelling (sslip.io, nip.io). Such a name points at the server itself, so
+// it cannot go through a tunnel.
+func IPNameDomain(d string) bool {
+	d = strings.ToLower(strings.TrimSuffix(d, "."))
+	for _, s := range []string{"sslip.io", "nip.io"} {
+		if d == s || strings.HasSuffix(d, "."+s) {
+			return true
+		}
+	}
+	return false
+}
+
+// PrivateNameMessage is the refusal for an IP name on a private host.
+func PrivateNameMessage(d string) string {
+	return d + " cannot be used on a private host, because sslip.io and nip.io names point straight at the server and nothing listens there. Use a domain you control in Cloudflare."
+}
 
 // ValidDomain checks a host name.
 func ValidDomain(d string) bool {
