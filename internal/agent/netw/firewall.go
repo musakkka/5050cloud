@@ -240,6 +240,7 @@ func host32(a netip.Addr) string { return a.String() + "/32" }
 func renderRules(s firewallSpec) ruleSet {
 	pod, mesh, build := cidr(s.Pod), cidr(s.Mesh), cidr(s.Build)
 	meta := MetadataAddr + "/32"
+	wire := WireServerAddr + "/32"
 
 	f := newTable("filter")
 	f.chain(chainIsolate)
@@ -252,11 +253,15 @@ func renderRules(s firewallSpec) ruleSet {
 	for _, e := range s.Envs {
 		for _, a := range e.AllowMetadata {
 			f.add(chainIsolate, "-s "+host32(a)+" -d "+meta+" -j RETURN")
+			f.add(chainIsolate, "-s "+host32(a)+" -d "+wire+" -j RETURN")
 			f.add(chainIsolate, "-s "+host32(a)+" -d "+mesh+" -j RETURN")
 		}
 	}
 	// Every forwarded container, also on bridges 5050cloud did not make.
 	f.add(chainIsolate, "-d "+meta+" -j DROP")
+	f.add(chainIsolate, "-d "+wire+" -p udp -m udp --dport 53 -j RETURN")
+	f.add(chainIsolate, "-d "+wire+" -p tcp -m tcp --dport 53 -j RETURN")
+	f.add(chainIsolate, "-d "+wire+" -j DROP")
 	f.add(chainIsolate, "-s "+pod+" -d "+mesh+" -j DROP")
 	// Hosts of the mesh (ingress, TCP proxy, health checks) reach replicas.
 	f.add(chainIsolate, "-s "+mesh+" -d "+pod+" -i "+MeshInterface+" -j ACCEPT")

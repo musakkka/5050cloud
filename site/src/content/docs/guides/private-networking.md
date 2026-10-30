@@ -26,7 +26,7 @@ With two or more hosts, traffic between them goes over WireGuard (UDP 51820). So
 ## Isolation
 
 - Environments and projects cannot reach each other.
-- Containers cannot reach the host, the cloud metadata address `169.254.169.254` or the mesh, unless an Admin turns on **Allow metadata** for that service.
+- Containers cannot reach the host, the cloud metadata address `169.254.169.254`, Azure's WireServer `168.63.129.16` (except its DNS) or the mesh, unless an Admin turns on **Allow metadata** for that service.
 - Private DNS keeps answering from the agent's cache while the control plane is down.
 
 ## Next steps

@@ -101,6 +101,10 @@ func TestFirewallRulesCoverSpec(t *testing.T) {
 		// metadata and mesh blocked, with the opt-in replica first
 		"-A 5050-ISOLATE -s 10.129.4.9/32 -d 169.254.169.254/32 -j RETURN",
 		"-A 5050-ISOLATE -d 169.254.169.254/32 -j DROP",
+		// Azure WireServer: DNS only, and the opt-in replica keeps all of it
+		"-A 5050-ISOLATE -s 10.129.4.9/32 -d 168.63.129.16/32 -j RETURN",
+		"-A 5050-ISOLATE -d 168.63.129.16/32 -p udp -m udp --dport 53 -j RETURN",
+		"-A 5050-ISOLATE -d 168.63.129.16/32 -j DROP",
 		"-A 5050-ISOLATE -s 10.128.0.0/9 -d 100.96.0.0/16 -j DROP",
 		// same environment across hosts, other environments dropped
 		"-A 5050-ISOLATE -s 10.130.7.0/24 -j " + envChain("env_prod"),

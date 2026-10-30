@@ -1515,6 +1515,7 @@ table inet fifty_filter {
 		type filter hook forward priority -10; policy drop;
 		meta nfproto ipv6 drop
 		ip daddr 169.254.169.254 ip saddr != @metadata_allow drop
+		ip daddr 168.63.129.16 meta l4proto { tcp, udp } th dport != 53 ip saddr != @metadata_allow drop
 		ct state established,related accept
 		iifname "wg5050" accept
 		iifname "docker0" accept

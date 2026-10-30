@@ -15,6 +15,9 @@ const (
 	DefaultMeshCIDR = "100.96.0.0/16"
 	// MetadataAddr is the cloud metadata endpoint containers may not reach by default.
 	MetadataAddr = "169.254.169.254"
+	// WireServerAddr is Azure's host channel: VM configuration on HTTP, DNS on port 53.
+	// Containers keep the DNS because a resolv.conf copied from the host can point at it.
+	WireServerAddr = "168.63.129.16"
 	// MaxHosts is the number of /16 host ranges a /9 pod range holds (index 0 is reserved).
 	MaxHosts = 127
 	// MaxEnvSlots is the number of environment /24s one host can carry; slot 255 is the build network.

@@ -104,8 +104,9 @@ func TestPrivateRulesCloseContainersFromTheHost(t *testing.T) {
 	// The drops come first: they must not depend on an established flow.
 	ip6 := strings.Index(forward, "meta nfproto ipv6 drop")
 	meta := strings.Index(forward, "ip daddr 169.254.169.254 ip saddr != @metadata_allow drop")
+	wire := strings.Index(forward, "ip daddr 168.63.129.16 meta l4proto { tcp, udp } th dport != 53 ip saddr != @metadata_allow drop")
 	est := strings.Index(forward, "ct state established")
-	if ip6 < 0 || meta < 0 || est < 0 || ip6 > est || meta > est {
+	if ip6 < 0 || meta < 0 || wire < 0 || est < 0 || ip6 > est || meta > est || wire > est {
 		t.Errorf("the forward chain must drop IPv6 and metadata before anything else:\n%s", forward)
 	}
 }

@@ -416,6 +416,9 @@ func (n *Net) restoreBaseline(ctx context.Context) error {
 	}
 	f := newTable("filter")
 	f.add(chainIsolate, "-d "+MetadataAddr+"/32 -j DROP")
+	f.add(chainIsolate, "-d "+WireServerAddr+"/32 -p udp -m udp --dport 53 -j RETURN")
+	f.add(chainIsolate, "-d "+WireServerAddr+"/32 -p tcp -m tcp --dport 53 -j RETURN")
+	f.add(chainIsolate, "-d "+WireServerAddr+"/32 -j DROP")
 	return n.ipt.Restore(ctx, renderRestore(ruleSet{tables: []*table{f}, hooks: []hook{{"filter", "DOCKER-USER", "-j " + chainIsolate}}}, st))
 }
 
