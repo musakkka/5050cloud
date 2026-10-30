@@ -414,7 +414,8 @@ func (c *Core) checkSecondFactor(ctx context.Context, userID, code string) (bool
 	return true, c.st.Exec(ctx, `UPDATE users SET recovery_codes_hash = ? WHERE id = ?`, jsonString(rest), userID)
 }
 
-// passwordOK is for signed-in re-checks, where a busy server reads as a retry.
+// passwordOK is for signed-in re-checks. When the server is flooded, a right
+// password can read as wrong here; the person retries.
 func (c *Core) passwordOK(hash, pw string) bool {
 	ok, err := auth.VerifyPassword(hash, pw)
 	return err == nil && ok

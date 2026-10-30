@@ -1540,6 +1540,8 @@ close_ports() {
 	systemctl restart 5050-agent.service
 	sub "Checking the console with the firewall on"
 	if ! wait_for 60 console_answers; then
+		# A host that was already closed stays closed, whatever broke the console.
+		[ ! -f "$ETC_DIR/private" ] || die "the console is not answering. This host was already private, so its firewall stays on. Details: journalctl -u 5050d -u 5050-tunnel"
 		nft delete table inet fifty_filter 2>/dev/null || true
 		systemctl disable 5050-firewall.service >/dev/null 2>&1 || true
 		rm -f /etc/nftables-5050.conf
