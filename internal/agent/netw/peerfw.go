@@ -94,9 +94,12 @@ const fwRestoredNotice = 24 * time.Hour
 func (n *Net) CheckFirewall(ctx context.Context, now time.Time) []string {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	var out []string
+	// The firewall comes first: a hung Docker must not hold up its reload.
+	out := n.checkFirewallLocked(ctx, now)
+	dctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	if d, err := n.dockerLocked(); err == nil {
-		if nets, err := d.NetworkList(ctx, network.ListOptions{}); err == nil {
+		if nets, err := d.NetworkList(dctx, network.ListOptions{}); err == nil {
 			for _, nw := range nets {
 				if nw.EnableIPv6 {
 					out = append(out, fmt.Sprintf("Docker network %s has IPv6 turned on. 5050cloud isolates containers over IPv4 only, so turn IPv6 off in Docker.", nw.Name))
@@ -104,6 +107,11 @@ func (n *Net) CheckFirewall(ctx context.Context, now time.Time) []string {
 			}
 		}
 	}
+	return out
+}
+
+func (n *Net) checkFirewallLocked(ctx context.Context, now time.Time) []string {
+	var out []string
 	if _, err := os.Stat(n.privateMarker); err != nil {
 		return out
 	}

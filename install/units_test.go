@@ -127,3 +127,22 @@ func TestRecoveryKeyIsNotOnACommandLine(t *testing.T) {
 		t.Error("the recovery key is passed as an argument")
 	}
 }
+
+func TestKeptSSHRangeSurvivesARerun(t *testing.T) {
+	s := script(t)
+	if !strings.Contains(between(t, s, "check_private() {", "\n}\n"), `KEEP_SSH_FROM=$(cat "$ETC_DIR/keep-ssh-from")`) {
+		t.Error("check_private does not read the kept SSH range")
+	}
+	if !strings.Contains(between(t, s, "close_ports() {", "\n}\n"), `>"$ETC_DIR/keep-ssh-from"`) {
+		t.Error("close_ports does not save the kept SSH range")
+	}
+}
+
+func TestFirewallUndoCoversEveryStepBeforeTheCheck(t *testing.T) {
+	cp := between(t, script(t), "close_ports() {", "\n}\n")
+	on, load, off := strings.Index(cp, "FIREWALL_UNDO=1"), strings.Index(cp, "nft -f /etc/nftables-5050.conf\n"), strings.Index(cp, `FIREWALL_UNDO=""`)
+	check := strings.Index(cp, "wait_for 60 console_answers")
+	if on < 0 || on > load || off < check {
+		t.Errorf("the undo must be armed before the firewall loads and last until the console check: %d %d %d %d", on, load, check, off)
+	}
+}

@@ -139,7 +139,7 @@ func (s *Server) table() map[string]handler {
 				return nil, err
 			}
 		}
-		http.SetCookie(x.W, &http.Cookie{Name: CookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: !c.File().Insecure, SameSite: http.SameSiteLaxMode})
+		http.SetCookie(x.W, &http.Cookie{Name: s.cookieName(), Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: !c.File().Insecure, SameSite: http.SameSiteLaxMode})
 		return nil, nil
 	})
 	add("POST /auth/forgot", func(x *Ctx) (any, error) {

@@ -192,6 +192,7 @@ on_exit() {
 	if [ -n "$STTY_SAVE" ]; then stty "$STTY_SAVE" 2>/dev/null || true; fi
 	if [ -n "$UI_ANIM" ]; then printf '%s[?25h' "$ESC"; fi
 	[ -z "${TMP:-}" ] || rm -rf "$TMP"
+	if [ -n "${FIREWALL_UNDO:-}" ]; then firewall_undo; fi
 	if [ "$rc" -eq 130 ]; then printf '\n  %sCancelled. Every step is safe to run again, so just start the installer again.%s\n' "$DIM" "$R" >&2; fi
 }
 trap on_exit EXIT
@@ -645,7 +646,7 @@ remove_private() {
 		rm -f "$ETC_DIR/ssh-closed"
 	fi
 	systemctl disable --now 5050-firewall.service >/dev/null 2>&1 || true
-	rm -f "$UNIT_DIR/5050-firewall.service" "$UNIT_DIR/docker.service.d/10-5050-firewall.conf" /etc/nftables-5050.conf "$ETC_DIR/private"
+	rm -f "$UNIT_DIR/5050-firewall.service" "$UNIT_DIR/docker.service.d/10-5050-firewall.conf" /etc/nftables-5050.conf "$ETC_DIR/private" "$ETC_DIR/keep-ssh-from"
 	nft delete table inet fifty_filter 2>/dev/null || true
 }
 
@@ -1039,7 +1040,6 @@ harden_ssh() {
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin $root
-MaxAuthTries 3
 EOF
 	if ! /usr/sbin/sshd -t >/dev/null 2>&1; then
 		rm -f "$f"
@@ -1330,6 +1330,8 @@ check_private() {
 	cfg=$ETC_DIR/config.json
 	# A closed host stays closed when the installer runs again without the flag.
 	if [ -f "$ETC_DIR/private" ] || grep -qs '"private": *true' "$cfg"; then PRIVATE=1; fi
+	# The kept SSH range survives a run without the flag, or that run would lock the owner out.
+	if [ -z "$KEEP_SSH_FROM" ] && [ -f "$ETC_DIR/keep-ssh-from" ]; then KEEP_SSH_FROM=$(cat "$ETC_DIR/keep-ssh-from"); fi
 	if [ -z "$PRIVATE" ]; then
 		[ -z "$KEEP_SSH_FROM$TUNNEL_TOKEN" ] || die "--keep-ssh-from and --tunnel-token only work together with --private."
 		return 0
@@ -1406,6 +1408,8 @@ tunnel_start() {
 	sub "Starting the tunnel"
 	f=$ETC_DIR/tunnel-token
 	token_changed=""
+	# A .prev left by an interrupted run is not the token to go back to now.
+	rm -f "$f.prev"
 	if [ -n "$TUNNEL_TOKEN" ] && [ "$(cat "$f" 2>/dev/null || true)" != "$TUNNEL_TOKEN" ]; then
 		[ ! -f "$f" ] || cp -p "$f" "$f.prev"
 		(umask 077; printf '%s\n' "$TUNNEL_TOKEN" >"$f")
@@ -1526,6 +1530,17 @@ table inet fifty_filter {
 EOF
 }
 
+# firewall_undo removes a firewall this run loaded but did not finish checking.
+# A host that was already closed stays closed, whatever went wrong.
+firewall_undo() {
+	FIREWALL_UNDO=""
+	[ ! -f "$ETC_DIR/private" ] || return 0
+	nft delete table inet fifty_filter 2>/dev/null || true
+	systemctl disable 5050-firewall.service >/dev/null 2>&1 || true
+	rm -f /etc/nftables-5050.conf
+	warn "The firewall was removed again, because the install stopped before it was checked. SSH was not touched."
+}
+
 close_ports() {
 	sub "Loading the firewall"
 	have nft || run_logged "installing nftables" apt-get install -y -qq nftables
@@ -1535,6 +1550,7 @@ close_ports() {
 		die "the firewall rules were not valid. $NOT_CLOSED"
 	}
 	mv /etc/nftables-5050.conf.new /etc/nftables-5050.conf
+	FIREWALL_UNDO=1
 	nft -f /etc/nftables-5050.conf
 	firewall_unit
 	# Loading the table emptied the peer set; the agent fills it when it starts.
@@ -1543,13 +1559,12 @@ close_ports() {
 	if ! wait_for 60 console_answers; then
 		# A host that was already closed stays closed, whatever broke the console.
 		[ ! -f "$ETC_DIR/private" ] || die "the console is not answering. This host was already private, so its firewall stays on. Details: journalctl -u 5050d -u 5050-tunnel"
-		nft delete table inet fifty_filter 2>/dev/null || true
-		systemctl disable 5050-firewall.service >/dev/null 2>&1 || true
-		rm -f /etc/nftables-5050.conf
-		die "the console stopped answering once the firewall was on, so the firewall was removed again. SSH was not touched."
+		die "the console stopped answering once the firewall was on."
 	fi
+	FIREWALL_UNDO=""
 	docker_needs_firewall
 	if [ -n "$KEEP_SSH_FROM" ]; then
+		printf '%s\n' "$KEEP_SSH_FROM" >"$ETC_DIR/keep-ssh-from"
 		if [ -f "$ETC_DIR/ssh-closed" ]; then
 			ssh_open
 			rm -f "$ETC_DIR/ssh-closed"

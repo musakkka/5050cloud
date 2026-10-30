@@ -425,9 +425,25 @@ func (c *Core) passwordOK(hash, pw string) bool {
 
 // UpdateMe is PATCH /me.
 func (c *Core) UpdateMe(ctx context.Context, a Actor, req api.UpdateMeRequest) (api.User, error) {
-	err := c.st.Write(ctx, func(tx *sql.Tx) error {
-		row, err := c.userByID(ctx, tx, a.UserID)
+	// Hashing can wait in a queue, so it stays outside the single writer.
+	var newHash string
+	if req.Password != nil {
+		row, err := c.userByID(ctx, c.st.Reader, a.UserID)
 		if err != nil {
+			return api.User{}, err
+		}
+		if req.CurrentPassword == nil || !c.passwordOK(row.PasswordHash, *req.CurrentPassword) {
+			return api.User{}, fail.Validation("currentPassword", "Your current password is not correct.")
+		}
+		if err := auth.CheckPasswordPolicy("password", *req.Password); err != nil {
+			return api.User{}, err
+		}
+		if newHash, err = auth.HashPassword(*req.Password); err != nil {
+			return api.User{}, err
+		}
+	}
+	err := c.st.Write(ctx, func(tx *sql.Tx) error {
+		if _, err := c.userByID(ctx, tx, a.UserID); err != nil {
 			return err
 		}
 		if req.Name != nil {
@@ -440,17 +456,7 @@ func (c *Core) UpdateMe(ctx context.Context, a Actor, req api.UpdateMeRequest) (
 			}
 		}
 		if req.Password != nil {
-			if req.CurrentPassword == nil || !c.passwordOK(row.PasswordHash, *req.CurrentPassword) {
-				return fail.Validation("currentPassword", "Your current password is not correct.")
-			}
-			if err := auth.CheckPasswordPolicy("password", *req.Password); err != nil {
-				return err
-			}
-			h, err := auth.HashPassword(*req.Password)
-			if err != nil {
-				return err
-			}
-			if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, h, a.UserID); err != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, newHash, a.UserID); err != nil {
 				return err
 			}
 			// Other sessions end; this one stays.

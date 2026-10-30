@@ -76,6 +76,8 @@ curl -fsSL {{GET}} | sudo -E sh -s -- --private --domain example.com --keep-ssh-
 
 This is the only exception to the closed firewall. It takes one IPv4 range, of /8 or smaller. Check that the address is really yours and that it does not change.
 
+The installer remembers the range in `/etc/5050/keep-ssh-from`, so running it again without the flag does not lock you out. To close SSH again, delete that file and run the installer.
+
 ## Adding hosts
 
 Run the same flag on every host. Without `--private`, a joined host has its ports open.
