@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -50,8 +52,40 @@ func CheckPasswordPolicy(field, pw string) error {
 	return nil
 }
 
+// ErrBusy is returned when too many passwords are waiting to be checked.
+var ErrBusy = fail.Unavailable("The server is busy checking other passwords. Try again in a minute.")
+
+// Each argon2 run takes 64 MiB, so a burst of anonymous requests must not run
+// them all at once: hashSlots run, hashQueue more wait, the rest are refused.
+var (
+	hashSlots = make(chan struct{}, min(4, max(2, runtime.NumCPU())))
+	hashQueue = make(chan struct{}, 64)
+)
+
+func hashAcquire() (release func(), err error) {
+	select {
+	case hashQueue <- struct{}{}:
+	default:
+		return nil, ErrBusy
+	}
+	hashSlots <- struct{}{}
+	return func() {
+		<-hashSlots
+		<-hashQueue
+	}, nil
+}
+
 // HashPassword returns a PHC-style argon2id hash.
 func HashPassword(pw string) (string, error) {
+	release, err := hashAcquire()
+	if err != nil {
+		return "", err
+	}
+	defer release()
+	return hashPassword(pw)
+}
+
+func hashPassword(pw string) (string, error) {
 	salt := make([]byte, argonSaltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
@@ -61,8 +95,18 @@ func HashPassword(pw string) (string, error) {
 		base64.RawStdEncoding.EncodeToString(salt), base64.RawStdEncoding.EncodeToString(key)), nil
 }
 
-// CheckPassword reports whether pw matches hash, in constant time.
-func CheckPassword(hash, pw string) bool {
+// VerifyPassword reports whether pw matches hash, in constant time. Its error is
+// ErrBusy, not a verdict on the password.
+func VerifyPassword(hash, pw string) (bool, error) {
+	release, err := hashAcquire()
+	if err != nil {
+		return false, err
+	}
+	defer release()
+	return checkPassword(hash, pw), nil
+}
+
+func checkPassword(hash, pw string) bool {
 	parts := strings.Split(hash, "$")
 	if len(parts) != 6 || parts[1] != "argon2id" {
 		return false
@@ -93,10 +137,12 @@ var (
 	dummyHash string
 )
 
-// DummyCheck spends the same time as CheckPassword, for unknown emails.
-func DummyCheck(pw string) {
-	dummyOnce.Do(func() { dummyHash, _ = HashPassword("not-a-real-password") })
-	CheckPassword(dummyHash, pw)
+// DummyCheck spends the same time and gives the same busy error as
+// VerifyPassword, for unknown emails.
+func DummyCheck(pw string) error {
+	dummyOnce.Do(func() { dummyHash, _ = hashPassword("not-a-real-password") })
+	_, err := VerifyPassword(dummyHash, pw)
+	return err
 }
 
 // NewToken returns n random bytes, base64url without padding.
@@ -161,12 +207,25 @@ func NewTOTP(issuer, account string) (secret, url string, err error) {
 
 // ValidateTOTP checks a 6-digit code at now, allowing one step of skew.
 func ValidateTOTP(secret, code string, now time.Time) bool {
+	_, ok := TOTPStep(secret, code, now)
+	return ok
+}
+
+// TOTPStep is ValidateTOTP that also returns the time step the code belongs to,
+// so a caller can refuse a code that was already used.
+func TOTPStep(secret, code string, now time.Time) (int64, bool) {
 	code = strings.ReplaceAll(strings.TrimSpace(code), " ", "")
 	if len(code) != 6 {
-		return false
+		return 0, false
 	}
-	ok, err := totp.ValidateCustom(code, secret, now, totp.ValidateOpts{Period: 30, Skew: 1, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1})
-	return err == nil && ok
+	for _, skew := range []time.Duration{-30 * time.Second, 0, 30 * time.Second} {
+		at := now.Add(skew)
+		ok, err := totp.ValidateCustom(code, secret, at, totp.ValidateOpts{Period: 30, Skew: 0, Digits: otp.DigitsSix, Algorithm: otp.AlgorithmSHA1})
+		if err == nil && ok {
+			return at.Unix() / 30, true
+		}
+	}
+	return 0, false
 }
 
 // TOTPCode returns the current code (tests and the dev server).
@@ -280,6 +339,20 @@ func ClientIP(r *http.Request) string {
 		return host
 	}
 	return ip.String()
+}
+
+// LimitKey is the address a rate limit counts by: the address itself, or the /64
+// for IPv6, because one customer usually holds a whole /64.
+func LimitKey(ip string) string {
+	a, err := netip.ParseAddr(ip)
+	if err != nil || !a.Unmap().Is6() {
+		return ip
+	}
+	p, err := a.WithZone("").Prefix(64)
+	if err != nil {
+		return ip
+	}
+	return p.String()
 }
 
 // IsLocal reports whether the request came straight from loopback, with no

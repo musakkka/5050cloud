@@ -11,7 +11,6 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"github.com/musakkka/5050cloud/internal/cp/core/auth"
 	"github.com/musakkka/5050cloud/internal/cp/core/changes"
 	"github.com/musakkka/5050cloud/internal/cp/core/fail"
 	"github.com/musakkka/5050cloud/internal/cp/core/ids"
@@ -54,7 +53,7 @@ func (c *Core) RecoveryKey(ctx context.Context, a Actor, password string) (api.R
 	if err != nil {
 		return api.RecoveryKeyResponse{}, err
 	}
-	if !auth.CheckPassword(u.PasswordHash, password) {
+	if !c.passwordOK(u.PasswordHash, password) {
 		return api.RecoveryKeyResponse{}, fail.Validation("password", "The password is not correct.")
 	}
 	key, err := os.ReadFile(c.keyPath)

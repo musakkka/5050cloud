@@ -21,6 +21,7 @@ import (
 // Session and token lifetimes (9.15).
 const (
 	SessionTTL     = 30 * day
+	sessionMaxAge  = 90 * day // however often it is used, a session ends after this
 	sessionExtend  = day // extend the sliding expiry at most once a day
 	ResetTTL       = hour
 	VerifyTTL      = 7 * day
@@ -131,6 +132,14 @@ func (c *Core) Setup(ctx context.Context, req api.SetupRequest) (api.User, error
 	if err := auth.CheckPasswordPolicy("password", req.Password); err != nil {
 		return api.User{}, err
 	}
+	// Refuse a wrong token before the 64 MiB hash; the transaction checks it fully.
+	var known int
+	if err := c.st.Reader.QueryRowContext(ctx, `SELECT count(*) FROM setup_tokens WHERE token_hash = ?`, auth.HashToken(auth.NormalizeCode(req.Token))).Scan(&known); err != nil {
+		return api.User{}, err
+	}
+	if known == 0 {
+		return api.User{}, fail.Unauthorized("This setup link is not valid. Run `sudo 5050d setup-token` on the control host for a new one.")
+	}
 	hash, err := auth.HashPassword(req.Password)
 	if err != nil {
 		return api.User{}, err
@@ -216,9 +225,9 @@ func (c *Core) NewSession(ctx context.Context, userID, ip, userAgent string) (st
 func (c *Core) SessionActor(ctx context.Context, cookie string) (Actor, error) {
 	h := auth.HashToken(cookie)
 	var uid string
-	var exp, ext int64
-	err := c.st.Reader.QueryRowContext(ctx, `SELECT user_id, expires_at, extended_at FROM sessions WHERE id_hash = ?`, h).Scan(&uid, &exp, &ext)
-	if store.NoRows(err) || err == nil && exp < c.Now() {
+	var exp, ext, created int64
+	err := c.st.Reader.QueryRowContext(ctx, `SELECT user_id, expires_at, extended_at, created_at FROM sessions WHERE id_hash = ?`, h).Scan(&uid, &exp, &ext, &created)
+	if store.NoRows(err) || err == nil && (exp < c.Now() || c.Now()-created > sessionMaxAge) {
 		return Actor{}, fail.Unauthorized("Your session has ended. Log in again.")
 	}
 	if err != nil {
@@ -301,8 +310,8 @@ func (t *ticketTable) take(k string, now time.Time) (string, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	v, ok := t.m[k]
+	delete(t.m, k) // single use; keep puts it back after a wrong code
 	if !ok || now.After(v.exp) {
-		delete(t.m, k)
 		return "", false
 	}
 	return v.userID, true
@@ -323,10 +332,16 @@ func (c *Core) Login(ctx context.Context, email, password string) (u api.User, t
 		return api.User{}, "", err
 	}
 	if !ok {
-		auth.DummyCheck(password)
+		if err := auth.DummyCheck(password); err != nil {
+			return api.User{}, "", err
+		}
 		return api.User{}, "", fail.Unauthorized("The email or password is not correct.")
 	}
-	if !auth.CheckPassword(row.PasswordHash, password) {
+	good, err := auth.VerifyPassword(row.PasswordHash, password)
+	if err != nil {
+		return api.User{}, "", err
+	}
+	if !good {
 		return api.User{}, "", fail.Unauthorized("The email or password is not correct.")
 	}
 	if row.Disabled {
@@ -356,6 +371,26 @@ func (c *Core) LoginTOTP(ctx context.Context, tk, code string) (api.User, error)
 	return c.User(ctx, uid)
 }
 
+// totpSteps remembers each user's last accepted time step, so a code cannot be
+// used twice inside its 90 s window. shortcut: in memory, a restart forgets it,
+// which is fine for a window this short; one control host runs one process.
+var totpSteps = &totpStepTable{m: map[string]int64{}}
+
+type totpStepTable struct {
+	mu sync.Mutex
+	m  map[string]int64
+}
+
+func (t *totpStepTable) use(userID string, step int64) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if step <= t.m[userID] {
+		return false
+	}
+	t.m[userID] = step
+	return true
+}
+
 // checkSecondFactor validates a TOTP code or consumes a recovery code.
 func (c *Core) checkSecondFactor(ctx context.Context, userID, code string) (bool, error) {
 	row, err := c.userByID(ctx, c.st.Reader, userID)
@@ -369,14 +404,20 @@ func (c *Core) checkSecondFactor(ctx context.Context, userID, code string) (bool
 	if err != nil {
 		return false, fail.Internal(err)
 	}
-	if auth.ValidateTOTP(string(secret), code, c.now()) {
-		return true, nil
+	if step, ok := auth.TOTPStep(string(secret), code, c.now()); ok {
+		return totpSteps.use(userID, step), nil
 	}
 	rest, used := auth.UseRecoveryCode(row.RecoveryHash, code)
 	if !used {
 		return false, nil
 	}
 	return true, c.st.Exec(ctx, `UPDATE users SET recovery_codes_hash = ? WHERE id = ?`, jsonString(rest), userID)
+}
+
+// passwordOK is for signed-in re-checks, where a busy server reads as a retry.
+func (c *Core) passwordOK(hash, pw string) bool {
+	ok, err := auth.VerifyPassword(hash, pw)
+	return err == nil && ok
 }
 
 // ---------------------------------------------------------------- account
@@ -398,7 +439,7 @@ func (c *Core) UpdateMe(ctx context.Context, a Actor, req api.UpdateMeRequest) (
 			}
 		}
 		if req.Password != nil {
-			if req.CurrentPassword == nil || !auth.CheckPassword(row.PasswordHash, *req.CurrentPassword) {
+			if req.CurrentPassword == nil || !c.passwordOK(row.PasswordHash, *req.CurrentPassword) {
 				return fail.Validation("currentPassword", "Your current password is not correct.")
 			}
 			if err := auth.CheckPasswordPolicy("password", *req.Password); err != nil {
@@ -478,7 +519,7 @@ func (c *Core) TOTPDisable(ctx context.Context, a Actor, password, code string) 
 	if err != nil {
 		return err
 	}
-	if !auth.CheckPassword(row.PasswordHash, password) {
+	if !c.passwordOK(row.PasswordHash, password) {
 		return fail.Validation("password", "Your password is not correct.")
 	}
 	if row.TOTPEnabled {
@@ -552,6 +593,17 @@ func (c *Core) ResetLink(ctx context.Context, email string) (string, error) {
 // the account has a second factor: a mailbox alone must not be enough.
 func (c *Core) ResetPassword(ctx context.Context, token, password string) (u api.User, ticket string, err error) {
 	if err := auth.CheckPasswordPolicy("password", password); err != nil {
+		return api.User{}, "", err
+	}
+	// Check the token before the 64 MiB hash, so an anonymous caller cannot make one.
+	var exp int64
+	var used sql.NullInt64
+	var known string
+	err = c.st.Reader.QueryRowContext(ctx, `SELECT user_id, expires_at, used_at FROM password_resets WHERE token_hash = ?`, auth.HashToken(trim(token))).Scan(&known, &exp, &used)
+	if store.NoRows(err) || err == nil && (used.Valid || exp < c.Now()) {
+		return api.User{}, "", fail.Unauthorized("This reset link is not valid or has expired. Ask for a new one.")
+	}
+	if err != nil {
 		return api.User{}, "", err
 	}
 	hash, err := auth.HashPassword(password)
@@ -949,6 +1001,17 @@ func (c *Core) AcceptInvite(ctx context.Context, req api.AcceptInviteRequest) (a
 	if err := auth.CheckPasswordPolicy("password", req.Password); err != nil {
 		return api.User{}, err
 	}
+	// Check the token before the 64 MiB hash, so an anonymous caller cannot make one.
+	r, ok, err := c.inviteByToken(ctx, c.st.Reader, req.Token)
+	if err != nil {
+		return api.User{}, err
+	}
+	if !ok {
+		return api.User{}, fail.Unauthorized("This invite link is not valid.")
+	}
+	if why := c.inviteProblem(r); why != "" {
+		return api.User{}, fail.Unauthorized("%s", why)
+	}
 	hash, err := auth.HashPassword(req.Password)
 	if err != nil {
 		return api.User{}, err
@@ -1101,7 +1164,7 @@ func (c *Core) TransferOwnership(ctx context.Context, a Actor, toID string, req 
 	if me.Role != api.RoleOwner {
 		return fail.Forbidden("Only the owner can transfer ownership.")
 	}
-	if !auth.CheckPassword(me.PasswordHash, req.Password) {
+	if !c.passwordOK(me.PasswordHash, req.Password) {
 		return fail.Validation("password", "Your password is not correct.")
 	}
 	if me.TOTPEnabled {

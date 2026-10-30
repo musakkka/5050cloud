@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/url"
+	"strings"
 
 	"github.com/musakkka/5050cloud/internal/cp/core/auth"
 	"github.com/musakkka/5050cloud/internal/cp/core/fail"
@@ -56,6 +57,9 @@ func checkHook(h api.Webhook) error {
 	u, err := url.Parse(h.URL)
 	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
 		return fail.Validation("url", "The webhook URL must be an http or https URL.")
+	}
+	if strings.Contains(u.Hostname(), "%") {
+		return fail.Validation("url", "The webhook URL must not name a network interface.")
 	}
 	switch h.Preset {
 	case "", "discord", "slack":

@@ -25,11 +25,42 @@ import (
 	"github.com/musakkka/5050cloud/pkg/api"
 )
 
-// CookieName is the session cookie.
-const CookieName = "5050_session"
+// CookieName is the session cookie. On HTTPS it is SecureCookieName instead: the
+// __Host- prefix stops an app on a sibling subdomain from planting its own.
+const (
+	CookieName       = "5050_session"
+	SecureCookieName = "__Host-5050_session"
+)
 
-// maxBody is the largest JSON body read.
-const maxBody = 4 << 20
+// cookieName is the name for this install; the prefix needs Secure.
+func (s *Server) cookieName() string {
+	if s.C.File().Insecure {
+		return CookieName
+	}
+	return SecureCookieName
+}
+
+// Login attempts allowed in 15 minutes. The per-account count is the one an
+// attacker with many addresses meets. It also means enough of them can keep the
+// real owner out for a while, so it is set well above what a person retyping
+// passwords would reach.
+const (
+	loginPerAddressAccount = 10
+	loginPerAddress        = 100
+	loginPerAccount        = 50
+)
+
+// maxBody is the largest JSON body read; maxPublicBody is for routes open to
+// anyone, which only ever take a few short fields.
+const (
+	maxBody       = 4 << 20
+	maxPublicBody = 64 << 10
+)
+
+// consoleCSP limits the console to its own scripts and refuses framing, which is
+// what the CLI approval page needs against clickjacking. form-action allows https
+// because connecting a GitHub App posts a form to GitHub.
+const consoleCSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https:; frame-ancestors 'none'"
 
 // Server is the HTTP handler.
 type Server struct {
@@ -37,10 +68,12 @@ type Server struct {
 	Web fs.FS // the built console (web.Dist sub "dist"); nil serves no SPA
 	Log *slog.Logger
 
-	mux      *http.ServeMux
-	login    *auth.Limiter
-	forgot   *auth.Limiter
-	handlers map[string]handler
+	mux          *http.ServeMux
+	login        *auth.Limiter // per address and account
+	loginAddress *auth.Limiter
+	loginAccount *auth.Limiter
+	forgot       *auth.Limiter
+	handlers     map[string]handler
 }
 
 // Ctx is one request as a handler sees it.
@@ -63,7 +96,8 @@ func New(c *core.Core, web fs.FS, log *slog.Logger) *Server {
 		log = slog.Default()
 	}
 	s := &Server{C: c, Web: web, Log: log, mux: http.NewServeMux(),
-		login: auth.NewLimiter(10, 15*time.Minute), forgot: auth.NewLimiter(5, time.Hour)}
+		login: auth.NewLimiter(loginPerAddressAccount, 15*time.Minute), loginAddress: auth.NewLimiter(loginPerAddress, 15*time.Minute),
+		loginAccount: auth.NewLimiter(loginPerAccount, 15*time.Minute), forgot: auth.NewLimiter(5, time.Hour)}
 	s.handlers = s.table()
 	for _, rt := range api.Routes {
 		h, ok := s.handlers[rt.Method+" "+rt.Path]
@@ -104,6 +138,8 @@ func (s *Server) Handlers() map[string]bool {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "same-origin")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Content-Security-Policy", consoleCSP)
 	s.mux.ServeHTTP(w, r)
 }
 
@@ -132,9 +168,17 @@ func (s *Server) wrap(rt api.Route, h handler) http.Handler {
 				writeErr(w, err)
 				return
 			}
-		} else if a, err := s.authenticate(r); err == nil {
-			a.IP = x.A.IP
-			x.A = a
+		} else {
+			// A login or setup posted from another site would sign the victim in
+			// as the attacker. Agents, the CLI and webhooks send no Origin.
+			if mutating && !sameOrigin(r) {
+				writeErr(w, fail.Forbidden("This request came from another site and was refused."))
+				return
+			}
+			if a, err := s.authenticate(r); err == nil {
+				a.IP = x.A.IP
+				x.A = a
+			}
 		}
 		out, err := h(x)
 		if err != nil {
@@ -160,7 +204,9 @@ func (s *Server) wrap(rt api.Route, h handler) http.Handler {
 	})
 }
 
-func (s *Server) audit(x *Ctx) {
+func (s *Server) audit(x *Ctx) { s.auditAs(x, x.Route.Audit) }
+
+func (s *Server) auditAs(x *Ctx, action string) {
 	t := x.Target
 	if t == "" {
 		t = x.R.URL.Path
@@ -169,8 +215,8 @@ func (s *Server) audit(x *Ctx) {
 	if label == "anonymous" && x.Route.Role == api.Public {
 		label = "anonymous"
 	}
-	if err := s.C.Audit(context.WithoutCancel(x.R.Context()), api.AuditEntry{Actor: label, Action: x.Route.Audit, Target: t, IP: x.A.IP, Detail: x.Detail}); err != nil {
-		s.Log.Warn("cannot write an audit entry", "action", x.Route.Audit, "err", err)
+	if err := s.C.Audit(context.WithoutCancel(x.R.Context()), api.AuditEntry{Actor: label, Action: action, Target: t, IP: x.A.IP, Detail: x.Detail}); err != nil {
+		s.Log.Warn("cannot write an audit entry", "action", action, "err", err)
 	}
 }
 
@@ -205,7 +251,7 @@ func (s *Server) authenticate(r *http.Request) (core.Actor, error) {
 		}
 		return s.C.TokenActor(ctx, strings.TrimSpace(tok))
 	}
-	if ck, err := r.Cookie(CookieName); err == nil && ck.Value != "" {
+	if ck, err := r.Cookie(s.cookieName()); err == nil && ck.Value != "" {
 		return s.C.SessionActor(ctx, ck.Value)
 	}
 	return core.Actor{}, fail.Unauthorized("Log in first.")
@@ -313,7 +359,11 @@ func writeErr(w http.ResponseWriter, err error) {
 
 // decode reads a JSON body into v.
 func (x *Ctx) decode(v any) error {
-	body := http.MaxBytesReader(x.W, x.R.Body, maxBody)
+	limit := int64(maxBody)
+	if x.Route.Role == api.Public {
+		limit = maxPublicBody
+	}
+	body := http.MaxBytesReader(x.W, x.R.Body, limit)
 	b, err := io.ReadAll(body)
 	if err != nil {
 		return fail.Validation("body", "The request body is too large or could not be read.")
@@ -380,7 +430,7 @@ func (s *Server) setSession(w http.ResponseWriter, r *http.Request, userID strin
 	if err != nil {
 		return err
 	}
-	http.SetCookie(w, &http.Cookie{Name: CookieName, Value: v, Path: "/", HttpOnly: true, Secure: !s.C.File().Insecure,
+	http.SetCookie(w, &http.Cookie{Name: s.cookieName(), Value: v, Path: "/", HttpOnly: true, Secure: !s.C.File().Insecure,
 		SameSite: http.SameSiteLaxMode, MaxAge: int(core.SessionTTL / 1000)})
 	return nil
 }

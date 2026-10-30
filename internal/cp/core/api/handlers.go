@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/musakkka/5050cloud/internal/cp/core"
+	"github.com/musakkka/5050cloud/internal/cp/core/auth"
 	"github.com/musakkka/5050cloud/internal/cp/core/fail"
 	"github.com/musakkka/5050cloud/internal/cp/core/ids"
 	"github.com/musakkka/5050cloud/internal/cp/cpapi"
@@ -61,7 +62,7 @@ func (s *Server) table() map[string]handler {
 	})
 	add("GET /setup", func(x *Ctx) (any, error) { return c.SetupStatus(ctxOf(x)) })
 	add("POST /setup", func(x *Ctx) (any, error) {
-		if !s.login.Allow("setup|" + x.A.IP) {
+		if !s.login.Allow("setup|" + auth.LimitKey(x.A.IP)) {
 			return nil, fail.RateLimited("Too many attempts. Wait a few minutes and try again.")
 		}
 		req, err := body[api.SetupRequest](x)
@@ -83,19 +84,30 @@ func (s *Server) table() map[string]handler {
 		if err != nil {
 			return nil, err
 		}
-		key := "login|" + x.A.IP + "|" + strings.ToLower(req.Email)
-		if !s.login.Allow(key) {
+		email := core.NormEmail(req.Email)
+		if len(email) > 254 || len(req.Password) > auth.MaxPasswordLen {
+			return nil, fail.Unauthorized("The email or password is not correct.")
+		}
+		addr := auth.LimitKey(x.A.IP)
+		key, acct := "login|"+addr+"|"+email, "login|"+email
+		// The account count needs no address, so changing address does not reset it.
+		if !s.login.Allow(key) || !s.loginAddress.Allow(addr) || !s.loginAccount.Allow(acct) {
 			return nil, fail.RateLimited("Too many login attempts. Wait 15 minutes and try again.")
 		}
-		u, ticket, err := c.Login(ctxOf(x), req.Email, req.Password)
+		u, ticket, err := c.Login(ctxOf(x), email, req.Password)
 		if err != nil {
+			if fail.Is(err, api.CodeUnauthorized) {
+				x.Target = email
+				s.auditAs(x, "auth.login_failed")
+			}
 			return nil, err
 		}
-		x.Target = strings.ToLower(req.Email)
+		x.Target = email
 		if ticket != "" {
 			return api.LoginResponse{NeedTOTP: true, Ticket: ticket}, nil
 		}
 		s.login.Reset(key)
+		s.loginAccount.Reset(acct)
 		x.A = core.Actor{UserID: u.ID, Email: u.Email, Role: u.Role}
 		if err := s.setSession(x.W, x.R, u.ID); err != nil {
 			return nil, err
@@ -104,7 +116,7 @@ func (s *Server) table() map[string]handler {
 		return api.LoginResponse{User: &u, Install: &in}, nil
 	})
 	add("POST /auth/login/totp", func(x *Ctx) (any, error) {
-		if !s.login.Allow("totp|" + x.A.IP) {
+		if !s.login.Allow("totp|" + auth.LimitKey(x.A.IP)) {
 			return nil, fail.RateLimited("Too many attempts. Wait 15 minutes and try again.")
 		}
 		req, err := body[api.TOTPLoginRequest](x)
@@ -135,7 +147,7 @@ func (s *Server) table() map[string]handler {
 		if err != nil {
 			return nil, err
 		}
-		if !s.forgot.Allow("forgot|" + x.A.IP) {
+		if !s.forgot.Allow("forgot|" + auth.LimitKey(x.A.IP)) {
 			return nil, fail.RateLimited("Too many reset requests. Wait an hour and try again.")
 		}
 		x.Target = strings.ToLower(req.Email)

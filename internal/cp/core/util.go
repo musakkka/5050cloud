@@ -66,6 +66,10 @@ func validEmail(s string) bool {
 
 func normEmail(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
 
+// NormEmail is the form an account is looked up by; anything counted per account
+// has to use it too.
+func NormEmail(s string) string { return normEmail(s) }
+
 func cleanCIDRs(field string, in []string) ([]string, error) {
 	out := []string{}
 	seen := map[string]bool{}

@@ -36,7 +36,8 @@ func mustPrefixes(ss ...string) []netip.Prefix {
 
 // Blocked reports whether ip is in a range outbound requests may not reach.
 func Blocked(ip netip.Addr) bool {
-	ip = ip.Unmap()
+	// Prefix.Contains is false for any address with a zone.
+	ip = ip.WithZone("").Unmap()
 	for _, p := range blocked {
 		if p.Contains(ip) {
 			return true

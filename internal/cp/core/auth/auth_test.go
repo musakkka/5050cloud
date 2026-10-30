@@ -28,7 +28,7 @@ func TestPasswords(t *testing.T) {
 	if !strings.HasPrefix(h, "$argon2id$v=19$m=65536,t=3,p=2$") {
 		t.Fatalf("hash = %s", h)
 	}
-	if !CheckPassword(h, "correct horse") || CheckPassword(h, "wrong horse") {
+	if !checkPassword(h, "correct horse") || checkPassword(h, "wrong horse") {
 		t.Fatal("CheckPassword")
 	}
 	h2, _ := HashPassword("correct horse")
@@ -38,11 +38,13 @@ func TestPasswords(t *testing.T) {
 	for _, bad := range []string{"", "plain", "$argon2i$v=19$m=1,t=1,p=1$a$b", "$argon2id$v=18$m=65536,t=3,p=2$c2FsdA$aGFzaA",
 		"$argon2id$v=19$m=0,t=3,p=2$c2FsdA$aGFzaA", "$argon2id$v=19$m=65536,t=3,p=2$!!$aGFzaA", "$argon2id$v=19$m=65536,t=3,p=2$c2FsdA$!!",
 		"$argon2id$v=19$m=65536,t=3,p=2$c2FsdA$", "$argon2id$vx$m=65536,t=3,p=2$c2FsdA$aGFzaA", "$argon2id$v=19$mx$c2FsdA$aGFzaA"} {
-		if CheckPassword(bad, "x") {
+		if checkPassword(bad, "x") {
 			t.Fatalf("malformed hash %q accepted", bad)
 		}
 	}
-	DummyCheck("x")
+	if err := DummyCheck("x"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestTokens(t *testing.T) {
@@ -175,5 +177,46 @@ func TestClientIP(t *testing.T) {
 	r.Header.Del("X-Forwarded-For")
 	if !IsLocal(r) || ClientIP(r) != "::1" {
 		t.Fatal("ipv6 loopback")
+	}
+}
+
+func TestLimitKey(t *testing.T) {
+	for in, want := range map[string]string{
+		"198.51.100.7":              "198.51.100.7",
+		"::ffff:198.51.100.7":       "::ffff:198.51.100.7",
+		"2001:db8:1:2:3:4:5:6":      "2001:db8:1:2::/64",
+		"2001:db8:1:2:ffff::1%eth0": "2001:db8:1:2::/64",
+		"not an address":            "not an address",
+	} {
+		if got := LimitKey(in); got != want {
+			t.Errorf("LimitKey(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestHashingIsCappedAndRefusesWhenTheQueueIsFull(t *testing.T) {
+	h, err := HashPassword("correct horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cap(hashSlots) > 4 {
+		t.Fatalf("%d concurrent hashes is too much memory", cap(hashSlots))
+	}
+	for i := 0; i < cap(hashQueue); i++ {
+		hashQueue <- struct{}{}
+	}
+	defer func() {
+		for i := 0; i < cap(hashQueue); i++ {
+			<-hashQueue
+		}
+	}()
+	if _, err := VerifyPassword(h, "correct horse"); err != ErrBusy {
+		t.Fatalf("VerifyPassword: %v, want ErrBusy", err)
+	}
+	if _, err := HashPassword("correct horse"); err != ErrBusy {
+		t.Fatalf("HashPassword: %v, want ErrBusy", err)
+	}
+	if err := DummyCheck("x"); err != ErrBusy {
+		t.Fatalf("DummyCheck: %v, want ErrBusy", err)
 	}
 }
