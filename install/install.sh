@@ -225,7 +225,7 @@ Flags (each also an environment variable FIFTY_<FLAG>, for example FIFTY_DOMAIN)
   --private                  open no inbound ports: public traffic comes through a Cloudflare
                              tunnel and SSH is turned off. Needs --domain and --tunnel-token
   --tunnel-token TOKEN       Cloudflare tunnel token (prefer FIFTY_TUNNEL_TOKEN or the guided
-                             setup, so it stays out of your shell history)
+                             setup, so it stays out of your shell history and the sudo log)
   --keep-ssh-from CIDR       with --private: keep SSH, reachable only from this IPv4 range
   --no-ssh-hardening         do not turn off SSH passwords and root login
   --no-audit-log             do not install auditd and its rules

@@ -33,7 +33,7 @@ It also moves trust to Cloudflare, which terminates TLS and sees your traffic un
 
 The wildcard hostname creates no DNS record by itself. In **DNS**, **Records**, add a proxied CNAME from `*` to `<tunnel id>.cfargotunnel.com`.
 
-Cloudflare's free certificate covers one level of wildcard, so use `*.example.com` and not `*.apps.example.com` unless you have a certificate for that level.
+Cloudflare's free certificate covers `example.com` and `*.example.com`, and nothing deeper. A name such as `app.apps.example.com` fails the TLS handshake in the browser before any page loads, even when its DNS record and tunnel hostname are right. So use `*.example.com` and not `*.apps.example.com`, and give `--domain` and `--console-domain` names one level below your domain, unless you have a certificate for the deeper level. If `--domain` is itself a subdomain, the apps it generates are one level too deep.
 
 ## 2. Install
 
@@ -44,7 +44,7 @@ curl -fsSL {{GET}} | sudo -E sh -s -- --private --domain example.com --console-d
 
 The token is kept in `/etc/5050/tunnel-token`, readable by root only, and reaches `cloudflared` as a systemd credential, never on its command line. Run from a terminal, the guided setup asks for all of this and hides the token as you type.
 
-`--tunnel-token TOKEN` also works, but puts the token in your shell history.
+`--tunnel-token TOKEN` also works, but puts the token in your shell history and in the system's sudo log (`/var/log/auth.log` and the journal), which any user in the `adm` group can read. On Ubuntu that includes the default `ubuntu` user. Use it only if you will delete the log lines or replace the token afterwards.
 
 ## What the installer checks before closing anything
 

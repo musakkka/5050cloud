@@ -37,7 +37,7 @@ Piped into `sh`, it asks nothing. Downloaded and run from a terminal (`{{INSTALL
 | `--no-auto-updates` | updates on | Skip unattended OS security updates |
 | `--firewall` | off | Drop inbound traffic except TCP 22, 80, 443, the TCP proxy range 20000 to 29999 and UDP 51820, all from anywhere. See [Firewall](/docs/guides/firewall) |
 | `--private` | off | Open no inbound ports: public traffic comes through a Cloudflare tunnel and SSH is turned off. Needs `--domain` and a token. See [Private mode](/docs/guides/private-mode) |
-| `--tunnel-token TOKEN` | none | Cloudflare tunnel token. Prefer `FIFTY_TUNNEL_TOKEN` or the guided setup, which keep it out of your shell history |
+| `--tunnel-token TOKEN` | none | Cloudflare tunnel token. Prefer `FIFTY_TUNNEL_TOKEN` or the guided setup, which keep it out of your shell history and the system's sudo log |
 | `--keep-ssh-from CIDR` | SSH off | With `--private`: keep SSH, reachable only from this IPv4 range |
 | `--no-ssh-hardening` | hardening on | Leave SSH settings alone. Otherwise passwords are turned off when an account has a key, and root login when another account with a key can use sudo |
 | `--no-audit-log` | audit log on | Skip `auditd` and its rules |
