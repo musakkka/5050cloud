@@ -71,6 +71,23 @@ func (o *Orchestrator) hostState(h hub.HostRow) string {
 	return sched.StateOnline
 }
 
+// isACMEPrimary reports whether hostID is the host that issues certificates, the
+// only one the rest of the install should accept them from.
+func (o *Orchestrator) isACMEPrimary(ctx context.Context, hostID string) bool {
+	all, err := hub.LoadHosts(ctx, o.db)
+	if err != nil {
+		return false
+	}
+	var ingress []routes.IngressHost
+	for _, x := range all {
+		if x.HasRole("ingress") && x.MeshIndex > 0 && x.State != sched.StateUnknown {
+			ingress = append(ingress, routes.IngressHost{ID: x.ID, Online: o.hub.Connected(x.ID), Control: x.MeshIndex == 1, CreatedAt: x.CreatedAt})
+		}
+	}
+	p, _ := routes.ACMEPrimary(ingress)
+	return p == hostID
+}
+
 func (o *Orchestrator) hostView(ctx context.Context, h hub.HostRow, all []hub.HostRow) (api.Host, error) {
 	out := api.Host{ID: h.ID, Name: h.Name, Roles: h.Roles, State: o.hostState(h), Version: h.Version, Arch: h.Facts.Arch,
 		OS: h.Facts.OS, CPUs: h.Facts.CPUs, MemBytes: h.Facts.MemBytes, ReserveMB: h.ReserveMB, PublicIP: h.PublicIP,

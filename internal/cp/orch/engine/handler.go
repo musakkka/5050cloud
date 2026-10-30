@@ -123,27 +123,35 @@ func (o *Orchestrator) HostMessage(ctx context.Context, hostID string, env proto
 		}
 	case proto.TBuildLog:
 		var bl proto.BuildLog
-		if json.Unmarshal(env.D, &bl) == nil && len(bl.Lines) > 0 {
+		if json.Unmarshal(env.D, &bl) == nil && len(bl.Lines) > 0 && o.isBuildHost(ctx, bl.BuildID, hostID) {
 			_ = o.builds.Append(bl.BuildID, o.now().UnixMilli(), o.maskBuild(ctx, bl.BuildID, bl.Lines))
 		}
 	case proto.TBuildResult:
 		var res proto.BuildResult
-		if json.Unmarshal(env.D, &res) == nil && !o.deliverBuild(res) {
-			o.log.Info("build result nobody waits for", "build", res.BuildID, "host", hostID)
+		if json.Unmarshal(env.D, &res) == nil {
+			if !o.isBuildHost(ctx, res.BuildID, hostID) {
+				o.log.Warn("refused a build result from a host the build was not sent to", "build", res.BuildID, "host", hostID)
+			} else if !o.deliverBuild(res) {
+				o.log.Info("build result nobody waits for", "build", res.BuildID, "host", hostID)
+			}
 		}
 	case proto.TJobLog:
 		var jl proto.JobLog
 		if json.Unmarshal(env.D, &jl) == nil {
-			o.jobs.log(jl)
+			o.jobs.log(hostID, jl)
 		}
 	case proto.TJobResult:
 		var jr proto.JobResult
 		if json.Unmarshal(env.D, &jr) == nil {
-			o.jobs.result(jr)
+			o.jobs.result(hostID, jr)
 		}
 	case proto.TCertIssued:
 		var ci proto.CertIssued
 		if json.Unmarshal(env.D, &ci) == nil {
+			if !o.isACMEPrimary(ctx, hostID) {
+				o.log.Warn("refused a certificate from a host that is not the ACME primary", "host", hostID, "domain", ci.Domain)
+				return
+			}
 			if err := o.storeCert(ctx, ci.CertBundle); err != nil {
 				o.log.Error("store certificate", "domain", ci.Domain, "err", err)
 			}

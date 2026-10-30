@@ -28,14 +28,15 @@ type jobTracker struct {
 }
 
 type jobWait struct {
+	host string // the host the job was sent to; nothing else may report on it
 	logf func(string)
 	done chan proto.JobResult
 }
 
 func newJobTracker() *jobTracker { return &jobTracker{waiting: map[string]*jobWait{}} }
 
-func (t *jobTracker) add(id string, logf func(string)) *jobWait {
-	w := &jobWait{logf: logf, done: make(chan proto.JobResult, 1)}
+func (t *jobTracker) add(id, host string, logf func(string)) *jobWait {
+	w := &jobWait{host: host, logf: logf, done: make(chan proto.JobResult, 1)}
 	t.mu.Lock()
 	t.waiting[id] = w
 	t.mu.Unlock()
@@ -48,11 +49,11 @@ func (t *jobTracker) remove(id string) {
 	t.mu.Unlock()
 }
 
-func (t *jobTracker) log(jl proto.JobLog) {
+func (t *jobTracker) log(host string, jl proto.JobLog) {
 	t.mu.Lock()
 	w := t.waiting[jl.JobID]
 	t.mu.Unlock()
-	if w == nil || w.logf == nil {
+	if w == nil || w.logf == nil || w.host != host {
 		return
 	}
 	for _, l := range jl.Lines {
@@ -60,11 +61,11 @@ func (t *jobTracker) log(jl proto.JobLog) {
 	}
 }
 
-func (t *jobTracker) result(jr proto.JobResult) {
+func (t *jobTracker) result(host string, jr proto.JobResult) {
 	t.mu.Lock()
 	w := t.waiting[jr.JobID]
 	t.mu.Unlock()
-	if w == nil {
+	if w == nil || w.host != host {
 		return
 	}
 	select {
@@ -89,7 +90,7 @@ func (o *Orchestrator) RunJob(ctx context.Context, hostID string, job proto.Job,
 	if job.Labels == nil {
 		job.Labels = map[string]string{}
 	}
-	w := o.jobs.add(job.JobID, logf)
+	w := o.jobs.add(job.JobID, hostID, logf)
 	defer o.jobs.remove(job.JobID)
 	if err := o.hub.Send(ctx, hostID, proto.TJob, job.JobID, job); err != nil {
 		return proto.JobResult{}, errorf("The job could not be sent to host %s: %s", host.Name, sentenceOf(err))

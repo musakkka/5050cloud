@@ -534,13 +534,21 @@ func (h *Hub) serveUnknown(c *websocket.Conn, r *http.Request, token string) {
 	factsJSON, _ := json.Marshal(hello.Facts)
 	now := h.now().UnixMilli()
 	err = h.o.Write(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO o_hosts (id, name, roles, state, token_hash, token_rotated_at, machine_id, facts,
+		res, err := tx.ExecContext(ctx, `INSERT INTO o_hosts (id, name, roles, state, token_hash, token_rotated_at, machine_id, facts,
 			mesh_index, mesh_pubkey, public_ip, last_seen, drain, reserve_mb, version, created_at)
 			VALUES (?, ?, '["app"]', 'unknown', ?, ?, ?, ?, NULL, ?, ?, ?, 0, 0, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET facts = excluded.facts, last_seen = excluded.last_seen, token_hash = excluded.token_hash`,
+			ON CONFLICT(id) DO UPDATE SET facts = excluded.facts, last_seen = excluded.last_seen
+			WHERE o_hosts.token_hash = excluded.token_hash`,
 			hello.HostID, hostLabel(hello), HashToken(token), now, hello.MachineID, string(factsJSON), hello.WGPublicKey,
 			hello.Facts.PublicIP, now, hello.Facts.Version, now)
-		return err
+		if err != nil {
+			return err
+		}
+		// A stranger who only knows a waiting host's id must not take over its row.
+		if n, err := res.RowsAffected(); err != nil || n == 0 {
+			return errorf("host %s is already waiting with another token", hello.HostID)
+		}
+		return nil
 	})
 	if err != nil {
 		_ = c.Close(websocket.StatusInternalError, proto.CloseUnknownHost)

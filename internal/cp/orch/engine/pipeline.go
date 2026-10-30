@@ -1652,6 +1652,13 @@ func (o *Orchestrator) resumeBuild(ctx context.Context, d depRow) {
 	o.rolloutAndFinish(ctx, &d, snap)
 }
 
+// isBuildHost reports whether the build was sent to hostID. A result sets the
+// image a service runs, so no other host may report it.
+func (o *Orchestrator) isBuildHost(ctx context.Context, buildID, hostID string) bool {
+	d, err := o.loadDep(ctx, o.db, buildID)
+	return err == nil && d.BuildHost == hostID
+}
+
 // deliverBuild hands a build result to whoever waits for it.
 func (o *Orchestrator) deliverBuild(res proto.BuildResult) bool {
 	o.mu.Lock()
