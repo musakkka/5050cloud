@@ -438,6 +438,9 @@ func (o *Orchestrator) hostEvent(ctx context.Context, hostID string, e proto.Eve
 	case "mesh.unreachable":
 		o.log.Warn("mesh peer unreachable", "host", hostID, "text", e.Text)
 		o.publishHost(ctx, hostID)
+	case "host.warning":
+		o.log.Warn("host warning", "host", hostID, "text", e.Text)
+		o.publishHost(ctx, hostID)
 	case "upgrade.failed":
 		o.agentUpgradeFailed(ctx, hostID, e.Text)
 	}

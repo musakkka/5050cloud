@@ -166,12 +166,13 @@ type Agent struct {
 	replicas    map[string]*replica
 	maintenance map[string]bool
 	// maintOn is set between a maintenance order with On and the one that ends it.
-	maintOn   bool
-	meshDown  map[string]bool
-	maintMu   sync.Mutex
-	upgradeMu sync.Mutex
-	infra     infraState
-	upstreams map[string][]string
+	maintOn    bool
+	meshDown   map[string]bool
+	fwWarnings []string
+	maintMu    sync.Mutex
+	upgradeMu  sync.Mutex
+	infra      infraState
+	upstreams  map[string][]string
 
 	sem      chan struct{}
 	outbox   *outbox

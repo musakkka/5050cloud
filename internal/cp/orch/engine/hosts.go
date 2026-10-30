@@ -98,6 +98,7 @@ func (o *Orchestrator) hostView(ctx context.Context, h hub.HostRow, all []hub.Ho
 				out.Disks = append(out.Disks, api.Disk{Mount: d.Mount, Used: d.Used, Total: d.Total})
 			}
 		}
+		out.Warnings = append(out.Warnings, hs.Warnings...)
 	}
 	reps, err := o.queryReps(ctx, `host_id = ? AND desired IN ('running', 'stopped')`, h.ID)
 	if err != nil {

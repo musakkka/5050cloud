@@ -40,6 +40,7 @@ type Net struct {
 	o       Options
 	ipt     iptables
 	nft     func(ctx context.Context, stdin string, args ...string) error
+	nftOut  func(ctx context.Context, args ...string) (string, error)
 	keys    keyStore
 	dns     *privateDNS
 	resolve hostResolver
@@ -54,6 +55,12 @@ type Net struct {
 	gateways  map[string]string // environment id -> gateway ip
 	rulesHash string
 	peers     map[string]string // WireGuard public key -> host id
+
+	privateMarker string // on a private host the installer writes this file
+	firewallConf  string // the rules the installer wrote
+	lastPeers     []meshPeerPlan
+	lastMetadata  []netip.Addr
+	fwRestored    time.Time
 }
 
 var _ agentapi.Network = (*Net)(nil)
@@ -73,6 +80,7 @@ func newNet(o Options) *Net {
 		o:        o,
 		ipt:      newExecIPTables(nil),
 		nft:      execNft,
+		nftOut:   execNftOut,
 		keys:     keyStore{path: filepath.Join(o.DataDir, "wg.key")},
 		dns:      newPrivateDNS(defaultSockets(), newForwarder(), o.Logger),
 		resolve:  lookupIPv4,
@@ -80,6 +88,9 @@ func newNet(o Options) *Net {
 		plan:     plan,
 		gateways: map[string]string{},
 		peers:    map[string]string{},
+
+		privateMarker: "/etc/5050/private",
+		firewallConf:  "/etc/nftables-5050.conf",
 	}
 	n.newDock = func() (dockerAPI, error) { return newDockerClient(o.DockerHost) }
 	return n
@@ -109,6 +120,9 @@ func (n *Net) Apply(ctx context.Context, host proto.HostConfig, mesh proto.Mesh,
 	spec, serrs := buildFirewallSpec(ctx, plan, nets, n.resolve)
 	errs = append(errs, serrs...)
 	if err := n.applyFirewallLocked(ctx, spec); err != nil {
+		errs = append(errs, err)
+	}
+	if err := n.syncMetadataSet(ctx, spec); err != nil {
 		errs = append(errs, err)
 	}
 	if err := n.applyMeshLocked(ctx, mesh); err != nil {
@@ -377,6 +391,32 @@ func (n *Net) UnreachablePeers(now time.Time, d time.Duration) []string {
 func (n *Net) Close() error {
 	n.dns.close()
 	return nil
+}
+
+// RestoreBaseline loads the least isolation that holds with no desired state:
+// no forwarded container reaches the metadata address. 5050-net-restore runs it
+// first, so a missing or unreadable cache still leaves that in place when Docker
+// starts its containers. The agent's next apply replaces the chain. It does
+// nothing when the chain is already there, which is every time but the first
+// after a boot.
+func RestoreBaseline(ctx context.Context, o Options) error {
+	n := newNet(o)
+	defer func() { _ = n.Close() }()
+	return n.restoreBaseline(ctx)
+}
+
+func (n *Net) restoreBaseline(ctx context.Context) error {
+	saved, err := n.ipt.Save(ctx)
+	if err != nil {
+		return err
+	}
+	st := parseSave(saved)
+	if st.has("filter", chainIsolate) {
+		return nil
+	}
+	f := newTable("filter")
+	f.add(chainIsolate, "-d "+MetadataAddr+"/32 -j DROP")
+	return n.ipt.Restore(ctx, renderRestore(ruleSet{tables: []*table{f}, hooks: []hook{{"filter", "DOCKER-USER", "-j " + chainIsolate}}}, st))
 }
 
 // Restore is what 5050-net-restore runs at boot, before Docker starts: it

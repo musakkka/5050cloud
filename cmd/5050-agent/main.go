@@ -282,7 +282,8 @@ func cmdRun(args []string, stderr io.Writer) error {
 // cmdNetRestore is what 5050-net-restore.service runs at boot, before
 // Docker starts: it loads the firewall chains and wg5050 from the cached
 // desired state, so a quarantined environment never has open egress
-// (docs/SPEC.md 7.2). Without a cache it does nothing.
+// (docs/SPEC.md 7.2). Whatever happens to the cache, the metadata drop goes in
+// first, so no container starts without it.
 func cmdNetRestore(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("net-restore", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -291,10 +292,16 @@ func cmdNetRestore(args []string, stdout, stderr io.Writer) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	baseErr := netw.RestoreBaseline(ctx, netw.Options{DataDir: c.dataDir, DockerHost: c.docker})
+	if baseErr != nil {
+		fmt.Fprintf(stderr, "Could not load the metadata drop: %v\n", baseErr)
+	}
 	key, err := os.ReadFile(c.hostKey)
 	if errors.Is(err, os.ErrNotExist) {
-		fmt.Fprintln(stdout, "No host key yet; nothing to restore.")
-		return nil
+		fmt.Fprintln(stdout, "No host key yet; nothing more to restore.")
+		return baseErr
 	}
 	if err != nil {
 		return fmt.Errorf("could not read the host key %s: %w", c.hostKey, err)
@@ -305,14 +312,12 @@ func cmdNetRestore(args []string, stdout, stderr io.Writer) error {
 	}
 	e, err := cache.Load()
 	if errors.Is(err, statecache.ErrNoCache) {
-		fmt.Fprintln(stdout, "No cached desired state yet; nothing to restore.")
-		return nil
+		fmt.Fprintln(stdout, "No cached desired state yet; nothing more to restore.")
+		return baseErr
 	}
 	if err != nil {
 		return fmt.Errorf("could not read the desired-state cache: %w", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
 	if err := netw.Restore(ctx, netw.Options{DataDir: c.dataDir, DockerHost: c.docker}, e.State); err != nil {
 		return fmt.Errorf("could not restore the firewall and mesh from the cache (generation %d): %w", e.State.Generation, err)
 	}

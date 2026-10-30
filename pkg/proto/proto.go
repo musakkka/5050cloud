@@ -559,6 +559,8 @@ type HostSample struct {
 	Load1    float64 `json:"load1"`
 	// MeshHandshakes maps peer host id to the Unix ms of the last WireGuard handshake.
 	MeshHandshakes map[string]int64 `json:"meshHandshakes,omitempty"`
+	// Warnings are notes for the host row, such as a firewall that had to be loaded again.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 type ContainerSample struct {

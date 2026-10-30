@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -28,7 +29,9 @@ func (a *Agent) metricsLoop(ctx context.Context) {
 	if cur, _, err := a.roots.ReadCPU(); err == nil {
 		a.hostCPU = cur
 	}
+	a.checkFirewall(ctx)
 	every(ctx, a.t.metricsEvery, func() {
+		a.checkFirewall(ctx)
 		m := a.collectMetrics(ctx)
 		a.disk.check(ctx, m.Host.Disks)
 		a.send(proto.TMetrics, "", m)
@@ -65,6 +68,9 @@ func (a *Agent) collectMetrics(ctx context.Context) proto.Metrics {
 		m.Host.MeshHandshakes = mr.MeshHandshakes()
 		a.checkMesh(mr, now)
 	}
+	a.mu.Lock()
+	m.Host.Warnings = a.fwWarnings
+	a.mu.Unlock()
 	for _, p := range a.diskMounts() {
 		if used, total, err := sample.Statfs(p); err == nil {
 			m.Host.Disks = append(m.Host.Disks, proto.Disk{Mount: p, Used: used, Total: total})
@@ -148,6 +154,32 @@ func (a *Agent) collectMetrics(ctx context.Context) proto.Metrics {
 type meshReporter interface {
 	MeshHandshakes() map[string]int64
 	UnreachablePeers(now time.Time, d time.Duration) []string
+}
+
+// firewallChecker is implemented by internal/agent/netw.
+type firewallChecker interface {
+	CheckFirewall(ctx context.Context, now time.Time) []string
+}
+
+// checkFirewall keeps the firewall loaded on a private host, from the moment
+// the agent starts, and reports each new problem once as an event; the current
+// ones travel with every metrics sample and show on the host row.
+func (a *Agent) checkFirewall(ctx context.Context) {
+	fc, ok := a.o.Network.(firewallChecker)
+	if !ok {
+		return
+	}
+	now := time.Now()
+	warnings := fc.CheckFirewall(ctx, now)
+	a.mu.Lock()
+	seen := a.fwWarnings
+	a.fwWarnings = warnings
+	a.mu.Unlock()
+	for _, w := range warnings {
+		if !slices.Contains(seen, w) {
+			a.send(proto.TEvent, "", proto.Event{Kind: "host.warning", Text: w, At: now.UnixMilli()})
+		}
+	}
 }
 
 // meshUnreachableAfter is how long a peer may go without a handshake (8.4).
