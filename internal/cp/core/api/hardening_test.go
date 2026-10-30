@@ -17,10 +17,10 @@ import (
 )
 
 // postFrom posts JSON with the headers a request from that address and page has.
-func postFrom(t *testing.T, e *env, path, ip, origin string, in any) *http.Response {
+func postFrom(t *testing.T, e *env, path, ip, origin string, in any) int {
 	t.Helper()
 	b, _ := json.Marshal(in)
-	req, _ := http.NewRequest("POST", e.srv.URL+path, strings.NewReader(string(b)))
+	req, _ := http.NewRequest(http.MethodPost, e.srv.URL+path, strings.NewReader(string(b)))
 	req.Header.Set("Content-Type", "application/json")
 	if ip != "" {
 		req.Header.Set("X-Forwarded-For", ip) // httptest connects over loopback, so this is trusted
@@ -32,14 +32,14 @@ func postFrom(t *testing.T, e *env, path, ip, origin string, in any) *http.Respo
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, resp.Body)
-	_ = resp.Body.Close()
-	return resp
+	return resp.StatusCode
 }
 
 func login(t *testing.T, e *env, ip, email, password string) int {
 	t.Helper()
-	return postFrom(t, e, "/api/v1/auth/login", ip, "", api.LoginRequest{Email: email, Password: password}).StatusCode
+	return postFrom(t, e, "/api/v1/auth/login", ip, "", api.LoginRequest{Email: email, Password: password})
 }
 
 // Every spelling of one address is one account, so one limiter bucket.
@@ -122,7 +122,7 @@ func TestBadTokensAreRefusedBeforeHashing(t *testing.T) {
 		"/api/v1/invites/accept": api.AcceptInviteRequest{Token: "not-a-real-token", Email: "a@example.com", Name: "A", Password: "a long enough password"},
 	} {
 		start := time.Now()
-		if got := postFrom(t, e, path, "", "", in).StatusCode; got != 401 {
+		if got := postFrom(t, e, path, "", "", in); got != 401 {
 			t.Errorf("%s: status %d, want 401", path, got)
 		}
 		if took := time.Since(start); took > oneHash/2 {
@@ -145,11 +145,11 @@ func TestPublicPostsRefuseAnotherOrigin(t *testing.T) {
 	secOwner(t, e)
 	body := api.LoginRequest{Email: "owner@example.com", Password: "wrong password here"}
 	for _, origin := range []string{"https://evil.example", "null"} {
-		if got := postFrom(t, e, "/api/v1/auth/login", "", origin, body).StatusCode; got != 403 {
+		if got := postFrom(t, e, "/api/v1/auth/login", "", origin, body); got != 403 {
 			t.Errorf("Origin %s: status %d, want 403", origin, got)
 		}
 	}
-	if got := postFrom(t, e, "/api/v1/auth/login", "", e.srv.URL, body).StatusCode; got != 401 {
+	if got := postFrom(t, e, "/api/v1/auth/login", "", e.srv.URL, body); got != 401 {
 		t.Errorf("own origin: status %d, want 401", got)
 	}
 }
@@ -187,14 +187,14 @@ func TestSessionCookieUsesTheHostPrefixOnHTTPS(t *testing.T) {
 		t.Fatalf("cookie: %+v", ck)
 	}
 	// The name without the prefix must no longer count.
-	req, _ := http.NewRequest("GET", e.srv.URL+"/api/v1/me", nil)
+	req, _ := http.NewRequest(http.MethodGet, e.srv.URL+"/api/v1/me", nil)
 	req.AddCookie(&http.Cookie{Name: CookieName, Value: ck.Value})
 	r2, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = r2.Body.Close()
-	if r2.StatusCode != 401 {
+	if r2.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("the old cookie name got %d, want 401", r2.StatusCode)
 	}
 }

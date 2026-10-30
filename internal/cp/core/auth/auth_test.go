@@ -3,6 +3,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -210,13 +211,13 @@ func TestHashingIsCappedAndRefusesWhenTheQueueIsFull(t *testing.T) {
 			<-hashQueue
 		}
 	}()
-	if _, err := VerifyPassword(h, "correct horse"); err != ErrBusy {
+	if _, err := VerifyPassword(h, "correct horse"); !errors.Is(err, ErrBusy) {
 		t.Fatalf("VerifyPassword: %v, want ErrBusy", err)
 	}
-	if _, err := HashPassword("correct horse"); err != ErrBusy {
+	if _, err := HashPassword("correct horse"); !errors.Is(err, ErrBusy) {
 		t.Fatalf("HashPassword: %v, want ErrBusy", err)
 	}
-	if err := DummyCheck("x"); err != ErrBusy {
+	if err := DummyCheck("x"); !errors.Is(err, ErrBusy) {
 		t.Fatalf("DummyCheck: %v, want ErrBusy", err)
 	}
 }
