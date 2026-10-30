@@ -233,6 +233,7 @@ Flags (each also an environment variable FIFTY_<FLAG>, for example FIFTY_DOMAIN)
   --ca-pin sha256:HEX        pin the console certificate when it uses an internal CA
   --recovery-key-file PATH   where the recovery key is written (default /etc/5050/recovery-key.txt)
   --restore s3://bucket/prefix --recovery-key K   rebuild a control host from a bucket
+                             (prefer FIFTY_RECOVERY_KEY, which stays out of your shell history)
       --s3-endpoint URL --s3-region R --s3-access-key K --s3-secret-key S
   --cli                      install only the 5050 command line tool
   --uninstall [--purge] [--yes]   remove 5050cloud (--purge also deletes data)
@@ -640,11 +641,11 @@ remove_private() {
 	fi
 	[ -f "$ETC_DIR/private" ] || return 0
 	if [ -f "$ETC_DIR/ssh-closed" ]; then
-		systemctl enable --now ssh.service >/dev/null 2>&1 || systemctl enable --now sshd.service >/dev/null 2>&1 || true
+		ssh_open
 		rm -f "$ETC_DIR/ssh-closed"
 	fi
 	systemctl disable --now 5050-firewall.service >/dev/null 2>&1 || true
-	rm -f "$UNIT_DIR/5050-firewall.service" /etc/nftables-5050.conf "$ETC_DIR/private"
+	rm -f "$UNIT_DIR/5050-firewall.service" "$UNIT_DIR/docker.service.d/10-5050-firewall.conf" /etc/nftables-5050.conf "$ETC_DIR/private"
 	nft delete table inet fifty_filter 2>/dev/null || true
 }
 
@@ -954,12 +955,21 @@ EOF
 	fi
 }
 
+# firewall_unit installs the boot unit. It must not take default dependencies:
+# they order it after sysinit.target while it is before network-pre.target, and
+# on images where cloud-init sits between the two, systemd breaks that cycle by
+# dropping a job, sometimes this one. It has no After= at all, so it cannot be
+# in a cycle.
 firewall_unit() {
+	# An older unit was enabled under multi-user.target; drop that link.
+	systemctl disable 5050-firewall.service >/dev/null 2>&1 || true
 	cat >"$UNIT_DIR/5050-firewall.service" <<'EOF'
 [Unit]
 Description=5050cloud host firewall
-Before=network-pre.target
+DefaultDependencies=no
+Before=network-pre.target shutdown.target
 Wants=network-pre.target
+Conflicts=shutdown.target
 
 [Service]
 Type=oneshot
@@ -967,10 +977,40 @@ RemainAfterExit=yes
 ExecStart=/usr/sbin/nft -f /etc/nftables-5050.conf
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sysinit.target
 EOF
 	systemctl daemon-reload
 	systemctl enable 5050-firewall.service >/dev/null 2>&1
+}
+
+# docker_needs_firewall stops Docker, and so every container, from starting on
+# a private host with no firewall loaded.
+docker_needs_firewall() {
+	mkdir -p "$UNIT_DIR/docker.service.d"
+	cat >"$UNIT_DIR/docker.service.d/10-5050-firewall.conf" <<'EOF'
+# Written by the 5050cloud installer.
+[Service]
+ExecStartPre=/bin/sh -c 'nft list table inet fifty_filter >/dev/null 2>&1 || nft -f /etc/nftables-5050.conf'
+EOF
+	systemctl daemon-reload
+}
+
+# ssh_close and ssh_open: disabling is not enough, because ssh.socket has been
+# seen back after a reboot, so the units are masked as well.
+SSH_UNITS="ssh.socket ssh.service sshd.service"
+ssh_close() {
+	for u in $SSH_UNITS; do
+		systemctl disable --now "$u" >/dev/null 2>&1 || true
+	done
+	for u in $SSH_UNITS; do
+		[ "$(systemctl show -p LoadState --value "$u" 2>/dev/null)" = not-found ] || systemctl mask "$u" >/dev/null 2>&1 || true
+	done
+}
+ssh_open() {
+	for u in $SSH_UNITS; do
+		systemctl unmask "$u" >/dev/null 2>&1 || true
+	done
+	systemctl enable --now ssh.service >/dev/null 2>&1 || systemctl enable --now sshd.service >/dev/null 2>&1 || true
 }
 
 # has_ssh_key USER_HOME: the home has a non-empty authorized_keys.
@@ -1067,7 +1107,8 @@ install_binaries() {
 	ln -sfn "$INSTALL_DIR/current/5050" /usr/local/bin/5050
 
 	mkdir -p "$ETC_DIR"
-	chmod 0755 "$ETC_DIR"
+	chown root:root "$ETC_DIR"
+	chmod 0750 "$ETC_DIR"
 	if [ -n "$RELEASE_BASE" ]; then
 		umask 022
 		printf '{\n  "releaseBase": "%s",\n  "publicKeys": ["%s"]\n}\n' "${RELEASE_BASE%/}" "$RELEASE_PUBKEY" >"$ETC_DIR/release.json"
@@ -1188,7 +1229,10 @@ init_control() {
 		[ -z "$S3_REGION" ] || export FIFTY_S3_REGION="$S3_REGION"
 		[ -z "$S3_ACCESS_KEY" ] || export FIFTY_S3_ACCESS_KEY="$S3_ACCESS_KEY"
 		[ -z "$S3_SECRET_KEY" ] || export FIFTY_S3_SECRET_KEY="$S3_SECRET_KEY"
-		run_logged "restoring the control host" "$INSTALL_DIR/current/5050d" restore-state --from "$RESTORE" --recovery-key "$RECOVERY_KEY" "$@"
+		# In the environment, like the S3 keys: argv is readable by every local user.
+		export FIFTY_RECOVERY_KEY="$RECOVERY_KEY"
+		run_logged "restoring the control host" "$INSTALL_DIR/current/5050d" restore-state --from "$RESTORE" "$@"
+		unset FIFTY_RECOVERY_KEY
 	else
 		run_logged "initialising the control plane" "$INSTALL_DIR/current/5050d" init "$@"
 	fi
@@ -1439,7 +1483,10 @@ private_firewall_conf() {
 	ssh_rule=""
 	[ -z "$KEEP_SSH_FROM" ] || ssh_rule="tcp dport 22 ip saddr $KEEP_SSH_FROM accept"
 	# The forward chain matters as much as input: Docker publishes ports by
-	# forwarding, past the input chain.
+	# forwarding, past the input chain. Loading this before Docker keeps the
+	# metadata drop in place whether or not the agent has run yet; the agent
+	# fills metadata_allow for services that opted in. Container isolation is
+	# IPv4 only, so containers get no forwarded IPv6.
 	cat <<EOF
 table inet fifty_filter
 delete table inet fifty_filter
@@ -1447,20 +1494,27 @@ table inet fifty_filter {
 	set wg_peers {
 		type ipv4_addr
 	}
+	set metadata_allow {
+		type ipv4_addr
+	}
 	chain input {
 		type filter hook input priority 0; policy drop;
 		ct state established,related accept
 		iifname "lo" accept
+		iifname "f5-*" meta nfproto ipv4 udp dport 53 accept
+		iifname "f5-*" meta nfproto ipv4 tcp dport { 53, 5000 } accept
 		icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert } accept
+		iifname "docker0" drop
+		iifname "br-*" drop
+		iifname "f5-*" drop
 		udp dport 51820 ip saddr @wg_peers accept
 		$ssh_rule
 		iifname "wg5050" accept
-		iifname "docker0" accept
-		iifname "br-*" accept
-		iifname "f5-*" accept
 	}
 	chain forward {
 		type filter hook forward priority -10; policy drop;
+		meta nfproto ipv6 drop
+		ip daddr 169.254.169.254 ip saddr != @metadata_allow drop
 		ct state established,related accept
 		iifname "wg5050" accept
 		iifname "docker0" accept
@@ -1491,16 +1545,15 @@ close_ports() {
 		rm -f /etc/nftables-5050.conf
 		die "the console stopped answering once the firewall was on, so the firewall was removed again. SSH was not touched."
 	fi
+	docker_needs_firewall
 	if [ -n "$KEEP_SSH_FROM" ]; then
 		if [ -f "$ETC_DIR/ssh-closed" ]; then
-			systemctl enable --now ssh.service >/dev/null 2>&1 || systemctl enable --now sshd.service >/dev/null 2>&1 || true
+			ssh_open
 			rm -f "$ETC_DIR/ssh-closed"
 		fi
 	else
 		sub "Turning off SSH"
-		for u in ssh.socket ssh.service sshd.service; do
-			systemctl disable --now "$u" >/dev/null 2>&1 || true
-		done
+		ssh_close
 		: >"$ETC_DIR/ssh-closed"
 	fi
 	: >"$ETC_DIR/private"
@@ -1520,7 +1573,8 @@ print_private() {
 	printf '    running service. It does not reach the host itself.\n'
 	printf '  - The host: your cloud provider'"'"'s serial console or run-command, for example\n'
 	printf '    az vm run-command invoke or the AWS and Hetzner web consoles. Test it now.\n'
-	printf '  - To turn SSH back on from there: systemctl enable --now ssh, and\n'
+	printf '  - To turn SSH back on from there: systemctl unmask ssh.socket ssh.service,\n'
+	printf '    systemctl enable --now ssh, and\n'
 	printf '    nft add rule inet fifty_filter input tcp dport 22 ip saddr YOUR_IP accept\n'
 	printf '\n  Guide: https://5050cloud.com/docs/guides/private-mode\n\n'
 }
