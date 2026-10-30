@@ -56,6 +56,8 @@ IPv4 only; containers have no IPv6. Ubuntu 24.04 is the tested OS.
 
 [Private mode](/docs/guides/private-mode) leaves no inbound port open, which removes one way in and only that one. A bug in an app you deploy, a stolen Cloudflare, GitHub or cloud account, or a compromised dependency can still get in. It also makes Cloudflare a hard dependency: if the tunnel is down, your apps and console are too.
 
+Sign-in has a limit per account as well as per address, so someone sending enough wrong passwords from many addresses can keep the real owner out for 15 minutes at a time. Cloudflare Access on the console hostname stops them before they reach it.
+
 What to do: follow the account protections in the guide, keep backups off the machine, and keep treating the host as something that can be broken into.
 
 ## You own the machines

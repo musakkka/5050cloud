@@ -28,7 +28,7 @@ It also accepts traffic from bridges named `f5-*`, the ones 5050cloud creates fo
 
 ## `--private`
 
-[Private mode](/docs/guides/private-mode) replaces those rules with no open ports at all. Inbound and forwarded traffic is dropped except loopback, established connections, the Docker bridges and `wg5050`. UDP 51820 is accepted only from the set `wg_peers`, which the agent keeps equal to the public addresses of joined hosts. SSH is stopped, unless `--keep-ssh-from` allows one range.
+[Private mode](/docs/guides/private-mode) replaces those rules with no open ports at all. Inbound traffic is dropped except loopback, established connections, `wg5050`, and DNS and the build registry (TCP and UDP 53, TCP 5000) from bridges named `f5-*`. Forwarded traffic is dropped except established connections, `wg5050` and what container bridges send, and even then forwarded IPv6 and the metadata address are dropped first. UDP 51820 is accepted only from the set `wg_peers`, which the agent keeps equal to the public addresses of joined hosts. SSH is stopped and masked, unless `--keep-ssh-from` allows one range.
 
 ## Rules 5050cloud manages
 

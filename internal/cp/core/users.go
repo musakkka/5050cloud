@@ -22,7 +22,7 @@ import (
 const (
 	SessionTTL     = 30 * day
 	sessionMaxAge  = 90 * day // however often it is used, a session ends after this
-	sessionExtend  = day // extend the sliding expiry at most once a day
+	sessionExtend  = day      // extend the sliding expiry at most once a day
 	ResetTTL       = hour
 	VerifyTTL      = 7 * day
 	SetupTTL       = day

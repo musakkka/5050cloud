@@ -54,16 +54,19 @@ The order is what keeps a bad token from locking you out:
 2. It waits for `cloudflared` to report a connection.
 3. It fetches `https://<console domain>/readyz` with a random value, and checks that this host's Caddy logged that value. A stale record pointing at some other server cannot pass.
 4. Only then does it load the firewall, and it checks the console again. If the console stopped answering, it removes the firewall again.
-5. Last of all, it stops and disables SSH.
+5. Last of all, it stops, disables and masks SSH.
 
 If any check fails, the install stops with an error, and SSH and every other port stay as they were. Fix the cause and run the installer again.
 
 ## What changes on the host
 
-- **Firewall.** nftables drops all inbound and forwarded traffic except loopback, established connections, the Docker bridges and `wg5050`. Forwarded traffic matters because Docker publishes ports by forwarding, so a `docker run -p` you start by hand stays unreachable too.
+- **Firewall.** nftables drops all inbound and forwarded traffic except loopback, established connections, `wg5050` and what containers send out. Forwarded traffic matters because Docker publishes ports by forwarding, so a `docker run -p` you start by hand stays unreachable too. The rules cover IPv4 and IPv6.
+- **Boot order.** The firewall loads before the network comes up, and Docker does not start without it. The agent checks it when it starts and every 30 seconds. If it is missing, the agent loads it again and puts a note on the host in the console for a day.
+- **Containers and the host.** From a container, the host answers only DNS and the build registry, and only on 5050cloud's own bridges. A service you run on the host and bind to `0.0.0.0` stays out of a container's reach, on any port but 53 and 5000.
+- **Metadata and IPv6.** No container reaches the cloud metadata address, unless its service turned on metadata access, and no container gets forwarded IPv6. Both are in the rules loaded at boot, so they do not wait for the agent.
 - **Caddy** binds `127.0.0.1:80`, serves plain HTTP by host name and orders no certificates. Cloudflare holds the certificates.
 - **WireGuard.** UDP 51820 is open only to the public addresses of joined hosts. The agent adds and removes them as hosts join and leave. On a single host it is closed to everyone.
-- **SSH** is stopped and disabled.
+- **SSH** is stopped, disabled and masked, so nothing starts it again by accident.
 
 ## Keeping SSH for one address
 
@@ -110,6 +113,7 @@ az vm run-command invoke -g GROUP -n VM --command-id RunShellScript --scripts 's
 To turn SSH back on from there, for your address only:
 
 ```sh
+systemctl unmask ssh.socket ssh.service
 systemctl enable --now ssh
 nft add rule inet fifty_filter input tcp dport 22 ip saddr 203.0.113.7/32 accept
 ```

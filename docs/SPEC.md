@@ -1499,8 +1499,9 @@ agent counts restarts from Docker events; when `on_failure` is exhausted the rep
 
 - **First run**: `/setup?token=` creates the owner. The setup token is single use and expires in
   24 hours; `5050d setup-token` on the host prints a new one.
-- **Passwords**: argon2id (m=64 MiB, t=3, p=2), minimum 10 characters. Login is rate limited to
-  10 attempts per minute per IP and per email.
+- **Passwords**: argon2id (m=64 MiB, t=3, p=2), minimum 10 characters. Login is rate limited in a
+  15 minute window: 10 attempts per address and normalized email, 100 per address, 50 per account
+  from any address. IPv6 counts by /64. Argon2 runs at most 4 at a time.
 - **Email (SMTP)**: Settings > General > Email: host, port, TLS mode (`starttls`, `tls`, `none`),
   user, password, from address, **Send test email**. Without SMTP, email features are hidden and
   invites show a link to copy.
@@ -1514,7 +1515,8 @@ agent counts restarts from Docker events; when `on_failure` is exhausted the rep
   a code, with 10 single-use recovery codes. Login asks for the code after the password. Admins
   can require 2FA for everyone (Settings > Members). `5050d reset-2fa --email` on the host removes
   it.
-- **Sessions**: cookie `5050_session` (HttpOnly, Secure, SameSite=Lax, 30 day sliding expiry); the
+- **Sessions**: cookie `__Host-5050_session` on HTTPS, `5050_session` on plain HTTP (HttpOnly,
+  Secure, SameSite=Lax, 30 day sliding expiry, ended after 90 days whatever the use); the
   server stores only a hash. Every state-changing request authenticated by cookie must send
   `X-5050-CSRF: 1` (the server sends no CORS headers, so other sites cannot add it).
 - **API tokens**: `Authorization: Bearer 5050_<40 chars>`, stored as SHA-256. Scope `account`
