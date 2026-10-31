@@ -132,7 +132,11 @@ func writeMsg(w dns.ResponseWriter, req, m *dns.Msg) {
 		size = dns.MaxMsgSize
 	} else if opt := req.IsEdns0(); opt != nil {
 		size = max(int(opt.UDPSize()), dns.MinMsgSize)
-		m.SetEdns0(opt.UDPSize(), false)
+		// A forwarded reply already carries the upstream's OPT. A second one is
+		// malformed (RFC 6891 6.1.1) and c-ares rejects the whole reply.
+		if m.IsEdns0() == nil {
+			m.SetEdns0(opt.UDPSize(), false)
+		}
 	}
 	m.Truncate(size)
 	_ = w.WriteMsg(m)

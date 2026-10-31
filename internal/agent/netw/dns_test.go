@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
@@ -288,5 +289,47 @@ func TestUpstreamResolver(t *testing.T) {
 	}
 	if ips, ok := u.lookup("SVC-ABC.upstream.5050."); !ok || len(ips) != 0 {
 		t.Errorf("lookup = %v %v", ips, ok)
+	}
+}
+
+type captureWriter struct {
+	dns.ResponseWriter
+	msg *dns.Msg
+}
+
+func (c *captureWriter) RemoteAddr() net.Addr      { return &net.UDPAddr{} }
+func (c *captureWriter) WriteMsg(m *dns.Msg) error { c.msg = m; return nil }
+
+func countOPT(m *dns.Msg) int {
+	n := 0
+	for _, rr := range m.Extra {
+		if _, ok := rr.(*dns.OPT); ok {
+			n++
+		}
+	}
+	return n
+}
+
+// A forwarded reply keeps its one OPT; a local reply to an EDNS query gets one.
+func TestWriteMsgNeverDuplicatesOPT(t *testing.T) {
+	req := new(dns.Msg)
+	req.SetQuestion("example.com.", dns.TypeA)
+	req.SetEdns0(1232, false)
+
+	forwarded := new(dns.Msg)
+	forwarded.SetReply(req)
+	forwarded.SetEdns0(1224, false)
+	w := &captureWriter{}
+	writeMsg(w, req, forwarded)
+	if got := countOPT(w.msg); got != 1 {
+		t.Fatalf("forwarded reply has %d OPT records, want 1", got)
+	}
+
+	local := new(dns.Msg)
+	local.SetReply(req)
+	w = &captureWriter{}
+	writeMsg(w, req, local)
+	if got := countOPT(w.msg); got != 1 {
+		t.Fatalf("local reply has %d OPT records, want 1", got)
 	}
 }
